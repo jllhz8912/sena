@@ -137,11 +137,11 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
   const aniosDisponibles = useMemo(() => {
     const aniosSet = new Set<number>([2026, 2025, 2024, 2023]);
     documentos.forEach((d) => {
-      const y = parseInt(d.fechaEmision.split('-')[0], 10);
+      const y = parseInt((d.fechaEmision || '').split('-')[0], 10);
       if (!isNaN(y)) aniosSet.add(y);
     });
     ventas.forEach((v) => {
-      const y = parseInt(v.fecha.split('-')[0], 10);
+      const y = parseInt((v.fecha || '').split('-')[0], 10);
       if (!isNaN(y)) aniosSet.add(y);
     });
     return Array.from(aniosSet).sort((a, b) => b - a);

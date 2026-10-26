@@ -2,7 +2,12 @@
  * Extracción de datos de Facturas y Documentos PDF usando Gemini
  */
 
-import { CompraDocumento, LineaFactura, TipoDocumento } from '../types';
+import { Categoria, CentroCosto, CompraDocumento, LineaFactura, TipoDocumento } from '../types';
+
+export interface CatalogosExtraccion {
+  categorias: Categoria[];
+  centrosCosto: CentroCosto[];
+}
 
 export interface ResultadoExtraccionPdf {
   datos: Partial<CompraDocumento>;
@@ -24,11 +29,22 @@ export function fileToDataUrl(file: File | Blob): Promise<string> {
 }
 
 /**
- * Envía el archivo PDF al endpoint del servidor para ser analizado con Gemini
+ * Envía el archivo PDF (o imagen) al servidor local para ser analizado con Gemini.
+ * Se envía el catálogo de categorías y centros de costo para que la IA elija
+ * ids que existan en la base de datos.
  */
-export async function procesarFacturaPdf(file: File): Promise<ResultadoExtraccionPdf> {
+export async function procesarFacturaPdf(file: File, catalogos?: CatalogosExtraccion): Promise<ResultadoExtraccionPdf> {
   const dataUrl = await fileToDataUrl(file);
+  return procesarPdfDesdeDataUrl(dataUrl, file.name, file.size, file.type || 'application/pdf', catalogos);
+}
 
+export async function procesarPdfDesdeDataUrl(
+  dataUrl: string,
+  nombre: string,
+  tamano: number,
+  mimeType: string,
+  catalogos?: CatalogosExtraccion
+): Promise<ResultadoExtraccionPdf> {
   const response = await fetch('/api/extract-pdf', {
     method: 'POST',
     headers: {
@@ -36,8 +52,10 @@ export async function procesarFacturaPdf(file: File): Promise<ResultadoExtraccio
     },
     body: JSON.stringify({
       pdfBase64: dataUrl,
-      fileName: file.name,
-      mimeType: file.type || 'application/pdf',
+      fileName: nombre,
+      mimeType,
+      categorias: catalogos?.categorias.filter((c) => c.activo !== false).map(({ id, nombre, descripcion }) => ({ id, nombre, descripcion })),
+      centrosCosto: catalogos?.centrosCosto.filter((c) => c.activo !== false).map(({ id, nombre, descripcion }) => ({ id, nombre, descripcion })),
     }),
   });
 
@@ -55,6 +73,14 @@ export async function procesarFacturaPdf(file: File): Promise<ResultadoExtraccio
   const result = await response.json();
   const raw = result.data || {};
 
+  const tiposValidos: TipoDocumento[] = [
+    'factura_electronica', 'factura_papel', 'documento_soporte', 'cuenta_cobro', 'recibo_caja',
+    'tiquete_pos', 'servicios_publicos', 'nomina_honorarios', 'nota_credito', 'nota_debito', 'otro',
+  ];
+  const tipoDoc: TipoDocumento = tiposValidos.includes(raw.tipoDocumento) ? raw.tipoDocumento : 'factura_electronica';
+  // Las notas crédito restan: se guardan en negativo, igual que en la lectura de XML.
+  const signo = tipoDoc === 'nota_credito' ? -1 : 1;
+  const n = (v: unknown) => Math.round(Math.abs(Number(v) || 0)) * signo;
   // Mapear líneas de ítems
   const lineas: LineaFactura[] = Array.isArray(raw.lineas)
     ? raw.lineas.map((l: any, idx: number) => ({
@@ -66,12 +92,11 @@ export async function procesarFacturaPdf(file: File): Promise<ResultadoExtraccio
         valorUnitario: Math.round(Number(l.valorUnitario) || 0),
         descuento: Math.round(Number(l.descuento) || 0),
         porcentajeIva: Number(l.porcentajeIva) || 0,
-        valorIva: Math.round(Number(l.valorIva) || 0),
-        totalLinea: Math.round(Number(l.totalLinea) || 0),
+        valorIva: n(l.valorIva),
+        totalLinea: n(l.totalLinea),
       }))
     : [];
 
-  const tipoDoc: TipoDocumento = (raw.tipoDocumento as TipoDocumento) || 'factura_electronica';
   const subtotal = Math.round(Number(raw.subtotal) || 0);
   const totalIva = Math.round(Number(raw.totalIva) || 0);
   const total = Math.round(Number(raw.total) || (subtotal + totalIva));
@@ -79,7 +104,7 @@ export async function procesarFacturaPdf(file: File): Promise<ResultadoExtraccio
 
   const datos: Partial<CompraDocumento> = {
     tipoDocumento: tipoDoc,
-    origen: tipoDoc === 'factura_electronica' ? 'electronica' : 'manual',
+    origen: ['factura_electronica', 'nota_credito', 'nota_debito'].includes(tipoDoc) ? 'electronica' : 'manual',
     prefijo: raw.prefijo || '',
     folio: raw.folio || '',
     cufe: raw.cufe || '',
@@ -93,7 +118,7 @@ export async function procesarFacturaPdf(file: File): Promise<ResultadoExtraccio
       dv: raw.proveedor?.dv || '',
       razonSocial: raw.proveedor?.razonSocial || 'Proveedor no identificado',
       direccion: raw.proveedor?.direccion || '',
-      ciudad: raw.proveedor?.ciudad || 'Bogotá D.C.',
+      ciudad: raw.proveedor?.ciudad || '',
       telefono: raw.proveedor?.telefono || '',
       email: raw.proveedor?.email || '',
     },
@@ -104,35 +129,36 @@ export async function procesarFacturaPdf(file: File): Promise<ResultadoExtraccio
         }
       : undefined,
     moneda: raw.moneda || 'COP',
-    subtotal,
-    descuentos: Math.round(Number(raw.descuentos) || 0),
-    baseIva0: Math.round(Number(raw.baseIva0) || 0),
-    baseIva5: Math.round(Number(raw.baseIva5) || 0),
-    baseIva19: Math.round(Number(raw.baseIva19) || 0),
-    iva5: Math.round(Number(raw.iva5) || 0),
-    iva19: Math.round(Number(raw.iva19) || 0),
-    totalIva,
-    impoconsumo: Math.round(Number(raw.impoconsumo) || 0),
-    reteFuente: Math.round(Number(raw.reteFuente) || 0),
-    reteIva: Math.round(Number(raw.reteIva) || 0),
-    reteIca: Math.round(Number(raw.reteIca) || 0),
-    totalRetenciones: Math.round(
+    subtotal: n(subtotal),
+    descuentos: n(raw.descuentos),
+    baseIva0: n(raw.baseIva0),
+    baseIva5: n(raw.baseIva5),
+    baseIva19: n(raw.baseIva19),
+    iva5: n(raw.iva5),
+    iva19: n(raw.iva19),
+    totalIva: n(totalIva),
+    impoconsumo: n(raw.impoconsumo),
+    reteFuente: n(raw.reteFuente),
+    reteIva: n(raw.reteIva),
+    reteIca: n(raw.reteIca),
+    totalRetenciones: n(
       Number(raw.totalRetenciones) ||
         (Number(raw.reteFuente || 0) + Number(raw.reteIva || 0) + Number(raw.reteIca || 0))
     ),
-    total,
-    saldoPendiente: formaPago === 'contado' ? 0 : total,
-    estadoPago: formaPago === 'contado' ? 'pagada' : 'pendiente',
-    fechaPago: formaPago === 'contado' ? raw.fechaEmision : undefined,
-    categoriaId: raw.categoriaSugerida || 'cat-medicamentos',
-    centroCostoId: raw.centroCostoSugerido || 'cc-clinica',
-    esGasto: false,
+    total: n(total),
+    saldoPendiente: formaPago === 'contado' || signo < 0 ? 0 : total,
+    estadoPago: formaPago === 'contado' || signo < 0 ? 'pagada' : 'pendiente',
+    fechaPago: formaPago === 'contado' || signo < 0 ? raw.fechaEmision : undefined,
+    // Si la IA devolvió un id inexistente, completarDocumento/RevisionFactura lo reasignan
+    categoriaId: catalogos?.categorias.some((c) => c.id === raw.categoriaId) ? raw.categoriaId : '',
+    centroCostoId: catalogos?.centrosCosto.some((c) => c.id === raw.centroCostoId) ? raw.centroCostoId : '',
+    esGasto: !!catalogos?.categorias.find((c) => c.id === raw.categoriaId)?.esGasto,
     lineas,
     observaciones: raw.observaciones || '',
     archivoAdjunto: {
-      nombre: file.name,
-      tipo: 'pdf',
-      tamano: file.size,
+      nombre,
+      tipo: mimeType === 'application/pdf' ? 'pdf' : 'imagen',
+      tamano,
       dataUrl,
     },
     metadatosExtraccion: {

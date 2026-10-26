@@ -16,6 +16,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { CompraDocumento, Categoria, CentroCosto } from '../../types';
+import { dataService } from '../../services/dataService';
 import { formatCOP, formatFecha, getTipoDocumentoLabel, getEstadoPagoLabel } from '../../utils/formatters';
 import { RegistrarAbonoModal } from './RegistrarAbonoModal';
 
@@ -44,20 +45,27 @@ export const DetalleDocumentoDrawer: React.FC<DetalleDocumentoDrawerProps> = ({
   const centroCosto = centrosCosto.find((cc) => cc.id === documento.centroCostoId);
   const estadoLabel = getEstadoPagoLabel(documento.estadoPago);
 
-  const handleDescargarAdjunto = () => {
+  const handleDescargarAdjunto = async () => {
     if (!documento.archivoAdjunto) return;
 
-    if (documento.archivoAdjunto.dataUrl) {
+    // El listado no trae el contenido del anexo; se pide completo al servidor local.
+    let adjunto = documento.archivoAdjunto;
+    if (!adjunto.dataUrl && !adjunto.contenidoXml) {
+      const completo = await dataService.obtenerDocumentoPorId(documento.id);
+      if (completo?.archivoAdjunto) adjunto = completo.archivoAdjunto;
+    }
+
+    if (adjunto.dataUrl) {
       const a = document.createElement('a');
-      a.href = documento.archivoAdjunto.dataUrl;
-      a.download = documento.archivoAdjunto.nombre;
+      a.href = adjunto.dataUrl;
+      a.download = adjunto.nombre;
       a.click();
-    } else if (documento.archivoAdjunto.contenidoXml) {
-      const blob = new Blob([documento.archivoAdjunto.contenidoXml], { type: 'application/xml' });
+    } else if (adjunto.contenidoXml) {
+      const blob = new Blob([adjunto.contenidoXml], { type: 'application/xml' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = documento.archivoAdjunto.nombre || 'factura.xml';
+      a.download = adjunto.nombre || 'factura.xml';
       a.click();
       URL.revokeObjectURL(url);
     }

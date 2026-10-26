@@ -17,7 +17,7 @@ export const ConfigurarEmpresaModal: React.FC<ConfigurarEmpresaModalProps> = ({
   const [empresa, setEmpresa] = useState<EmpresaInfo>(() => dataService.obtenerDatosEmpresa());
   const [guardando, setGuardando] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!empresa.razonSocial.trim()) {
       mostrarToast('error', 'Campo requerido', 'Ingresa la razón social o nombre de la veterinaria.');
@@ -30,7 +30,7 @@ export const ConfigurarEmpresaModal: React.FC<ConfigurarEmpresaModalProps> = ({
 
     try {
       setGuardando(true);
-      dataService.guardarDatosEmpresa(empresa);
+      await dataService.guardarDatosEmpresa(empresa);
       mostrarToast('success', 'Datos guardados', 'Los datos de la empresa veterinaria se han actualizado.');
       onEmpresaActualizada();
       onCerrar();

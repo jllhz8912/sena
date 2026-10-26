@@ -37,7 +37,7 @@ export const ModalDatosEmpresa: React.FC<ModalDatosEmpresaProps> = ({
 
     try {
       setGuardando(true);
-      dataService.guardarDatosEmpresa(empresa);
+      await dataService.guardarDatosEmpresa(empresa);
       mostrarToast(
         'success',
         'Datos de la empresa guardados',

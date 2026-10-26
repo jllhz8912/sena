@@ -249,7 +249,7 @@ export const VentasView: React.FC<VentasViewProps> = ({
             <h1 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
               Ventas de la Veterinaria
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800">
-                En Línea & Multi-Equipo
+                Guardado en este PC
               </span>
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -848,7 +848,7 @@ export const VentasView: React.FC<VentasViewProps> = ({
       <ModalConfirmacion
         abierto={!!ventaParaEliminar}
         titulo="¿Eliminar esta venta?"
-        mensaje={`¿Estás seguro de eliminar el registro de venta "${ventaParaEliminar?.consecutivo} - ${ventaParaEliminar?.concepto}" por valor de ${formatCOP(ventaParaEliminar?.monto || 0)}? Esta acción se sincronizará con todos los equipos.`}
+        mensaje={`¿Estás seguro de eliminar el registro de venta "${ventaParaEliminar?.consecutivo} - ${ventaParaEliminar?.concepto}" por valor de ${formatCOP(ventaParaEliminar?.monto || 0)}? Se eliminará de la base de datos de este equipo.`}
         textoConfirmar="Sí, eliminar venta"
         textoCancelar="Cancelar"
         tipo="peligro"
@@ -860,7 +860,7 @@ export const VentasView: React.FC<VentasViewProps> = ({
       <ModalConfirmacion
         abierto={eliminarLoteAbierto}
         titulo={`¿Eliminar ${seleccionadas.length} ventas seleccionadas?`}
-        mensaje={`Esta acción eliminará de forma permanente las ${seleccionadas.length} ventas seleccionadas tanto localmente como en la base de datos en línea.`}
+        mensaje={`Esta acción eliminará de forma permanente las ${seleccionadas.length} ventas seleccionadas de la base de datos de este equipo.`}
         textoConfirmar="Sí, eliminar lote"
         textoCancelar="Cancelar"
         tipo="peligro"

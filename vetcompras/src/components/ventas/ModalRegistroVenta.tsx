@@ -139,7 +139,7 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({
         mostrarToast('success', 'Venta actualizada', `Registro ${nuevaVenta.consecutivo} guardado exitosamente.`);
       } else {
         await dataService.guardarVenta(nuevaVenta);
-        mostrarToast('success', 'Venta registrada', `Registro ${nuevaVenta.consecutivo} guardado en línea.`);
+        mostrarToast('success', 'Venta registrada', `Registro ${nuevaVenta.consecutivo} guardado correctamente.`);
       }
 
       onGuardado(nuevaVenta.id);
@@ -233,7 +233,7 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({
                 </span>
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Se guardará y sincronizará en línea para que todos los usuarios la vean.
+                Se guardará en la base de datos de este equipo.
               </p>
             </div>
           </div>
@@ -560,7 +560,7 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({
               className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/25 transition-all disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
-              <span>{guardando ? 'Guardando en línea...' : ventaParaEditar ? 'Guardar Cambios' : 'Registrar Venta'}</span>
+              <span>{guardando ? 'Guardando...' : ventaParaEditar ? 'Guardar Cambios' : 'Registrar Venta'}</span>
             </button>
           </div>
         </form>

@@ -49,6 +49,17 @@ export function numeroALetras(monto: number): string {
     return salida.trim();
   }
 
+  // Montos de mil millones o más: "X MIL MILLONES ..."
+  if (entero >= 1000000000) {
+    const milesDeMillones = Math.floor(entero / 1000000000);
+    const resto = entero % 1000000000;
+    const prefijo = milesDeMillones === 1 ? 'MIL' : `${numeroALetras(milesDeMillones).replace(/( DE)? PESOS M\/CTE$/, '')} MIL`;
+    if (resto === 0) return `${prefijo} MILLONES DE PESOS M/CTE`;
+    const restoTexto = numeroALetras(resto).replace(/( DE)? PESOS M\/CTE$/, '');
+    const de = resto % 1000000 === 0 ? ' DE' : '';
+    return `${prefijo} ${resto >= 1000000 ? restoTexto : 'MILLONES ' + restoTexto}${de} PESOS M/CTE`;
+  }
+
   const millones = Math.floor(entero / 1000000);
   const miles = Math.floor((entero % 1000000) / 1000);
   const cientos = entero % 1000;
@@ -69,7 +80,8 @@ export function numeroALetras(monto: number): string {
     resultado += convertirGrupo(cientos) + ' ';
   }
 
-  return (resultado.trim() + ' PESOS M/CTE').toUpperCase();
+  const de = millones > 0 && miles === 0 && cientos === 0 ? ' DE' : '';
+  return (resultado.trim() + de + ' PESOS M/CTE').toUpperCase();
 }
 
 /**
@@ -135,6 +147,10 @@ export function getTipoDocumentoLabel(tipo: string): string {
       return 'Servicios Públicos';
     case 'nomina_honorarios':
       return 'Nómina / Honorarios';
+    case 'nota_credito':
+      return 'Nota Crédito';
+    case 'nota_debito':
+      return 'Nota Débito';
     default:
       return 'Otro Documento';
   }

@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
 import { CompraDocumento, Categoria, CentroCosto, Proveedor } from '../../types';
 import { procesarFacturaXml } from '../../services/xmlParser';
-import { procesarFacturaPdf } from '../../services/pdfExtractor';
+import { procesarFacturaPdf, procesarPdfDesdeDataUrl } from '../../services/pdfExtractor';
+import { completarDocumento } from '../../services/normalizarDocumento';
 import { procesarArchivoZip } from '../../services/zipExtractor';
 import { procesarExcelFacturas, descargarPlantillaExcel } from '../../services/excelService';
 import { dataService } from '../../services/dataService';
@@ -107,58 +108,82 @@ export const CargaFacturaModal: React.FC<CargaFacturaModalProps> = ({
 
     setItemsLote((prev) => [...prev, ...nuevosItems]);
 
-    // Procesar cada archivo
+    const catalogos = { categorias, centrosCosto };
+
+    // Procesar cada archivo (un ZIP puede traer varias facturas)
     for (let i = 0; i < archivos.length; i++) {
       const archivo = archivos[i];
       const itemRef = nuevosItems[i];
       const lowerName = archivo.name.toLowerCase();
 
       try {
-        let datosExtraidos: Partial<CompraDocumento> | null = null;
+        let resultados: Partial<CompraDocumento>[] = [];
 
         if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls') || lowerName.endsWith('.csv')) {
           if (onAbrirCargaExcel) {
+            setProcesandoGlobal(false);
             onCerrar();
             onAbrirCargaExcel();
             return;
           }
+          throw new Error('Use la opción "Importar desde Excel" para este archivo.');
         } else if (lowerName.endsWith('.xml')) {
-          const text = await archivo.text();
-          datosExtraidos = procesarFacturaXml(text, archivo.name);
-        } else if (lowerName.endsWith('.pdf')) {
-          const res = await procesarFacturaPdf(archivo);
-          datosExtraidos = res.datos;
+          resultados = [procesarFacturaXml(await archivo.text(), archivo.name)];
+        } else if (/\.(pdf|png|jpe?g|webp)$/.test(lowerName)) {
+          resultados = [(await procesarFacturaPdf(archivo, catalogos)).datos];
         } else if (lowerName.endsWith('.zip')) {
           const zipResultados = await procesarArchivoZip(archivo);
-          if (zipResultados.length > 0) {
-            datosExtraidos = zipResultados[0];
-          } else {
+          if (zipResultados.length === 0) {
             throw new Error('El archivo ZIP no contiene un XML o PDF de factura válido.');
           }
+          for (const r of zipResultados) {
+            // ZIP sin XML: el PDF se analiza con Gemini
+            if (!r.folio && r.archivoAdjunto?.dataUrl) {
+              const adj = r.archivoAdjunto;
+              resultados.push(
+                (await procesarPdfDesdeDataUrl(adj.dataUrl!, adj.nombre, adj.tamano, 'application/pdf', catalogos)).datos
+              );
+            } else {
+              resultados.push(r);
+            }
+          }
         } else {
-          throw new Error('Formato no soportado. Debe ser archivo .xml, .pdf, .zip o .xlsx');
+          throw new Error('Formato no soportado. Debe ser archivo .xml, .pdf, .zip, imagen o .xlsx');
         }
 
-        if (datosExtraidos) {
-          // Verificar si ya existe en la base de datos
-          const duplicado = await dataService.buscarDuplicado(
-            datosExtraidos.cufe,
-            datosExtraidos.proveedor?.nit,
-            datosExtraidos.folio
-          );
+        const evaluados = await Promise.all(
+          resultados.map(async (datos) => ({
+            datos,
+            duplicado: await dataService.buscarDuplicado(datos.cufe, datos.proveedor?.nit, datos.folio, datos.prefijo),
+          }))
+        );
 
-          setItemsLote((prev) =>
-            prev.map((it) => {
-              if (it.id !== itemRef.id) return it;
-              return {
-                ...it,
-                estado: duplicado ? 'duplicado' : 'listo',
-                duplicadoInfo: duplicado || undefined,
-                datosExtraidos: datosExtraidos || undefined,
-              };
-            })
-          );
-        }
+        setItemsLote((prev) => {
+          const extras: ItemLote[] = evaluados.slice(1).map(({ datos, duplicado }, k) => ({
+            id: `${itemRef.id}-${k + 1}`,
+            nombreArchivo: `${archivo.name} › ${datos.prefijo || ''}${datos.folio || 'documento ' + (k + 2)}`,
+            tipo: itemRef.tipo,
+            tamano: datos.archivoAdjunto?.tamano || 0,
+            estado: duplicado ? 'duplicado' : 'listo',
+            duplicadoInfo: duplicado || undefined,
+            datosExtraidos: datos,
+          }));
+          const actualizados = prev.map((it) => {
+            if (it.id !== itemRef.id) return it;
+            const { datos, duplicado } = evaluados[0];
+            return {
+              ...it,
+              nombreArchivo:
+                evaluados.length > 1 ? `${archivo.name} › ${datos.prefijo || ''}${datos.folio || 'documento 1'}` : it.nombreArchivo,
+              estado: duplicado ? ('duplicado' as const) : ('listo' as const),
+              duplicadoInfo: duplicado || undefined,
+              datosExtraidos: datos,
+            };
+          });
+          const pos = actualizados.findIndex((it) => it.id === itemRef.id);
+          actualizados.splice(pos + 1, 0, ...extras);
+          return actualizados;
+        });
       } catch (err: any) {
         console.error('Error procesando archivo:', err);
         setItemsLote((prev) =>
@@ -185,22 +210,22 @@ export const CargaFacturaModal: React.FC<CargaFacturaModalProps> = ({
     }
 
     let guardados = 0;
+    let fallidos = 0;
     for (const item of listos) {
       try {
-        const docParaGuardar = {
-          ...item.datosExtraidos,
-          id: item.datosExtraidos?.id || 'doc-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
-          saldoPendiente: item.datosExtraidos?.formaPago === 'contado' ? 0 : Number(item.datosExtraidos?.total || 0),
-          estadoPago: item.datosExtraidos?.formaPago === 'contado' ? 'pagada' : 'pendiente',
-        } as CompraDocumento;
-
+        const docParaGuardar = completarDocumento(item.datosExtraidos!, { categorias, centrosCosto, proveedores });
         await dataService.guardarDocumento(docParaGuardar);
         guardados++;
       } catch (err) {
         console.error('Error guardando factura en lote:', err);
+        fallidos++;
       }
     }
 
+    if (fallidos > 0) {
+      mostrarToast('error', 'Guardado incompleto', `Se archivaron ${guardados} facturas; ${fallidos} no se pudieron guardar.`);
+      return;
+    }
     mostrarToast('success', 'Facturas guardadas', `Se archivaron ${guardados} facturas exitosamente.`);
     onFacturaGuardada();
     onCerrar();
@@ -292,7 +317,7 @@ export const CargaFacturaModal: React.FC<CargaFacturaModalProps> = ({
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept=".xml,.pdf,.zip,.xlsx,.xls,.csv,application/xml,text/xml,application/pdf,application/zip,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                accept=".xml,.pdf,.zip,.jpg,.jpeg,.png,.webp,.xlsx,.xls,.csv,application/xml,text/xml,application/pdf,application/zip,application/x-zip-compressed,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                 className="hidden"
                 onChange={handleFileChange}
               />

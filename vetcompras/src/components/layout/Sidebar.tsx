@@ -69,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'ventas' as NavItem,
       label: 'Módulo de Ventas',
       icon: CircleDollarSign,
-      badge: 'En Línea',
+      badge: 'Local',
       badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
     },
     {
@@ -221,10 +221,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="p-3 m-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 text-xs">
             <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-semibold mb-1">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Extracción DIAN & Nube</span>
+              <span>Extracción DIAN &amp; datos locales</span>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-              Sincronizado en tiempo real entre tus computadores y celulares.
+              La información se guarda en este PC, con respaldos automáticos diarios.
             </p>
           </div>
         )}

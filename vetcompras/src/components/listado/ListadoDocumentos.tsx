@@ -236,7 +236,7 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
     setModalConfirmarEliminar({
       abierto: true,
       titulo: `¿Eliminar ${seleccionados.length} facturas seleccionadas?`,
-      mensaje: `Esta acción eliminará ${seleccionados.length} facturas seleccionadas de forma permanente de este equipo y de la nube.`,
+      mensaje: `Esta acción eliminará ${seleccionados.length} facturas seleccionadas de la base de datos de este equipo (queda copia en los respaldos automáticos).`,
       esLote: true,
     });
   };
@@ -256,7 +256,8 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
   const handleAplicarCambioCategoriaLote = async () => {
     if (!nuevaCategoriaLote) return;
     try {
-      await dataService.cambiarCategoriaLote(seleccionados, nuevaCategoriaLote);
+      const catDestino = categorias.find((c) => c.id === nuevaCategoriaLote);
+      await dataService.cambiarCategoriaLote(seleccionados, nuevaCategoriaLote, catDestino?.esGasto);
       mostrarToast('success', 'Categoría actualizada', `Se reasignó la categoría a ${seleccionados.length} documentos.`);
       setMostrarCambioCategoriaLote(false);
       setSeleccionados([]);
@@ -271,7 +272,7 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
     setModalConfirmarEliminar({
       abierto: true,
       titulo: '¿Eliminar factura o documento?',
-      mensaje: `¿Estás seguro de que deseas eliminar la factura o documento ${folio}? Se borrará de forma permanente de este equipo y de la nube.`,
+      mensaje: `¿Estás seguro de que deseas eliminar la factura o documento ${folio}? Se borrará de la base de datos de este equipo (queda copia en los respaldos automáticos).`,
       esLote: false,
       id,
       folio,
@@ -447,6 +448,8 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
             <option value="factura_papel">Factura de Papel</option>
             <option value="tiquete_pos">Tiquete POS</option>
             <option value="servicios_publicos">Servicios Públicos</option>
+            <option value="nota_credito">Nota Crédito (resta)</option>
+            <option value="nota_debito">Nota Débito</option>
             <option value="nomina_honorarios">Nómina / Honorarios</option>
           </select>
 

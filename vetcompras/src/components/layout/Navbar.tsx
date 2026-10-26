@@ -14,7 +14,7 @@ import {
   ShieldCheck,
   Building,
   Building2,
-  Cloud,
+  HardDrive,
   Menu,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
@@ -51,6 +51,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [confirmarLimpiarAbierto, setConfirmarLimpiarAbierto] = useState(false);
   const [limpiando, setLimpiando] = useState(false);
   const [empresa, setEmpresa] = useState<EmpresaInfo>(() => dataService.obtenerDatosEmpresa());
+  const [carpetaDatos, setCarpetaDatos] = useState('');
+
+  useEffect(() => {
+    dataService
+      .obtenerEstado()
+      .then((e) => setCarpetaDatos(e.carpetaDatos))
+      .catch(() => setCarpetaDatos(''));
+  }, []);
 
   const menuNuevoRef = useRef<HTMLDivElement>(null);
   const menuDatosRef = useRef<HTMLDivElement>(null);
@@ -128,6 +136,16 @@ export const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
+  const handleRespaldoEnDisco = async () => {
+    try {
+      const ruta = await dataService.crearRespaldoEnDisco();
+      mostrarToast('success', 'Respaldo creado en este PC', ruta);
+      setMenuDatosAbierto(false);
+    } catch (err: any) {
+      mostrarToast('error', 'No se pudo crear el respaldo', err?.message);
+    }
+  };
+
   const handleImportarRespaldo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -140,11 +158,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         mostrarToast(
           'success',
           'Copia de seguridad restaurada',
-          `Se importaron ${res.documentos} documentos y ${res.proveedores} proveedores.`
+          `Se importaron ${res.documentos} documentos, ${res.ventas} ventas y ${res.proveedores} proveedores.`
         );
         onDatosActualizados();
       } catch (err: any) {
-        mostrarToast('error', 'Error al restaurar respaldo', 'El archivo JSON no tiene un formato válido.');
+        mostrarToast('error', 'Error al restaurar respaldo', err?.message || 'El archivo JSON no tiene un formato válido.');
       }
     };
     reader.readAsText(file);
@@ -172,9 +190,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
           <span>Normativa DIAN Colombia</span>
         </div>
-        <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/60 text-teal-800 dark:text-teal-300 text-xs font-medium" title="Base de datos compartida en la nube para múltiples computadores">
-          <Cloud className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-          <span>Nube Multi-PC Compartida</span>
+        <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/60 text-teal-800 dark:text-teal-300 text-xs font-medium" title="Toda la información se guarda en la base de datos de este PC">
+          <HardDrive className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+          <span>Datos guardados en este PC</span>
         </div>
       </div>
 
@@ -254,8 +272,21 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
               <div className="px-3 py-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                Copias de Seguridad (JSON)
+                Copias de Seguridad
               </div>
+
+              <button
+                onClick={handleRespaldoEnDisco}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors"
+              >
+                <HardDrive className="w-4 h-4 text-teal-600 shrink-0" />
+                <div>
+                  <p className="font-medium text-xs">Crear respaldo en este PC</p>
+                  <p className="text-[11px] text-slate-400 break-all">
+                    {carpetaDatos ? `Carpeta: ${carpetaDatos}` : 'Copia completa de la base de datos'}
+                  </p>
+                </div>
+              </button>
 
               <button
                 onClick={handleExportarRespaldo}
@@ -264,7 +295,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <Download className="w-4 h-4 text-teal-600 shrink-0" />
                 <div>
                   <p className="font-medium text-xs">Exportar respaldo completo</p>
-                  <p className="text-[11px] text-slate-400">Descarga un archivo JSON de respaldo</p>
+                  <p className="text-[11px] text-slate-400">Archivo JSON para llevar a otro PC o memoria USB</p>
                 </div>
               </button>
 
@@ -393,7 +424,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       <ModalConfirmacion
         abierto={confirmarLimpiarAbierto}
         titulo="¿Limpiar todas las compras y facturas?"
-        mensaje="Esta acción borrará todas las facturas y compras registradas tanto en este computador como en la nube. Tus catálogos de proveedores y categorías se conservarán intactos."
+        mensaje="Esta acción borrará todas las facturas y compras registradas de este computador (antes se crea un respaldo automático). Tus catálogos de proveedores y categorías se conservarán intactos."
         textoConfirmar="Sí, limpiar todo"
         textoCancelar="Cancelar"
         tipo="peligro"

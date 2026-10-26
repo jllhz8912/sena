@@ -12,6 +12,8 @@ export type TipoDocumento =
   | 'tiquete_pos'
   | 'servicios_publicos'
   | 'nomina_honorarios'
+  | 'nota_credito' // Valores negativos: disminuyen compras e IVA descontable
+  | 'nota_debito'
   | 'otro';
 
 export type OrigenDocumento = 'electronica' | 'manual';
@@ -56,6 +58,7 @@ export interface ArchivoAdjunto {
   tamano: number;
   dataUrl?: string; // Data URL en base64 para previsualizar/descargar
   contenidoXml?: string; // Texto XML original para reanálisis o descarga
+  tieneContenido?: boolean; // El servidor guarda el PDF/XML aparte; se descarga al abrir el documento
 }
 
 export interface HistorialCambio {
@@ -138,6 +141,7 @@ export interface CompraDocumento {
   lineas: LineaFactura[];
   archivoAdjunto?: ArchivoAdjunto;
   observaciones?: string;
+  documentoReferencia?: string; // Factura afectada por una nota crédito/débito
 
   // Trazabilidad
   pagos: RegistroPago[];

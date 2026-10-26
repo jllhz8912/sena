@@ -413,6 +413,8 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
                 <option value="tiquete_pos">Tiquete de Caja / POS</option>
                 <option value="recibo_caja">Recibo de Caja Menor</option>
                 <option value="servicios_publicos">Servicios Públicos</option>
+                <option value="nota_credito">Nota Crédito (resta)</option>
+                <option value="nota_debito">Nota Débito</option>
                 <option value="nomina_honorarios">Nómina / Prestaciones</option>
                 <option value="otro">Otro Documento</option>
               </select>

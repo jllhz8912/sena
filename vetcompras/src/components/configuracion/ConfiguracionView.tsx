@@ -107,11 +107,11 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
 
     try {
       setGuardando(true);
-      dataService.guardarDatosEmpresa(empresa);
+      await dataService.guardarDatosEmpresa(empresa);
       mostrarToast(
         'success',
         'Configuración guardada',
-        'Los datos de la clínica, logo y colores se guardaron y sincronizaron en línea.'
+        'Los datos de la clínica, logo y colores se guardaron en este equipo.'
       );
       if (onDatosActualizados) {
         onDatosActualizados();
@@ -448,7 +448,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
                   </div>
 
                   <p className="text-[11px] text-slate-500">
-                    Formatos recomendados: PNG o JPG con fondo transparente o blanco. Se almacena y sincroniza automáticamente para imprimir comprobantes y recibos.
+                    Formatos recomendados: PNG o JPG con fondo transparente o blanco. Se guarda en este equipo para imprimir comprobantes y recibos.
                   </p>
                 </div>
               </div>
@@ -611,7 +611,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
             style={{ backgroundColor: colorActivo }}
           >
             <Save className="w-5 h-5" />
-            <span>{guardando ? 'Guardando en la nube...' : 'Guardar y Aplicar Cambios'}</span>
+            <span>{guardando ? 'Guardando...' : 'Guardar y Aplicar Cambios'}</span>
           </button>
         </div>
       </form>

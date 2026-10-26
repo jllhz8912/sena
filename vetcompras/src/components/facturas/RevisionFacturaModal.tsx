@@ -19,6 +19,7 @@ import { CompraDocumento, LineaFactura, Categoria, CentroCosto, Proveedor } from
 import { formatCOP } from '../../utils/formatters';
 import { dataService } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
+import { resolverCategoriaId, resolverCentroCostoId } from '../../services/normalizarDocumento';
 
 interface RevisionFacturaModalProps {
   borradorInicial: Partial<CompraDocumento>;
@@ -61,9 +62,12 @@ export const RevisionFacturaModal: React.FC<RevisionFacturaModalProps> = ({
       email: borradorInicial.proveedor?.email || '',
     },
     adquirente: borradorInicial.adquirente,
-    categoriaId: borradorInicial.categoriaId || 'cat-medicamentos',
-    centroCostoId: borradorInicial.centroCostoId || 'cc-clinica',
-    esGasto: borradorInicial.esGasto || false,
+    categoriaId: resolverCategoriaId(borradorInicial.categoriaId, borradorInicial.proveedor?.nit, { categorias, centrosCosto, proveedores }),
+    centroCostoId: resolverCentroCostoId(borradorInicial.centroCostoId, borradorInicial.proveedor?.nit, { categorias, centrosCosto, proveedores }),
+    esGasto:
+      categorias.find(
+        (c) => c.id === resolverCategoriaId(borradorInicial.categoriaId, borradorInicial.proveedor?.nit, { categorias, centrosCosto, proveedores })
+      )?.esGasto ?? !!borradorInicial.esGasto,
     moneda: borradorInicial.moneda || 'COP',
     subtotal: borradorInicial.subtotal || 0,
     descuentos: borradorInicial.descuentos || 0,
@@ -111,7 +115,7 @@ export const RevisionFacturaModal: React.FC<RevisionFacturaModalProps> = ({
     let activo = true;
     async function check() {
       if (!doc.folio && !doc.cufe) return;
-      const dup = await dataService.buscarDuplicado(doc.cufe, doc.proveedor?.nit, doc.folio);
+      const dup = await dataService.buscarDuplicado(doc.cufe, doc.proveedor?.nit, doc.folio, doc.prefijo);
       if (activo) {
         setDuplicadoExistente(dup);
       }
@@ -120,7 +124,7 @@ export const RevisionFacturaModal: React.FC<RevisionFacturaModalProps> = ({
     return () => {
       activo = false;
     };
-  }, [doc.cufe, doc.proveedor?.nit, doc.folio]);
+  }, [doc.cufe, doc.proveedor?.nit, doc.folio, doc.prefijo]);
 
   // Verificación matemática de cuadre
   const cuadreCalculado = useMemo(() => {
@@ -246,11 +250,13 @@ export const RevisionFacturaModal: React.FC<RevisionFacturaModalProps> = ({
 
     try {
       setGuardando(true);
+      // Notas crédito (valores negativos) y pagos de contado no generan cuenta por pagar
+      const sinSaldo = doc.formaPago === 'contado' || doc.tipoDocumento === 'nota_credito' || Number(doc.total || 0) <= 0;
       const docParaGuardar = {
         ...doc,
-        saldoPendiente: doc.formaPago === 'contado' ? 0 : Number(doc.total || 0),
-        estadoPago: doc.formaPago === 'contado' ? 'pagada' : (doc.estadoPago || 'pendiente'),
-        fechaPago: doc.formaPago === 'contado' ? doc.fechaEmision : doc.fechaPago,
+        saldoPendiente: sinSaldo ? 0 : Number(doc.total || 0),
+        estadoPago: sinSaldo ? 'pagada' : (doc.estadoPago || 'pendiente'),
+        fechaPago: sinSaldo ? doc.fechaEmision : doc.fechaPago,
       } as CompraDocumento;
 
       const guardadoId = await dataService.guardarDocumento(docParaGuardar);
@@ -302,7 +308,8 @@ export const RevisionFacturaModal: React.FC<RevisionFacturaModalProps> = ({
           <div className="px-6 py-2.5 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900 flex items-center gap-3 text-xs text-amber-900 dark:text-amber-200">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
             <span>
-              <strong>Revisión recomendada:</strong> La IA o el lector detectó baja resolución o ambigüedad en algunos campos: {camposDudosos.join(', ') || 'revisa los valores resaltados'}.
+              <strong>Revisión recomendada:</strong>{' '}
+              {[...camposDudosos, ...(doc.metadatosExtraccion?.advertencias || [])].join(' • ') || 'revisa los valores resaltados'}
             </span>
           </div>
         )}
@@ -400,6 +407,8 @@ export const RevisionFacturaModal: React.FC<RevisionFacturaModalProps> = ({
                       <option value="recibo_caja">Recibo de Caja</option>
                       <option value="tiquete_pos">Tiquete POS</option>
                       <option value="servicios_publicos">Servicios Públicos</option>
+                      <option value="nota_credito">Nota Crédito (resta)</option>
+                      <option value="nota_debito">Nota Débito</option>
                       <option value="nomina_honorarios">Nómina / Honorarios</option>
                       <option value="otro">Otro</option>
                     </select>

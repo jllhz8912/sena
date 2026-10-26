@@ -23,13 +23,14 @@ function VetComprasApp() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuAbierto, setMobileMenuAbierto] = useState(false);
 
-  // Datos en estado local (reactivos a IndexedDB y Firestore)
+  // Datos en estado local (provenientes del servidor local SQLite)
   const [documentos, setDocumentos] = useState<CompraDocumento[]>([]);
   const [ventas, setVentas] = useState<Venta[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [centrosCosto, setCentrosCosto] = useState<CentroCosto[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
 
   // Modales
   const [modalCargaAbierto, setModalCargaAbierto] = useState(false);
@@ -38,7 +39,7 @@ function VetComprasApp() {
   const [modalVentaAbierto, setModalVentaAbierto] = useState(false);
   const [documentoParaEditar, setDocumentoParaEditar] = useState<CompraDocumento | undefined>(undefined);
 
-  // Cargar datos desde IndexedDB (Dexie)
+  // Cargar datos desde el servidor local
   const recargarDatos = useCallback(async () => {
     try {
       const [docs, provs, cats, ccs, vts] = await Promise.all([
@@ -53,8 +54,10 @@ function VetComprasApp() {
       setCategorias(cats);
       setCentrosCosto(ccs);
       setVentas(vts);
-    } catch (error) {
+      setErrorCarga(null);
+    } catch (error: any) {
       console.error('Error cargando datos de VetCompras:', error);
+      setErrorCarga(error?.message || 'No fue posible leer la base de datos local.');
     } finally {
       setCargando(false);
     }
@@ -134,7 +137,24 @@ function VetComprasApp() {
           {cargando ? (
             <div className="h-64 flex flex-col items-center justify-center gap-3 text-slate-400">
               <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-              <p className="text-xs font-semibold">Cargando base de datos IndexedDB...</p>
+              <p className="text-xs font-semibold">Cargando base de datos local...</p>
+            </div>
+          ) : errorCarga ? (
+            <div className="max-w-xl mx-auto mt-16 p-6 rounded-2xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 space-y-3">
+              <p className="font-bold">No se pudo cargar la información</p>
+              <p className="text-sm">{errorCarga}</p>
+              <p className="text-xs">
+                Abra VetCompras con el acceso directo "Iniciar VetCompras" y deje esa ventana abierta mientras usa el sistema.
+              </p>
+              <button
+                onClick={() => {
+                  setCargando(true);
+                  recargarDatos();
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold"
+              >
+                Reintentar
+              </button>
             </div>
           ) : (
             <div className="max-w-7xl mx-auto space-y-6">

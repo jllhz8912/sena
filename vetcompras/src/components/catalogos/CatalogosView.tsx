@@ -53,7 +53,7 @@ export const CatalogosView: React.FC<CatalogosViewProps> = ({
 
     try {
       setGuardandoEmpresa(true);
-      dataService.guardarDatosEmpresa(empresa);
+      await dataService.guardarDatosEmpresa(empresa);
       mostrarToast('success', 'Datos guardados', 'La información de la clínica veterinaria se actualizó con éxito.');
       onDatosActualizados();
     } catch (err: any) {

@@ -17,6 +17,7 @@ import { CompraDocumento, Categoria, CentroCosto, Proveedor } from '../../types'
 import { procesarExcelFacturas, descargarPlantillaExcel, FilaFacturaExcel } from '../../services/excelService';
 import { dataService } from '../../services/dataService';
 import { formatCOP, formatFecha } from '../../utils/formatters';
+import { resolverCategoriaId as resolverCategoria, resolverCentroCostoId as resolverCentroCosto } from '../../services/normalizarDocumento';
 import { useToast } from '../../context/ToastContext';
 
 interface CargaExcelModalProps {
@@ -90,7 +91,7 @@ export const CargaExcelModal: React.FC<CargaExcelModalProps> = ({
       const mapDup: Record<number, boolean> = {};
       for (const fila of resultado.filas) {
         if (fila.folio && fila.nitProveedor) {
-          const dup = await dataService.buscarDuplicado(fila.cufe, fila.nitProveedor, fila.folio);
+          const dup = await dataService.buscarDuplicado(fila.cufe, fila.nitProveedor, fila.folio, fila.prefijo);
           if (dup) {
             mapDup[fila.lineaExcel] = true;
           }
@@ -115,25 +116,18 @@ export const CargaExcelModal: React.FC<CargaExcelModalProps> = ({
     }
   };
 
-  // Mapear nombre de categoría a ID existente o sugerido
-  const resolverCategoriaId = (nombreCat?: string): string => {
-    if (!nombreCat) return 'cat-medicamentos';
-    const clean = nombreCat.toLowerCase();
-    const match = categorias.find(
-      (c) => c.nombre.toLowerCase().includes(clean) || clean.includes(c.nombre.toLowerCase())
-    );
-    return match ? match.id : 'cat-medicamentos';
+  // Mapear nombre de categoría / centro de costo del Excel a un id existente del catálogo
+  const buscarPorNombre = <T extends { id: string; nombre: string }>(lista: T[], nombre?: string) => {
+    if (!nombre) return undefined;
+    const clean = nombre.toLowerCase().trim();
+    return lista.find((x) => x.nombre.toLowerCase().includes(clean) || clean.includes(x.nombre.toLowerCase()))?.id;
   };
 
-  // Mapear nombre de centro de costo
-  const resolverCentroCostoId = (nombreCC?: string): string => {
-    if (!nombreCC) return 'cc-clinica';
-    const clean = nombreCC.toLowerCase();
-    const match = centrosCosto.find(
-      (cc) => cc.nombre.toLowerCase().includes(clean) || clean.includes(cc.nombre.toLowerCase())
-    );
-    return match ? match.id : 'cc-clinica';
-  };
+  const resolverCategoriaId = (nombreCat?: string, nit?: string): string =>
+    resolverCategoria(buscarPorNombre(categorias, nombreCat), nit, { categorias, centrosCosto, proveedores });
+
+  const resolverCentroCostoId = (nombreCC?: string, nit?: string): string =>
+    resolverCentroCosto(buscarPorNombre(centrosCosto, nombreCC), nit, { categorias, centrosCosto, proveedores });
 
   // Guardar facturas válidas en lote
   const handleConfirmarImportacion = async () => {
@@ -159,8 +153,8 @@ export const CargaExcelModal: React.FC<CargaExcelModalProps> = ({
       let importadas = 0;
 
       for (const f of candidatas) {
-        const catId = resolverCategoriaId(f.categoriaNombre);
-        const ccId = resolverCentroCostoId(f.centroCostoNombre);
+        const catId = resolverCategoriaId(f.categoriaNombre, f.nitProveedor);
+        const ccId = resolverCentroCostoId(f.centroCostoNombre, f.nitProveedor);
         const catObj = categorias.find((c) => c.id === catId);
 
         const doc: CompraDocumento = {

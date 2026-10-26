@@ -1,6 +1,5 @@
 {
   "name": "VetCompras",
-  "description": "Control y registro integral de compras, gastos y facturación electrónica para clínicas veterinarias en Colombia.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "description": "Control de compras, gastos, ventas e informes tributarios para veterinarias en Colombia, instalado localmente en el PC.",
+  "requestFramePermissions": []
 }

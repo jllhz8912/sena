@@ -69,253 +69,215 @@ function getNumberValue(parent: Element | Document, localName: string, defaultVa
   return isNaN(num) ? defaultValue : num;
 }
 
+
 /**
- * Sugiere una categoría veterinaria adecuada con base en las palabras clave del producto
+ * Hijos directos con el localName indicado. Necesario porque en UBL los nodos
+ * TaxTotal, ID, etc. se repiten dentro de cada línea, y una búsqueda en
+ * profundidad mezclaría los totales del documento con los de las líneas.
  */
-function sugerirCategoriaVeterinaria(descripcion: string): string {
-  const desc = descripcion.toLowerCase();
+function hijosDirectos(parent: Element, localName: string): Element[] {
+  return Array.from(parent.children).filter(
+    (el) => el.localName === localName || el.nodeName.split(':').pop() === localName
+  );
+}
 
-  if (
-    desc.includes('concentrado') ||
-    desc.includes('alimento') ||
-    desc.includes('croqueta') ||
-    desc.includes('royal canin') ||
-    desc.includes('hills') ||
-    desc.includes('pro plan') ||
-    desc.includes('taste of the wild') ||
-    desc.includes('pedigree') ||
-    desc.includes('whiskas') ||
-    desc.includes('chunky') ||
-    desc.includes('snack') ||
-    desc.includes('nutricion') ||
-    desc.includes('prescrip')
-  ) {
-    return 'cat-concentrados';
-  }
-
-  if (
-    desc.includes('vacuna') ||
-    desc.includes('nobivac') ||
-    desc.includes('vanguard') ||
-    desc.includes('rabia') ||
-    desc.includes('séxtuple') ||
-    desc.includes('sextuple') ||
-    desc.includes('parvovirus') ||
-    desc.includes('biologico') ||
-    desc.includes('trivalente')
-  ) {
-    return 'cat-vacunas';
-  }
-
-  if (
-    desc.includes('sutura') ||
-    desc.includes('cateter') ||
-    desc.includes('catéter') ||
-    desc.includes('jeringa') ||
-    desc.includes('aguja') ||
-    desc.includes('guante') ||
-    desc.includes('bisturi') ||
-    desc.includes('gasa') ||
-    desc.includes('tubo') ||
-    desc.includes('solucion salina') ||
-    desc.includes('hartmann') ||
-    desc.includes('suero') ||
-    desc.includes('sonda') ||
-    desc.includes('quirurg')
-  ) {
-    return 'cat-quirurgico';
-  }
-
-  if (
-    desc.includes('juguete') ||
-    desc.includes('collar') ||
-    desc.includes('arnes') ||
-    desc.includes('arnés') ||
-    desc.includes('trailla') ||
-    desc.includes('correa') ||
-    desc.includes('rascador') ||
-    desc.includes('cama') ||
-    desc.includes('bozal') ||
-    desc.includes('placa') ||
-    desc.includes('accesorio')
-  ) {
-    return 'cat-accesorios';
-  }
-
-  if (
-    desc.includes('apoquel') ||
-    desc.includes('bravecto') ||
-    desc.includes('simparica') ||
-    desc.includes('nexgard') ||
-    desc.includes('convenia') ||
-    desc.includes('meloxicam') ||
-    desc.includes('tramadol') ||
-    desc.includes('amoxicilina') ||
-    desc.includes('doxiciclina') ||
-    desc.includes('cefalexina') ||
-    desc.includes('antiparasitario') ||
-    desc.includes('antibiotico') ||
-    desc.includes('farmaco') ||
-    desc.includes('inyectable') ||
-    desc.includes('gotas') ||
-    desc.includes('unguento') ||
-    desc.includes('comprimido') ||
-    desc.includes('tableta')
-  ) {
-    return 'cat-medicamentos';
-  }
-
-  if (desc.includes('shampoo') || desc.includes('champu') || desc.includes('corte') || desc.includes('grooming')) {
-    return 'cat-medicamentos';
-  }
-
-  return 'cat-medicamentos'; // Categoría predeterminada para compras de insumos
+function textoHijo(parent: Element, localName: string, defaultValue = ''): string {
+  return hijosDirectos(parent, localName)[0]?.textContent?.trim() || defaultValue;
 }
 
 /**
- * Función principal que procesa un archivo XML de factura electrónica
+ * Sugiere la categoría del catálogo por defecto con base en palabras clave del
+ * producto o servicio. Los ids corresponden a CATEGORIAS_DEFECTO; si el usuario
+ * los modificó, la pantalla de revisión permite reasignarla.
+ */
+export function sugerirCategoriaVeterinaria(descripcion: string): string {
+  const desc = descripcion
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+  const contiene = (...palabras: string[]) => palabras.some((p) => desc.includes(p));
+
+  if (contiene('energia', 'acueducto', 'alcantarillado', 'internet', 'telefonia', 'gas natural', 'aseo urbano', 'recoleccion', 'residuos biologicos', 'kwh')) {
+    return 'cat-servicios';
+  }
+  if (contiene('arriendo', 'arrendamiento', 'canon')) {
+    return 'cat-arriendo';
+  }
+  if (contiene('honorario', 'nomina', 'salario', 'prestacion de servicios profesionales', 'seguridad social')) {
+    return 'cat-personal';
+  }
+  if (contiene('papeleria', 'cafeteria', 'mantenimiento', 'reparacion', 'publicidad', 'software', 'licencia', 'transporte', 'flete', 'domicilio')) {
+    return 'cat-varios';
+  }
+  // Medicamentos, biológicos, concentrados, accesorios e insumos clínicos son mercancía / inventario.
+  return 'cat-mercancia';
+}
+
+const ESQUEMAS_IVA = ['01'];
+const ESQUEMAS_INC = ['04'];
+const ESQUEMA_RETEIVA = '05';
+const ESQUEMA_RETEFUENTE = '06';
+const ESQUEMA_RETEICA = '07';
+
+interface Subtotal {
+  base: number;
+  impuesto: number;
+  porcentaje: number;
+  esquemaId: string;
+  esquemaNombre: string;
+}
+
+function leerSubtotales(bloques: Element[]): Subtotal[] {
+  const resultado: Subtotal[] = [];
+  for (const bloque of bloques) {
+    for (const sub of hijosDirectos(bloque, 'TaxSubtotal')) {
+      const categoria = hijosDirectos(sub, 'TaxCategory')[0];
+      const esquema = categoria ? hijosDirectos(categoria, 'TaxScheme')[0] : findElementByLocalName(sub, 'TaxScheme');
+      const porcentajeTexto = categoria ? textoHijo(categoria, 'Percent') : textoHijo(sub, 'Percent');
+      resultado.push({
+        base: parseFloat(textoHijo(sub, 'TaxableAmount', '0')) || 0,
+        impuesto: parseFloat(textoHijo(sub, 'TaxAmount', '0')) || 0,
+        porcentaje: parseFloat(porcentajeTexto || '0') || 0,
+        esquemaId: esquema ? textoHijo(esquema, 'ID') : '',
+        esquemaNombre: esquema ? textoHijo(esquema, 'Name').toUpperCase() : '',
+      });
+    }
+  }
+  return resultado;
+}
+
+/** Tarifa efectiva del subtotal: la informada, o la calculada si no viene. */
+function tarifaDe(s: Subtotal): number {
+  if (s.porcentaje > 0) return s.porcentaje;
+  if (s.base > 0 && s.impuesto > 0) return Math.round((s.impuesto / s.base) * 10000) / 100;
+  return 0;
+}
+
+/**
+ * Función principal que procesa un archivo XML de factura electrónica,
+ * nota crédito o nota débito (UBL 2.1 DIAN), incluido el contenedor AttachedDocument.
  */
 export function procesarFacturaXml(xmlContent: string, nombreArchivo = 'factura.xml'): Partial<CompraDocumento> {
   const parser = new DOMParser();
-  let xmlDoc = parser.parseFromString(xmlContent, 'application/xml');
+  const xmlDoc = parser.parseFromString(xmlContent, 'application/xml');
 
-  // Verificar si hay errores de sintaxis XML
-  const parserError = xmlDoc.getElementsByTagName('parsererror');
-  if (parserError.length > 0) {
-    throw new Error('El archivo XML no tiene una estructura válida: ' + parserError[0].textContent);
+  if (xmlDoc.getElementsByTagName('parsererror').length > 0) {
+    throw new Error('El archivo XML no tiene una estructura válida: ' + xmlDoc.getElementsByTagName('parsererror')[0].textContent);
   }
 
-  let rootElement = xmlDoc.documentElement;
+  let root = xmlDoc.documentElement;
+  let rootLocalName = root.localName || root.nodeName.split(':').pop() || '';
 
-  // Si es un AttachedDocument de la DIAN, extraer el Invoice incrustado
-  const rootLocalName = rootElement.localName || rootElement.nodeName.split(':').pop();
-
+  // AttachedDocument (contenedor que entrega el proveedor): extraer el documento incrustado
   if (rootLocalName === 'AttachedDocument') {
-    // Buscar Attachment -> ExternalReference -> Description que contiene el Invoice
-    const attachmentEl = findElementByLocalName(rootElement, 'Attachment');
-    if (attachmentEl) {
-      const descriptionEl = findElementByLocalName(attachmentEl, 'Description');
-      if (descriptionEl && descriptionEl.textContent) {
-        let embeddedXml = descriptionEl.textContent.trim();
+    const attachmentEl = hijosDirectos(root, 'Attachment')[0] || findElementByLocalName(root, 'Attachment');
+    const descriptionEl = attachmentEl ? findElementByLocalName(attachmentEl, 'Description') : null;
+    let embebido = descriptionEl?.textContent?.trim() || '';
 
-        // En caso de que venga codificado en Base64
-        if (!embeddedXml.startsWith('<') && !embeddedXml.startsWith('<?xml')) {
-          try {
-            embeddedXml = atob(embeddedXml);
-          } catch {
-            // No era base64, continuar
-          }
-        }
-
-        if (embeddedXml.includes('<Invoice') || embeddedXml.includes('<CreditNote')) {
-          const innerDoc = parser.parseFromString(embeddedXml, 'application/xml');
-          if (innerDoc.getElementsByTagName('parsererror').length === 0) {
-            xmlDoc = innerDoc;
-            rootElement = innerDoc.documentElement;
-          }
-        }
+    if (embebido && !embebido.startsWith('<')) {
+      try {
+        const binario = atob(embebido);
+        embebido = new TextDecoder('utf-8').decode(Uint8Array.from(binario, (c) => c.charCodeAt(0)));
+      } catch {
+        // No era base64
       }
+    }
+
+    if (/<(\w+:)?(Invoice|CreditNote|DebitNote)[\s>]/.test(embebido)) {
+      const interno = parser.parseFromString(embebido, 'application/xml');
+      if (interno.getElementsByTagName('parsererror').length === 0) {
+        root = interno.documentElement;
+        rootLocalName = root.localName || root.nodeName.split(':').pop() || '';
+      }
+    }
+    if (rootLocalName === 'AttachedDocument') {
+      throw new Error('El AttachedDocument no contiene una factura o nota legible en su anexo.');
     }
   }
 
-  // 1. Número de Factura y Prefijo
-  const idCompleto = getTextValue(rootElement, 'ID', '');
+  const esNotaCredito = rootLocalName === 'CreditNote';
+  const esNotaDebito = rootLocalName === 'DebitNote';
+  if (!['Invoice', 'CreditNote', 'DebitNote'].includes(rootLocalName)) {
+    throw new Error(`Tipo de documento XML no soportado (${rootLocalName}). Se esperaba Invoice, CreditNote o DebitNote.`);
+  }
+  // Las notas crédito se registran con valores negativos para que resten en los informes de IVA y compras.
+  const signo = esNotaCredito ? -1 : 1;
+
+  // 1. Número, prefijo y CUFE/CUDE (hijos directos del documento)
+  const idCompleto = textoHijo(root, 'ID');
   let prefijo = '';
   let folio = idCompleto;
 
-  // Analizar prefijo común colombiano (ej: FE1234, SETP9901, F-8812)
-  const idMatch = idCompleto.match(/^([A-Za-z\-]+)(\d+)$/);
-  if (idMatch) {
-    prefijo = idMatch[1].replace('-', '');
-    folio = idMatch[2];
+  const prefijoAutorizado = getTextValue(root, 'Prefix'); // sts:AuthorizedInvoices/sts:Prefix (DianExtensions)
+  if (prefijoAutorizado && idCompleto.toUpperCase().startsWith(prefijoAutorizado.toUpperCase())) {
+    prefijo = idCompleto.slice(0, prefijoAutorizado.length);
+    folio = idCompleto.slice(prefijoAutorizado.length).replace(/^-/, '');
+  } else {
+    const idMatch = idCompleto.match(/^([A-Za-z][A-Za-z0-9]*?)-?(\d+)$/);
+    if (idMatch) {
+      prefijo = idMatch[1];
+      folio = idMatch[2];
+    }
   }
 
-  // 2. CUFE / CUDE
-  const cufe = getTextValue(rootElement, 'UUID', '');
+  const cufe = textoHijo(root, 'UUID');
 
-  // 3. Fechas
-  const fechaEmision = getTextValue(rootElement, 'IssueDate', new Date().toISOString().split('T')[0]);
-  let fechaVencimiento = getTextValue(rootElement, 'DueDate', '');
-  if (!fechaVencimiento) {
-    const paymentDueDate = getTextValue(rootElement, 'PaymentDueDate', '');
-    fechaVencimiento = paymentDueDate || fechaEmision;
-  }
+  // 2. Fechas
+  const fechaEmision = textoHijo(root, 'IssueDate', new Date().toISOString().split('T')[0]);
+  const paymentMeansEl = hijosDirectos(root, 'PaymentMeans')[0];
+  let fechaVencimiento =
+    textoHijo(root, 'DueDate') || (paymentMeansEl ? textoHijo(paymentMeansEl, 'PaymentDueDate') : '') || fechaEmision;
 
-  // 4. Forma y Medio de Pago
+  // 3. Forma de pago (PaymentMeans/ID: 1 = contado, 2 = crédito) y medio de pago
   let formaPago: 'contado' | 'credito' = 'contado';
-  let diasCredito = 0;
   let medioPago = 'transferencia';
-
-  const paymentTermsEl = findElementByLocalName(rootElement, 'PaymentTerms');
-  if (paymentTermsEl) {
-    const termId = getTextValue(paymentTermsEl, 'ID');
-    const termNote = getTextValue(paymentTermsEl, 'Note');
-    if (termId === '2' || termNote.toLowerCase().includes('crédito') || termNote.toLowerCase().includes('credito')) {
-      formaPago = 'credito';
-    }
-  }
-
-  const paymentMeansEl = findElementByLocalName(rootElement, 'PaymentMeans');
   if (paymentMeansEl) {
-    const meansCode = getTextValue(paymentMeansEl, 'PaymentMeansCode');
-    const meansId = getTextValue(paymentMeansEl, 'ID');
-    if (meansId === '2' || meansCode === '2') {
-      formaPago = 'credito';
-    }
-
+    if (textoHijo(paymentMeansEl, 'ID') === '2') formaPago = 'credito';
+    const meansCode = textoHijo(paymentMeansEl, 'PaymentMeansCode');
     if (meansCode === '10') medioPago = 'efectivo';
-    else if (meansCode === '41' || meansCode === '42') medioPago = 'transferencia';
     else if (meansCode === '48') medioPago = 'tarjeta_credito';
     else if (meansCode === '49') medioPago = 'tarjeta_debito';
-    else medioPago = 'transferencia';
+    else if (meansCode === '20') medioPago = 'cheque';
   }
 
-  // Calcular días de crédito si hay fecha de vencimiento
-  if (fechaEmision && fechaVencimiento && fechaVencimiento !== fechaEmision) {
-    const diffTime = Math.abs(new Date(fechaVencimiento).getTime() - new Date(fechaEmision).getTime());
-    diasCredito = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  let diasCredito = 0;
+  if (fechaVencimiento !== fechaEmision) {
+    const diff = new Date(fechaVencimiento).getTime() - new Date(fechaEmision).getTime();
+    diasCredito = Math.max(0, Math.round(diff / 86400000));
     if (diasCredito > 0) formaPago = 'credito';
   }
+  if (!fechaVencimiento) fechaVencimiento = fechaEmision;
 
-  // 5. Proveedor (AccountingSupplierParty)
+  // 4. Proveedor (AccountingSupplierParty)
   let nitProveedor = '';
   let dvProveedor = '';
   let razonSocialProveedor = '';
   let direccionProveedor = '';
-  let ciudadProveedor = 'Bogotá D.C.';
+  let ciudadProveedor = '';
   let telefonoProveedor = '';
   let emailProveedor = '';
 
-  const supplierPartyEl = findElementByLocalName(rootElement, 'AccountingSupplierParty');
+  const supplierPartyEl = hijosDirectos(root, 'AccountingSupplierParty')[0];
   if (supplierPartyEl) {
     const partyEl = findElementByLocalName(supplierPartyEl, 'Party') || supplierPartyEl;
-
-    // Razón Social
+    const taxSchemeEl = findElementByLocalName(partyEl, 'PartyTaxScheme');
     const legalEntityEl = findElementByLocalName(partyEl, 'PartyLegalEntity');
-    if (legalEntityEl) {
-      razonSocialProveedor = getTextValue(legalEntityEl, 'RegistrationName');
-    }
-    if (!razonSocialProveedor) {
-      razonSocialProveedor = getTextValue(partyEl, 'RegistrationName') || getTextValue(partyEl, 'Name');
-    }
 
-    // NIT y Dígito de Verificación
-    const companyIdEl = findElementByLocalName(partyEl, 'CompanyID');
+    razonSocialProveedor =
+      (taxSchemeEl && getTextValue(taxSchemeEl, 'RegistrationName')) ||
+      (legalEntityEl && getTextValue(legalEntityEl, 'RegistrationName')) ||
+      getTextValue(partyEl, 'Name');
+
+    const companyIdEl =
+      (taxSchemeEl && findElementByLocalName(taxSchemeEl, 'CompanyID')) || findElementByLocalName(partyEl, 'CompanyID');
     if (companyIdEl) {
       nitProveedor = companyIdEl.textContent?.trim() || '';
       dvProveedor = companyIdEl.getAttribute('schemeID') || '';
-    } else {
-      const partyIdEl = findElementByLocalName(partyEl, 'ID');
-      if (partyIdEl) {
-        nitProveedor = partyIdEl.textContent?.trim() || '';
-        dvProveedor = partyIdEl.getAttribute('schemeID') || '';
-      }
     }
 
-    // Ubicación y contacto
-    const addressEl = findElementByLocalName(partyEl, 'PhysicalLocation') || findElementByLocalName(partyEl, 'PostalAddress');
+    const addressEl = findElementByLocalName(partyEl, 'PhysicalLocation') || findElementByLocalName(partyEl, 'RegistrationAddress');
     if (addressEl) {
-      ciudadProveedor = getTextValue(addressEl, 'CityName') || ciudadProveedor;
+      ciudadProveedor = getTextValue(addressEl, 'CityName');
       direccionProveedor = getTextValue(addressEl, 'Line');
     }
 
@@ -326,38 +288,27 @@ export function procesarFacturaXml(xmlContent: string, nombreArchivo = 'factura.
     }
   }
 
-  // 6. Adquirente (AccountingCustomerParty)
+  // 5. Adquirente (AccountingCustomerParty)
   let nitAdquirente = '';
   let razonSocialAdquirente = '';
-  const customerPartyEl = findElementByLocalName(rootElement, 'AccountingCustomerParty');
+  const customerPartyEl = hijosDirectos(root, 'AccountingCustomerParty')[0];
   if (customerPartyEl) {
     const partyEl = findElementByLocalName(customerPartyEl, 'Party') || customerPartyEl;
-    const companyIdEl = findElementByLocalName(partyEl, 'CompanyID') || findElementByLocalName(partyEl, 'ID');
+    const companyIdEl = findElementByLocalName(partyEl, 'CompanyID');
     if (companyIdEl) nitAdquirente = companyIdEl.textContent?.trim() || '';
-
-    const legalEl = findElementByLocalName(partyEl, 'PartyLegalEntity') || partyEl;
-    razonSocialAdquirente = getTextValue(legalEl, 'RegistrationName') || getTextValue(partyEl, 'Name');
+    razonSocialAdquirente = getTextValue(partyEl, 'RegistrationName') || getTextValue(partyEl, 'Name');
   }
 
-  // 7. Moneda
-  const moneda = getTextValue(rootElement, 'DocumentCurrencyCode', 'COP');
+  // 6. Moneda y totales (LegalMonetaryTotal / RequestedMonetaryTotal en notas débito)
+  const moneda = textoHijo(root, 'DocumentCurrencyCode', 'COP');
+  const totalesEl = hijosDirectos(root, 'LegalMonetaryTotal')[0] || hijosDirectos(root, 'RequestedMonetaryTotal')[0];
+  const subtotal = totalesEl ? parseFloat(textoHijo(totalesEl, 'LineExtensionAmount', '0')) || 0 : 0;
+  const descuentos = totalesEl ? parseFloat(textoHijo(totalesEl, 'AllowanceTotalAmount', '0')) || 0 : 0;
+  let totalPagar = totalesEl
+    ? parseFloat(textoHijo(totalesEl, 'PayableAmount', '0')) || parseFloat(textoHijo(totalesEl, 'TaxInclusiveAmount', '0')) || 0
+    : 0;
 
-  // 8. Totales Monetarios (LegalMonetaryTotal)
-  let subtotal = 0;
-  let descuentos = 0;
-  let totalPagar = 0;
-
-  const monetaryTotalEl = findElementByLocalName(rootElement, 'LegalMonetaryTotal');
-  if (monetaryTotalEl) {
-    subtotal = getNumberValue(monetaryTotalEl, 'LineExtensionAmount', 0);
-    descuentos = getNumberValue(monetaryTotalEl, 'AllowanceTotalAmount', 0);
-    totalPagar = getNumberValue(monetaryTotalEl, 'PayableAmount', 0);
-    if (!totalPagar) {
-      totalPagar = getNumberValue(monetaryTotalEl, 'TaxInclusiveAmount', 0);
-    }
-  }
-
-  // 9. Impuestos y Retenciones (TaxTotal / TaxSubtotal)
+  // 7. Impuestos del documento: solo TaxTotal de primer nivel (no los de cada línea)
   let baseIva0 = 0;
   let baseIva5 = 0;
   let baseIva19 = 0;
@@ -365,140 +316,106 @@ export function procesarFacturaXml(xmlContent: string, nombreArchivo = 'factura.
   let iva19 = 0;
   let totalIva = 0;
   let impoconsumo = 0;
+  const advertencias: string[] = [];
 
+  for (const s of leerSubtotales(hijosDirectos(root, 'TaxTotal'))) {
+    const esIva = ESQUEMAS_IVA.includes(s.esquemaId) || (!s.esquemaId && s.esquemaNombre === 'IVA');
+    const esInc = ESQUEMAS_INC.includes(s.esquemaId) || (!s.esquemaId && s.esquemaNombre.startsWith('INC'));
+    if (esIva) {
+      totalIva += s.impuesto;
+      const tarifa = tarifaDe(s);
+      if (Math.abs(tarifa - 19) < 0.5) {
+        baseIva19 += s.base;
+        iva19 += s.impuesto;
+      } else if (Math.abs(tarifa - 5) < 0.5) {
+        baseIva5 += s.base;
+        iva5 += s.impuesto;
+      } else if (tarifa === 0) {
+        baseIva0 += s.base;
+      } else {
+        advertencias.push(`Tarifa de IVA no estándar (${tarifa}%) por $${Math.round(s.impuesto)}: revisar clasificación.`);
+      }
+    } else if (esInc) {
+      impoconsumo += s.impuesto;
+    }
+  }
+
+  // 8. Retenciones informadas por el proveedor (WithholdingTaxTotal, códigos DIAN 05/06/07)
   let reteFuente = 0;
   let porcentajeReteFuente = 0;
   let reteIva = 0;
   let porcentajeReteIva = 0;
   let reteIca = 0;
   let porcentajeReteIca = 0;
-  let totalRetenciones = 0;
 
-  // Analizar todos los bloques TaxTotal
-  const taxTotalElements = findAllElementsByLocalName(rootElement, 'TaxTotal');
-
-  for (const taxEl of taxTotalElements) {
-    const subtotalElements = findAllElementsByLocalName(taxEl, 'TaxSubtotal');
-
-    for (const subEl of subtotalElements) {
-      const taxableAmount = getNumberValue(subEl, 'TaxableAmount', 0);
-      const taxAmount = getNumberValue(subEl, 'TaxAmount', 0);
-      const percent = Math.round(getNumberValue(subEl, 'Percent', 0));
-
-      const taxSchemeEl = findElementByLocalName(subEl, 'TaxScheme');
-      const schemeId = taxSchemeEl ? getTextValue(taxSchemeEl, 'ID') : '';
-      const schemeName = taxSchemeEl ? getTextValue(taxSchemeEl, 'Name').toUpperCase() : '';
-
-      // Discriminación por código estándar DIAN:
-      // '01' o 'IVA'
-      if (schemeId === '01' || schemeName.includes('IVA')) {
-        totalIva += taxAmount;
-        if (percent === 19 || Math.abs(percent - 19) < 1) {
-          baseIva19 += taxableAmount;
-          iva19 += taxAmount;
-        } else if (percent === 5 || Math.abs(percent - 5) < 1) {
-          baseIva5 += taxableAmount;
-          iva5 += taxAmount;
-        } else if (percent === 0) {
-          baseIva0 += taxableAmount;
-        } else {
-          // Si es otra tarifa o no vino porcentaje específico
-          if (taxableAmount > 0 && taxAmount > 0) {
-            const calculatedPercent = Math.round((taxAmount / taxableAmount) * 100);
-            if (calculatedPercent === 19) {
-              baseIva19 += taxableAmount;
-              iva19 += taxAmount;
-            } else if (calculatedPercent === 5) {
-              baseIva5 += taxableAmount;
-              iva5 += taxAmount;
-            }
-          }
-        }
-      }
-      // '04' o 'INC' (Impuesto Nacional al Consumo)
-      else if (schemeId === '04' || schemeName.includes('CONSUMO') || schemeName.includes('INC')) {
-        impoconsumo += taxAmount;
-      }
-      // '05' = ReteIVA
-      else if (schemeId === '05' || schemeName.includes('RETEIVA')) {
-        reteIva += taxAmount;
-        if (percent > 0) porcentajeReteIva = percent;
-      }
-      // '06' = ReteFuente
-      else if (schemeId === '06' || schemeName.includes('RETEFUENTE') || schemeName.includes('RENTA')) {
-        reteFuente += taxAmount;
-        if (percent > 0) porcentajeReteFuente = percent;
-      }
-      // '07' = ReteICA
-      else if (schemeId === '07' || schemeName.includes('RETEICA') || schemeName.includes('ICA')) {
-        reteIca += taxAmount;
-        if (percent > 0) porcentajeReteIca = percent;
-      }
+  const bloquesRetencion = [
+    ...hijosDirectos(root, 'WithholdingTaxTotal'),
+    // Algunos facturadores reportan retenciones dentro de TaxTotal con esquemas 05/06/07
+    ...hijosDirectos(root, 'TaxTotal'),
+  ];
+  for (const s of leerSubtotales(bloquesRetencion)) {
+    if (s.esquemaId === ESQUEMA_RETEIVA || (!s.esquemaId && s.esquemaNombre.includes('RETEIVA'))) {
+      reteIva += s.impuesto;
+      if (s.porcentaje > 0) porcentajeReteIva = s.porcentaje;
+    } else if (s.esquemaId === ESQUEMA_RETEFUENTE || (!s.esquemaId && (s.esquemaNombre.includes('RETEFUENTE') || s.esquemaNombre.includes('RETERENTA')))) {
+      reteFuente += s.impuesto;
+      if (s.porcentaje > 0) porcentajeReteFuente = s.porcentaje;
+    } else if (s.esquemaId === ESQUEMA_RETEICA || (!s.esquemaId && s.esquemaNombre.includes('RETEICA'))) {
+      reteIca += s.impuesto;
+      if (s.porcentaje > 0) porcentajeReteIca = s.porcentaje;
     }
   }
+  const totalRetenciones = reteFuente + reteIva + reteIca;
 
-  totalRetenciones = reteFuente + reteIva + reteIca;
-
-  // Si no se discriminó base 0 pero subtotal es mayor que base5 + base19:
-  if (subtotal > 0 && subtotal > baseIva5 + baseIva19 && baseIva0 === 0) {
-    const restante = Math.max(0, subtotal - (baseIva5 + baseIva19));
-    if (restante > 0 && totalIva === iva5 + iva19) {
-      baseIva0 = restante;
-    }
+  // Base excluida/exenta no discriminada: la diferencia entre el subtotal y las bases gravadas
+  const basesGravadas = baseIva5 + baseIva19;
+  if (baseIva0 === 0 && subtotal - descuentos > basesGravadas + 1) {
+    baseIva0 = subtotal - descuentos - basesGravadas;
   }
 
-  // 10. Detalle de Líneas de Factura (cac:InvoiceLine)
+  // 9. Líneas (InvoiceLine / CreditNoteLine / DebitNoteLine)
+  const nombreLinea = esNotaCredito ? 'CreditNoteLine' : esNotaDebito ? 'DebitNoteLine' : 'InvoiceLine';
+  const nombreCantidad = esNotaCredito ? 'CreditedQuantity' : esNotaDebito ? 'DebitedQuantity' : 'InvoicedQuantity';
   const lineas: LineaFactura[] = [];
-  const lineElements = findAllElementsByLocalName(rootElement, 'InvoiceLine');
+  const conteoCategorias: Record<string, number> = {};
 
-  let categoriaSugeridaGlobal = 'cat-medicamentos';
-
-  for (let i = 0; i < lineElements.length; i++) {
-    const lineEl = lineElements[i];
-
-    const lineaId = getTextValue(lineEl, 'ID', String(i + 1));
-
-    // Cantidad y Unidad
-    const qtyEl = findElementByLocalName(lineEl, 'InvoicedQuantity');
+  hijosDirectos(root, nombreLinea).forEach((lineEl, i) => {
+    const qtyEl = hijosDirectos(lineEl, nombreCantidad)[0];
     const cantidad = qtyEl ? parseFloat(qtyEl.textContent || '1') || 1 : 1;
     const unidad = qtyEl?.getAttribute('unitCode') || 'UND';
+    const valorLinea = parseFloat(textoHijo(lineEl, 'LineExtensionAmount', '0')) || 0;
 
-    // Importe de línea
-    const totalLinea = getNumberValue(lineEl, 'LineExtensionAmount', 0);
+    const priceEl = hijosDirectos(lineEl, 'Price')[0];
+    const valorUnitario = priceEl ? parseFloat(textoHijo(priceEl, 'PriceAmount', '0')) || 0 : valorLinea / (cantidad || 1);
 
-    // Precio Unitario
-    const priceEl = findElementByLocalName(lineEl, 'Price');
-    const valorUnitario = priceEl ? getNumberValue(priceEl, 'PriceAmount', 0) : totalLinea / (cantidad || 1);
-
-    // Descripción del Item
-    const itemEl = findElementByLocalName(lineEl, 'Item');
-    const descripcion = itemEl ? getTextValue(itemEl, 'Description', 'Producto / Insumo veterinario') : 'Insumo veterinario';
-
-    // Código
+    const itemEl = hijosDirectos(lineEl, 'Item')[0];
+    const descripcion = (itemEl && textoHijo(itemEl, 'Description')) || 'Producto / insumo';
     let codigo = '';
     if (itemEl) {
-      const codeEl = findElementByLocalName(itemEl, 'SellersItemIdentification') || findElementByLocalName(itemEl, 'StandardItemIdentification');
-      if (codeEl) codigo = getTextValue(codeEl, 'ID');
+      const codeEl =
+        hijosDirectos(itemEl, 'SellersItemIdentification')[0] || hijosDirectos(itemEl, 'StandardItemIdentification')[0];
+      if (codeEl) codigo = textoHijo(codeEl, 'ID');
     }
 
-    // Descuento en la línea
-    const allowanceEl = findElementByLocalName(lineEl, 'AllowanceCharge');
-    const descuento = allowanceEl ? getNumberValue(allowanceEl, 'Amount', 0) : 0;
+    // Descuentos de la línea (ChargeIndicator = false); los cargos ya están en LineExtensionAmount
+    let descuento = 0;
+    for (const ac of hijosDirectos(lineEl, 'AllowanceCharge')) {
+      if (textoHijo(ac, 'ChargeIndicator').toLowerCase() === 'false') {
+        descuento += parseFloat(textoHijo(ac, 'Amount', '0')) || 0;
+      }
+    }
 
-    // IVA de la línea
     let porcentajeIvaLinea = 0;
     let valorIvaLinea = 0;
-    const lineTaxEl = findElementByLocalName(lineEl, 'TaxTotal');
-    if (lineTaxEl) {
-      const lineSubtaxEl = findElementByLocalName(lineTaxEl, 'TaxSubtotal');
-      if (lineSubtaxEl) {
-        porcentajeIvaLinea = Math.round(getNumberValue(lineSubtaxEl, 'Percent', 0));
-        valorIvaLinea = getNumberValue(lineSubtaxEl, 'TaxAmount', 0);
+    for (const s of leerSubtotales(hijosDirectos(lineEl, 'TaxTotal'))) {
+      if (ESQUEMAS_IVA.includes(s.esquemaId) || (!s.esquemaId && s.esquemaNombre === 'IVA')) {
+        porcentajeIvaLinea = Math.round(tarifaDe(s));
+        valorIvaLinea += s.impuesto;
       }
     }
 
     const catSugerida = sugerirCategoriaVeterinaria(descripcion);
-    if (i === 0) categoriaSugeridaGlobal = catSugerida;
+    conteoCategorias[catSugerida] = (conteoCategorias[catSugerida] || 0) + valorLinea;
 
     lineas.push({
       id: 'lin-' + (i + 1),
@@ -509,18 +426,41 @@ export function procesarFacturaXml(xmlContent: string, nombreArchivo = 'factura.
       valorUnitario: Math.round(valorUnitario),
       descuento: Math.round(descuento),
       porcentajeIva: porcentajeIvaLinea,
-      valorIva: Math.round(valorIvaLinea),
-      totalLinea: Math.round(totalLinea + valorIvaLinea),
+      valorIva: Math.round(valorIvaLinea) * signo,
+      totalLinea: Math.round(valorLinea + valorIvaLinea) * signo,
       categoriaSugerida: catSugerida,
     });
-  }
+  });
 
-  // Si no se extrajo total a pagar directo, calcularlo: Subtotal + IVA + INC - Retenciones
+  // Categoría del documento: la que concentra mayor valor en las líneas
+  const categoriaDocumento =
+    Object.entries(conteoCategorias).sort((a, b) => b[1] - a[1])[0]?.[0] || 'cat-mercancia';
+
   if (!totalPagar) {
-    totalPagar = subtotal - descuentos + totalIva + impoconsumo - totalRetenciones;
+    totalPagar = subtotal - descuentos + totalIva + impoconsumo;
   }
 
-  const tipoDoc: TipoDocumento = rootLocalName === 'CreditNote' ? 'otro' : 'factura_electronica';
+  // Cuadre: subtotal - descuentos + impuestos debe coincidir con el total del documento
+  const totalCalculado = subtotal - descuentos + totalIva + impoconsumo;
+  const sumaCargos = totalesEl ? parseFloat(textoHijo(totalesEl, 'ChargeTotalAmount', '0')) || 0 : 0;
+  if (Math.abs(totalCalculado + sumaCargos - totalPagar) > 2) {
+    advertencias.push(
+      `El total del documento ($${Math.round(totalPagar)}) no cuadra con subtotal − descuentos + impuestos ($${Math.round(totalCalculado + sumaCargos)}).`
+    );
+  }
+
+  // Factura afectada por la nota (BillingReference/InvoiceDocumentReference/ID)
+  let documentoReferencia: string | undefined;
+  const billingRefEl = hijosDirectos(root, 'BillingReference')[0];
+  if (billingRefEl) {
+    const invRefEl = findElementByLocalName(billingRefEl, 'InvoiceDocumentReference');
+    documentoReferencia = invRefEl ? textoHijo(invRefEl, 'ID') || undefined : undefined;
+  }
+
+  const tipoDoc: TipoDocumento = esNotaCredito ? 'nota_credito' : esNotaDebito ? 'nota_debito' : 'factura_electronica';
+  const r = (v: number) => Math.round(v) * signo;
+  const total = r(totalPagar);
+  const sinSaldo = formaPago === 'contado' || esNotaCredito;
 
   return {
     tipoDocumento: tipoDoc,
@@ -536,7 +476,7 @@ export function procesarFacturaXml(xmlContent: string, nombreArchivo = 'factura.
     proveedor: {
       nit: nitProveedor,
       dv: dvProveedor,
-      razonSocial: razonSocialProveedor || 'PROVEEDOR VETERINARIO',
+      razonSocial: razonSocialProveedor || 'PROVEEDOR SIN NOMBRE',
       direccion: direccionProveedor,
       ciudad: ciudadProveedor,
       telefono: telefonoProveedor,
@@ -547,30 +487,34 @@ export function procesarFacturaXml(xmlContent: string, nombreArchivo = 'factura.
       razonSocial: razonSocialAdquirente,
     },
     moneda,
-    subtotal: Math.round(subtotal),
-    descuentos: Math.round(descuentos),
-    baseIva0: Math.round(baseIva0),
-    baseIva5: Math.round(baseIva5),
-    baseIva19: Math.round(baseIva19),
-    iva5: Math.round(iva5),
-    iva19: Math.round(iva19),
-    totalIva: Math.round(totalIva),
-    impoconsumo: Math.round(impoconsumo),
-    reteFuente: Math.round(reteFuente),
+    subtotal: r(subtotal),
+    descuentos: r(descuentos),
+    baseIva0: r(baseIva0),
+    baseIva5: r(baseIva5),
+    baseIva19: r(baseIva19),
+    iva5: r(iva5),
+    iva19: r(iva19),
+    totalIva: r(totalIva),
+    impoconsumo: r(impoconsumo),
+    reteFuente: r(reteFuente),
     porcentajeReteFuente,
-    reteIva: Math.round(reteIva),
+    reteIva: r(reteIva),
     porcentajeReteIva,
-    reteIca: Math.round(reteIca),
+    reteIca: r(reteIca),
     porcentajeReteIca,
-    totalRetenciones: Math.round(totalRetenciones),
-    total: Math.round(totalPagar),
-    saldoPendiente: formaPago === 'contado' ? 0 : Math.round(totalPagar),
-    estadoPago: formaPago === 'contado' ? 'pagada' : 'pendiente',
-    fechaPago: formaPago === 'contado' ? fechaEmision : undefined,
-    categoriaId: categoriaSugeridaGlobal,
+    totalRetenciones: r(totalRetenciones),
+    total,
+    saldoPendiente: sinSaldo ? 0 : total,
+    estadoPago: sinSaldo ? 'pagada' : 'pendiente',
+    fechaPago: sinSaldo ? fechaEmision : undefined,
+    categoriaId: categoriaDocumento,
     centroCostoId: 'cc-clinica',
-    esGasto: false,
+    esGasto: categoriaDocumento !== 'cat-mercancia',
     lineas,
+    documentoReferencia,
+    observaciones: documentoReferencia
+      ? `${esNotaCredito ? 'Nota crédito' : 'Nota débito'} que afecta la factura ${documentoReferencia}.`
+      : undefined,
     archivoAdjunto: {
       nombre: nombreArchivo,
       tipo: 'xml',
@@ -579,7 +523,8 @@ export function procesarFacturaXml(xmlContent: string, nombreArchivo = 'factura.
     },
     metadatosExtraccion: {
       motor: 'xml_parser',
-      confianzaBaja: false,
+      confianzaBaja: advertencias.length > 0,
+      advertencias,
     },
   };
 }

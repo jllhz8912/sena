@@ -72,9 +72,12 @@ export async function procesarArchivoZip(zipFile: File): Promise<Partial<CompraD
       const doc = procesarFacturaXml(xmlItem.contenidoTexto, xmlItem.nombre);
 
       // Buscar si hay un PDF que comparta nombre similar
-      const baseName = xmlItem.nombre.replace(/\.[^/.]+$/, '').toLowerCase();
+      // Asociar el PDF con el mismo nombre base; si el ZIP trae una sola factura, su único PDF.
+      const nombreBase = (n: string) => n.split('/').pop()!.replace(/\.[^/.]+$/, '').toLowerCase();
+      const baseName = nombreBase(xmlItem.nombre);
       const pdfCorrespondiente =
-        pdfFiles.find((p) => p.nombre.toLowerCase().includes(baseName)) || pdfFiles[0];
+        pdfFiles.find((p) => nombreBase(p.nombre) === baseName) ||
+        (xmlFiles.length === 1 && pdfFiles.length === 1 ? pdfFiles[0] : undefined);
 
       if (pdfCorrespondiente && pdfCorrespondiente.dataUrl) {
         doc.archivoAdjunto = {
@@ -95,7 +98,8 @@ export async function procesarArchivoZip(zipFile: File): Promise<Partial<CompraD
 
       resultados.push(doc);
     } catch (err) {
-      console.warn(`Error al procesar XML ${xmlItem.nombre} dentro del ZIP:`, err);
+      // Respuestas de la DIAN (ApplicationResponse) u otros XML que no son facturas se ignoran
+      console.warn(`XML ${xmlItem.nombre} dentro del ZIP no es una factura procesable:`, err);
     }
   }
 
