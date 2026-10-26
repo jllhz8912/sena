@@ -13,12 +13,14 @@ import { RegistroManualModal } from './components/registro/RegistroManualModal';
 import { ModalRegistroVenta } from './components/ventas/ModalRegistroVenta';
 import { BotonFlotanteNuevo } from './components/common/BotonFlotanteNuevo';
 import { CompraDocumento, Categoria, CentroCosto, Proveedor, Venta } from './types';
-import { dataService } from './services/dataService';
+import { dataService, EVENTO_SESION, UsuarioActual } from './services/dataService';
+import { PantallaAcceso } from './components/seguridad/PantallaAcceso';
+import { SeguridadView } from './components/seguridad/SeguridadView';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Loader2 } from 'lucide-react';
 
-function VetComprasApp() {
+function VetComprasApp({ onSalir }: { onSalir: () => void }) {
   const [currentTab, setCurrentTab] = useState<NavItem>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuAbierto, setMobileMenuAbierto] = useState(false);
@@ -102,6 +104,7 @@ function VetComprasApp() {
     reportes: 'Reportería e Informes Tributarios (DIAN)',
     catalogos: 'Catálogos de Proveedores y Centros de Costo',
     configuracion: 'Configuración de la Veterinaria y Marca',
+    seguridad: 'Seguridad, Usuarios y Respaldos',
   };
 
   return (
@@ -130,6 +133,7 @@ function VetComprasApp() {
           }}
           onDatosActualizados={recargarDatos}
           onAbrirMenuMovil={() => setMobileMenuAbierto(true)}
+          onSalir={onSalir}
         />
 
         {/* Área de Contenido con Scroll */}
@@ -214,6 +218,8 @@ function VetComprasApp() {
                   onDatosActualizados={recargarDatos}
                 />
               )}
+
+              {currentTab === 'seguridad' && dataService.esAdministrador() && <SeguridadView onSesionTerminada={onSalir} />}
 
               {currentTab === 'configuracion' && (
                 <ConfiguracionView
@@ -301,11 +307,98 @@ function VetComprasApp() {
   );
 }
 
+type EstadoAcceso =
+  | { tipo: 'cargando' }
+  | { tipo: 'sin_servidor'; error: string }
+  | { tipo: 'configuracion' }
+  | { tipo: 'ingreso'; mensaje?: string }
+  | { tipo: 'cambio_clave'; usuario: UsuarioActual }
+  | { tipo: 'listo'; usuario: UsuarioActual };
+
+/** Controla el acceso: primer uso, ingreso, cambio obligatorio de contraseña y sesión vencida. */
+function PuertaDeAcceso() {
+  const [estado, setEstado] = useState<EstadoAcceso>({ tipo: 'cargando' });
+
+  const consultar = useCallback(async () => {
+    try {
+      const sesion = await dataService.obtenerSesion();
+      if (sesion.requiereConfiguracion) setEstado({ tipo: 'configuracion' });
+      else if (!sesion.usuario) setEstado({ tipo: 'ingreso' });
+      else if (sesion.usuario.debeCambiarClave) setEstado({ tipo: 'cambio_clave', usuario: sesion.usuario });
+      else {
+        await dataService.init();
+        setEstado({ tipo: 'listo', usuario: sesion.usuario });
+      }
+    } catch (err: any) {
+      setEstado({ tipo: 'sin_servidor', error: err?.message || 'No hay conexión con el servidor local.' });
+    }
+  }, []);
+
+  useEffect(() => {
+    consultar();
+    const alCambiarSesion = (e: Event) => {
+      const detalle = (e as CustomEvent).detail || {};
+      if (detalle.sesionVencida) {
+        setEstado({ tipo: 'ingreso', mensaje: 'Su sesión se cerró por inactividad o desde otro equipo. Ingrese de nuevo.' });
+      } else if (detalle.debeCambiarClave) {
+        consultar();
+      }
+    };
+    window.addEventListener(EVENTO_SESION, alCambiarSesion);
+    return () => window.removeEventListener(EVENTO_SESION, alCambiarSesion);
+  }, [consultar]);
+
+  const alIngresar = async (usuario: UsuarioActual) => {
+    if (usuario.debeCambiarClave) return setEstado({ tipo: 'cambio_clave', usuario });
+    // Cargar los datos de la veterinaria antes de mostrar el menú (nombre, logo)
+    await dataService.init().catch(() => undefined);
+    setEstado({ tipo: 'listo', usuario });
+  };
+
+  switch (estado.tipo) {
+    case 'cargando':
+      return (
+        <div className="h-screen flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+        </div>
+      );
+    case 'sin_servidor':
+      return (
+        <div className="h-screen flex items-center justify-center p-4">
+          <div className="max-w-md p-6 rounded-2xl border border-rose-200 bg-rose-50 text-rose-900 space-y-3">
+            <p className="font-bold">VetCompras no está abierto en este PC</p>
+            <p className="text-sm">{estado.error}</p>
+            <p className="text-xs">Abra el icono “VetCompras” del escritorio y vuelva a intentar.</p>
+            <button onClick={consultar} className="px-4 py-2 rounded-xl bg-rose-600 text-white text-sm font-semibold">
+              Reintentar
+            </button>
+          </div>
+        </div>
+      );
+    case 'configuracion':
+      return <PantallaAcceso key="configuracion" modo="configuracion" onListo={alIngresar} />;
+    case 'ingreso':
+      return <PantallaAcceso key="ingreso" modo="ingreso" mensaje={estado.mensaje} onListo={alIngresar} />;
+    case 'cambio_clave':
+      return <PantallaAcceso key="cambio_clave" modo="cambio_clave" usuario={estado.usuario} onListo={alIngresar} />;
+    case 'listo':
+      return (
+        <VetComprasApp
+          key={estado.usuario.id}
+          onSalir={async () => {
+            await dataService.salir();
+            consultar();
+          }}
+        />
+      );
+  }
+}
+
 export default function App() {
   return (
     <ThemeProvider>
       <ToastProvider>
-        <VetComprasApp />
+        <PuertaDeAcceso />
       </ToastProvider>
     </ThemeProvider>
   );

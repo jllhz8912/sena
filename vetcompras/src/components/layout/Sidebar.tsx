@@ -15,6 +15,7 @@ import {
   Menu,
   CircleDollarSign,
   Settings,
+  ShieldCheck,
 } from 'lucide-react';
 import { dataService } from '../../services/dataService';
 import { EmpresaInfo } from '../../types';
@@ -28,7 +29,8 @@ export type NavItem =
   | 'registro_manual'
   | 'reportes'
   | 'catalogos'
-  | 'configuracion';
+  | 'configuracion'
+  | 'seguridad';
 
 interface SidebarProps {
   currentTab: NavItem;
@@ -119,7 +121,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: 'Logo y Colores',
       badgeColor: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300',
     },
-  ];
+    {
+      id: 'seguridad' as NavItem,
+      label: 'Seguridad y Respaldos',
+      icon: ShieldCheck,
+      badge: 'Admin',
+      badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+    },
+  ].filter((item) => {
+    // Configuración, catálogos y seguridad solo para administradores
+    if (dataService.esAdministrador()) return true;
+    return !(['configuracion', 'seguridad', 'catalogos'] as NavItem[]).includes(item.id);
+  });
 
   const handleItemClick = (id: NavItem) => {
     setCurrentTab(id);

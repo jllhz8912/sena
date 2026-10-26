@@ -312,7 +312,7 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
         historialCambios: [
           {
             fecha: new Date().toISOString(),
-            usuario: 'Usuario actual',
+            usuario: dataService.usuarioActual()?.nombre || 'Usuario',
             accion: `Copia duplicada de ${doc.folio}`,
           },
         ],

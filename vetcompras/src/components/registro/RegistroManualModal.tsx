@@ -341,14 +341,14 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
               ...(documentoParaEditar.historialCambios || []),
               {
                 fecha: new Date().toISOString(),
-                usuario: 'Usuario actual',
+                usuario: dataService.usuarioActual()?.nombre || 'Usuario',
                 accion: 'Edición de registro manual',
               },
             ]
           : [
               {
                 fecha: new Date().toISOString(),
-                usuario: 'Usuario actual',
+                usuario: dataService.usuarioActual()?.nombre || 'Usuario',
                 accion: 'Creación de registro manual',
               },
             ],

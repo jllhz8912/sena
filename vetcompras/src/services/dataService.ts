@@ -16,18 +16,51 @@ type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centr
 const CLAVE_CACHE_EMPRESA = 'vetcompras_empresa';
 const INTERVALO_SONDEO_MS = 4000;
 
-async function api<T = any>(ruta: string, opciones: RequestInit = {}): Promise<T> {
+export type Rol = 'administrador' | 'auxiliar';
+
+export interface UsuarioActual {
+  id: string;
+  usuario: string;
+  nombre: string;
+  rol: Rol;
+  debeCambiarClave: boolean;
+}
+
+export interface EstadoSesion {
+  usuario: UsuarioActual | null;
+  requiereConfiguracion: boolean;
+  minutosInactividad: number;
+  version: string;
+}
+
+/** Evento global que la App escucha para volver a la pantalla de ingreso. */
+export const EVENTO_SESION = 'vetcompras:sesion';
+
+let usuarioActual: UsuarioActual | null = null;
+
+async function api<T = any>(ruta: string, opciones: RequestInit & { sondeo?: boolean } = {}): Promise<T> {
+  const { sondeo, ...init } = opciones;
   let respuesta: Response;
   try {
     respuesta = await fetch('/api' + ruta, {
-      ...opciones,
-      headers: { 'Content-Type': 'application/json', ...(opciones.headers || {}) },
+      ...init,
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        // Cabecera propia: impide que otro sitio web haga cambios usando la sesión abierta
+        'X-VetCompras': '1',
+        ...(sondeo ? { 'X-Sondeo': '1' } : {}),
+        ...(init.headers || {}),
+      },
     });
   } catch {
     throw new Error('No hay conexión con el servidor local de VetCompras. Verifique que el programa esté abierto.');
   }
   const cuerpo = await respuesta.json().catch(() => ({}));
   if (!respuesta.ok) {
+    if (cuerpo?.sesionVencida || cuerpo?.debeCambiarClave) {
+      window.dispatchEvent(new CustomEvent(EVENTO_SESION, { detail: cuerpo }));
+    }
     throw new Error(cuerpo?.error || `Error ${respuesta.status} del servidor local.`);
   }
   return cuerpo as T;
@@ -87,6 +120,83 @@ export interface EstadoServidor {
 }
 
 export const dataService = {
+  // ================= SESIÓN Y USUARIOS =================
+
+  usuarioActual(): UsuarioActual | null {
+    return usuarioActual;
+  },
+
+  esAdministrador(): boolean {
+    return usuarioActual?.rol === 'administrador';
+  },
+
+  async obtenerSesion(): Promise<EstadoSesion> {
+    const estado = await api<EstadoSesion>('/sesion');
+    usuarioActual = estado.usuario;
+    return estado;
+  },
+
+  async ingresar(usuario: string, clave: string): Promise<UsuarioActual> {
+    const r = await api<{ usuario: UsuarioActual }>('/sesion/ingresar', {
+      method: 'POST',
+      body: JSON.stringify({ usuario, clave }),
+    });
+    usuarioActual = r.usuario;
+    inicializacion = null;
+    return r.usuario;
+  },
+
+  async configuracionInicial(datos: {
+    usuario: string;
+    nombre: string;
+    clave: string;
+    empresa?: Partial<EmpresaInfo>;
+  }): Promise<UsuarioActual> {
+    const r = await api<{ usuario: UsuarioActual }>('/sesion/configuracion-inicial', {
+      method: 'POST',
+      body: JSON.stringify(datos),
+    });
+    usuarioActual = r.usuario;
+    inicializacion = null;
+    return r.usuario;
+  },
+
+  async salir(): Promise<void> {
+    await api('/sesion/salir', { method: 'POST' }).catch(() => undefined);
+    usuarioActual = null;
+    inicializacion = null;
+  },
+
+  async cambiarClave(claveActual: string, claveNueva: string): Promise<void> {
+    await api('/sesion/cambiar-clave', { method: 'POST', body: JSON.stringify({ claveActual, claveNueva }) });
+    if (usuarioActual) usuarioActual = { ...usuarioActual, debeCambiarClave: false };
+  },
+
+  listarUsuarios(): Promise<(UsuarioActual & { activo: boolean; creadoEn: string; ultimoAcceso: string | null })[]> {
+    return api('/usuarios');
+  },
+
+  crearUsuario(datos: { usuario: string; nombre: string; rol: Rol; clave: string }): Promise<unknown> {
+    return api('/usuarios', { method: 'POST', body: JSON.stringify(datos) });
+  },
+
+  actualizarUsuario(id: string, cambios: { nombre?: string; rol?: Rol; activo?: boolean }): Promise<unknown> {
+    return api(`/usuarios/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(cambios) });
+  },
+
+  restablecerClaveUsuario(id: string, claveTemporal: string): Promise<unknown> {
+    return api(`/usuarios/${encodeURIComponent(id)}/restablecer-clave`, {
+      method: 'POST',
+      body: JSON.stringify({ claveTemporal }),
+    });
+  },
+
+  listarAuditoria(texto = ''): Promise<
+    { fecha: string; usuario: string; accion: string; coleccion?: string; registroId?: string; detalle?: string; ip?: string }[]
+  > {
+    return api(`/auditoria?limite=500&texto=${encodeURIComponent(texto)}`);
+  },
+
   /** Carga los datos de la empresa una sola vez por sesión. */
   init(): Promise<void> {
     if (!inicializacion) {
@@ -116,9 +226,9 @@ export const dataService = {
 
     const revisar = async () => {
       try {
-        const { revision } = await this.obtenerEstado();
+        const { revision } = await api<EstadoServidor>('/estado', { sondeo: true });
         if (ultimaRevision !== null && revision !== ultimaRevision) {
-          const emp = await api<EmpresaInfo | null>('/configuracion/empresa');
+          const emp = await api<EmpresaInfo | null>('/configuracion/empresa', { sondeo: true });
           if (emp) fijarEmpresa(emp);
           if (activo) onCambio();
         }
@@ -197,7 +307,7 @@ export const dataService = {
     if (detalleCambio) {
       historial.push({
         fecha: new Date().toISOString(),
-        usuario: 'Usuario actual',
+        usuario: usuarioActual?.nombre || 'Usuario',
         accion: 'Modificación de registro',
         detalle: detalleCambio,
       });
@@ -228,7 +338,7 @@ export const dataService = {
       actualizadoEn: ahora,
       historialCambios: [
         ...(d.historialCambios || []),
-        { fecha: ahora, usuario: 'Usuario actual', accion: 'Cambio masivo de categoría' },
+        { fecha: ahora, usuario: usuarioActual?.nombre || 'Usuario', accion: 'Cambio masivo de categoría' },
       ],
     }));
     await lote('documentos', { guardar: actualizados });
@@ -259,7 +369,7 @@ export const dataService = {
           actualizadoEn: ahora,
           historialCambios: [
             ...(d.historialCambios || []),
-            { fecha: ahora, usuario: 'Usuario actual', accion: 'Marcado masivo como pagado' },
+            { fecha: ahora, usuario: usuarioActual?.nombre || 'Usuario', accion: 'Marcado masivo como pagado' },
           ],
         };
       });
@@ -301,7 +411,7 @@ export const dataService = {
         ...(docItem.historialCambios || []),
         {
           fecha: new Date().toISOString(),
-          usuario: 'Usuario actual',
+          usuario: usuarioActual?.nombre || 'Usuario',
           accion: 'Registro de Abono / Pago',
           detalle: `Medio: ${pago.medio}. Saldo restante: $${nuevoSaldo.toLocaleString('es-CO')}`,
         },
@@ -412,8 +522,31 @@ export const dataService = {
     return ruta;
   },
 
-  async listarRespaldos(): Promise<{ carpeta: string; respaldos: { nombre: string; tamano: number; fecha: string }[] }> {
+  async listarRespaldos(): Promise<{
+    carpeta: string;
+    carpetaExterna: string;
+    ultimoRespaldoExterno: { fecha: string; ok: boolean; mensaje: string } | null;
+    respaldos: { nombre: string; tamano: number; fecha: string }[];
+  }> {
     return api('/respaldos');
+  },
+
+  configurarRespaldoExterno(carpeta: string): Promise<{ ultimoRespaldoExterno: { ok: boolean; mensaje: string } | null }> {
+    return api('/respaldos/externo', { method: 'PUT', body: JSON.stringify({ carpeta }) });
+  },
+
+  urlDescargaRespaldo(nombre: string): string {
+    return `/api/respaldos/${encodeURIComponent(nombre)}/descargar`;
+  },
+
+  async restaurarRespaldo(nombre: string): Promise<string> {
+    const r = await api<{ respaldoPrevio: string }>(`/respaldos/${encodeURIComponent(nombre)}/restaurar`, { method: 'POST' });
+    usuarioActual = null;
+    return r.respaldoPrevio;
+  },
+
+  async apagarServidor(): Promise<void> {
+    await api('/sistema/apagar', { method: 'POST' });
   },
 
   async exportarRespaldoJSON(): Promise<string> {

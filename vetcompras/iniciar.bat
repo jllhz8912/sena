@@ -1,6 +1,7 @@
 @echo off
 chcp 65001 >nul
-title VetCompras - NO CIERRE ESTA VENTANA mientras use el sistema
+title VetCompras (modo con ventana, para soporte) - NO CIERRE ESTA VENTANA
+rem Uso normal: icono VetCompras del escritorio (VetCompras.vbs), que no muestra esta ventana.
 cd /d "%~dp0"
 
 if not exist "dist\index.html" (

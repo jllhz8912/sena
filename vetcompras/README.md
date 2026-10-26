@@ -29,11 +29,21 @@ momento o exportar un archivo JSON completo para llevarlo a otro equipo o a una 
 
 1. Instale **Node.js LTS** (versión 22.13 o superior) desde <https://nodejs.org>.
 2. Copie la carpeta `vetcompras` al PC (por ejemplo `C:\VetCompras`).
-3. Doble clic en **`instalar.bat`**. Instala los componentes, prepara la aplicación y
-   crea el icono **VetCompras** en el escritorio.
-4. Para usar el sistema: doble clic en el icono **VetCompras** (o `iniciar.bat`).
-   Se abre una ventana negra (el servidor local; no la cierre mientras trabaja) y el
-   navegador en `http://localhost:3000`.
+3. Doble clic en **`instalar.bat`**. Instala los componentes, prepara la aplicación,
+   crea el icono **VetCompras** en el escritorio y pregunta si debe arrancar solo al
+   encender el PC.
+4. Doble clic en el icono **VetCompras**: abre el navegador en `http://localhost:3000`
+   sin ventanas técnicas. Si el programa ya estaba abierto, solo abre el navegador.
+5. La primera vez, un asistente pide el nombre de la veterinaria y crea el usuario
+   **administrador**.
+
+| Archivo | Para qué |
+|---|---|
+| Icono **VetCompras** (`VetCompras.vbs`) | Uso diario |
+| `detener.bat` | Apagar el programa (también desde *Seguridad y Respaldos → Apagar*) |
+| `actualizar.bat` | Instalar una versión nueva conservando los datos |
+| `recuperar-acceso.bat` | Si se olvidó la contraseña de administrador |
+| `iniciar.bat` | Abrir mostrando la ventana del servidor (soporte técnico) |
 
 Para usarlo desde varios equipos de la misma red: en el `.env` ponga `HOST=0.0.0.0`
 y abra `http://IP-DEL-PC-PRINCIPAL:3000` en los demás. Todos comparten la misma base
@@ -45,6 +55,25 @@ de datos y la pantalla se refresca sola cuando otro equipo registra algo.
   PC, sin internet. Un ZIP puede traer varias facturas.
 - **PDF o foto**: opcional, con Gemini (requiere internet y `GEMINI_API_KEY` en el `.env`).
   Si no se configura, el resto del sistema funciona igual.
+
+## Seguridad
+
+| Medida | Detalle |
+|---|---|
+| Usuarios y contraseñas | Todos ingresan con usuario propio. Contraseñas de mínimo 8 caracteres con letras y números, guardadas cifradas (scrypt); nadie puede verlas, ni el administrador. |
+| Roles | **Administrador**: todo. **Auxiliar**: registra y edita compras, facturas y ventas y consulta reportes; no puede borrar, restaurar, importar/exportar la base completa, ni cambiar configuración, catálogos o usuarios. El servidor hace cumplir los permisos aunque alguien manipule la pantalla. |
+| Contraseña temporal | Los usuarios nuevos o con contraseña restablecida deben cambiarla al primer ingreso. |
+| Cierre por inactividad | La sesión se cierra tras 60 minutos sin uso (`MINUTOS_INACTIVIDAD` en `.env`). |
+| Intentos fallidos | 5 intentos fallidos bloquean ese usuario en ese equipo durante 10 minutos. |
+| Bitácora | Ingresos, intentos fallidos, creaciones, modificaciones, eliminaciones, respaldos y cambios de usuarios quedan registrados con fecha, usuario y equipo. No se puede editar desde la aplicación. |
+| Red | Por defecto solo responde en el propio PC (`HOST=127.0.0.1`). Cookies `HttpOnly` + `SameSite=Strict`, cabecera anti-CSRF y política de contenido (CSP). |
+| Respaldos | Diarios, antes de cada operación delicada y, si se configura, copia automática a otra carpeta (otro disco, USB u OneDrive). Se pueden descargar y restaurar desde *Seguridad y Respaldos*. |
+| Olvido de contraseña | Un administrador asigna una temporal. Si se olvidó la del único administrador, `recuperar-acceso.bat` (solo en el PC servidor) crea un acceso de emergencia y lo deja en la bitácora. |
+
+Recomendaciones del entorno, fuera del alcance del programa: usuario de Windows con
+contraseña para cada persona, cifrado del disco con BitLocker y antivirus actualizado.
+La base de datos no va cifrada dentro del disco: quien tenga acceso a los archivos del
+PC con la sesión de Windows abierta podría copiarla, por eso es importante BitLocker.
 
 ## Actualizar a una versión nueva
 
@@ -64,7 +93,7 @@ que ella, el programa se detiene sin modificar nada y pide instalar la versión 
 ```bash
 npm install
 npm run dev      # servidor + Vite con recarga en caliente (http://localhost:3000)
-npm test         # pruebas: lector XML UBL, base de datos, formateadores
+npm test         # pruebas: lector XML UBL, base de datos, seguridad, formateadores
 npm run lint     # verificación de tipos
 npm run build    # compila la interfaz en dist/
 npm start        # modo instalado
@@ -76,7 +105,9 @@ Estructura:
 server.ts               arranque del servidor local
 server/basedatos.ts     SQLite (node:sqlite), migraciones y respaldos
 server/api.ts           API REST /api/...
+server/seguridad.ts     usuarios, contraseñas, sesiones y permisos
 server/gemini.ts        extracción opcional de PDF
+scripts/                recuperación de acceso de emergencia
 src/                    interfaz React (los componentes usan src/services/dataService.ts)
 tests/                  pruebas con Vitest
 ejemplos/               XML de factura de prueba (datos ficticios)

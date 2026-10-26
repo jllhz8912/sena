@@ -9,8 +9,10 @@ echo   Su informacion NO se borra: esta en %USERPROFILE%\VetCompras\datos
 echo   (fuera de la carpeta del programa). Igualmente se hace una copia.
 echo ============================================================
 echo.
-echo Cierre la ventana negra de VetCompras si esta abierta y luego
 pause
+
+echo [..] Deteniendo VetCompras si esta abierto...
+call "%~dp0detener.bat" >nul
 
 set DATOS=%VETCOMPRAS_DATOS%
 if "%DATOS%"=="" set DATOS=%USERPROFILE%\VetCompras\datos
@@ -47,6 +49,7 @@ echo ============================================================
 echo   ACTUALIZACION TERMINADA
 echo   Al abrir VetCompras, la base de datos se adapta sola a la nueva
 echo   version (se crea antes un respaldo automatico en datos\respaldos).
+echo   Abra VetCompras con el icono del escritorio.
 echo ============================================================
 pause
 exit /b 0

@@ -41,12 +41,22 @@ if errorlevel 1 goto error
 echo [..] Creando acceso directo en el escritorio...
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$s=(New-Object -ComObject WScript.Shell).CreateShortcut([Environment]::GetFolderPath('Desktop')+'\VetCompras.lnk');" ^
-  "$s.TargetPath='%~dp0iniciar.bat';$s.WorkingDirectory='%~dp0';$s.IconLocation='shell32.dll,43';$s.Save()"
+  "$s.TargetPath='wscript.exe';$s.Arguments='\"%~dp0VetCompras.vbs\"';$s.WorkingDirectory='%~dp0';$s.IconLocation='shell32.dll,43';$s.Description='Abrir VetCompras';$s.Save()"
+
+echo.
+set /p AUTOARRANQUE="Desea que VetCompras arranque solo al encender el PC? (S/N): "
+if /i "%AUTOARRANQUE%"=="S" (
+  powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+    "$s=(New-Object -ComObject WScript.Shell).CreateShortcut([Environment]::GetFolderPath('Startup')+'\VetCompras.lnk');" ^
+    "$s.TargetPath='wscript.exe';$s.Arguments='\"%~dp0VetCompras.vbs\" /sinNavegador';$s.WorkingDirectory='%~dp0';$s.Save()"
+  echo [OK] VetCompras arrancara al encender el PC.
+)
 
 echo.
 echo ============================================================
 echo   INSTALACION TERMINADA
 echo   Abra VetCompras con el icono "VetCompras" del escritorio.
+echo   La primera vez le pedira crear el usuario administrador.
 echo   Sus datos se guardan en: %USERPROFILE%\VetCompras\datos
 echo ============================================================
 pause

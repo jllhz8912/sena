@@ -94,6 +94,43 @@ const MIGRACIONES: Migracion[] = [
       );
     },
   },
+  {
+    version: 2,
+    descripcion: 'Seguridad: usuarios, sesiones y bitácora de auditoría',
+    aplicar: (db) => {
+      db.exec(`
+        CREATE TABLE usuarios (
+          id             TEXT PRIMARY KEY,
+          usuario        TEXT NOT NULL UNIQUE COLLATE NOCASE,
+          nombre         TEXT NOT NULL,
+          rol            TEXT NOT NULL CHECK (rol IN ('administrador', 'auxiliar')),
+          clave_hash     TEXT NOT NULL,
+          activo         INTEGER NOT NULL DEFAULT 1,
+          debe_cambiar_clave INTEGER NOT NULL DEFAULT 0,
+          creado_en      TEXT NOT NULL,
+          ultimo_acceso  TEXT
+        );
+        CREATE TABLE sesiones (
+          token_hash   TEXT PRIMARY KEY,
+          usuario_id   TEXT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+          creada_en    TEXT NOT NULL,
+          ultimo_uso   TEXT NOT NULL,
+          ip           TEXT
+        );
+        CREATE TABLE auditoria (
+          id          INTEGER PRIMARY KEY AUTOINCREMENT,
+          fecha       TEXT NOT NULL,
+          usuario     TEXT NOT NULL,
+          accion      TEXT NOT NULL,
+          coleccion   TEXT,
+          registro_id TEXT,
+          detalle     TEXT,
+          ip          TEXT
+        );
+        CREATE INDEX auditoria_fecha ON auditoria (fecha);
+      `);
+    },
+  },
 ];
 
 export const VERSION_ESQUEMA = MIGRACIONES[MIGRACIONES.length - 1].version;
@@ -107,7 +144,8 @@ function marcaDeTiempo(): string {
 }
 
 export class BaseDatosLocal {
-  readonly db: DatabaseSync;
+  /** Conexión activa; se reemplaza al restaurar un respaldo. */
+  db!: DatabaseSync;
   readonly carpetaDatos: string;
   readonly carpetaRespaldos: string;
   readonly rutaArchivo: string;
@@ -122,11 +160,14 @@ export class BaseDatosLocal {
     fs.mkdirSync(this.carpetaRespaldos, { recursive: true });
 
     const existia = fs.existsSync(this.rutaArchivo);
+    this.abrir(existia);
+    if (existia) this.respaldoDiario();
+  }
+
+  private abrir(existia: boolean): void {
     this.db = new DatabaseSync(this.rutaArchivo);
     this.db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
-
     this.migrar(existia);
-    if (existia) this.respaldoDiario();
   }
 
   // ---------------------------------------------------------------- versión
@@ -174,17 +215,99 @@ export class BaseDatosLocal {
   // -------------------------------------------------------------- respaldos
   /** Copia consistente de la base de datos (VACUUM INTO). Devuelve la ruta creada. */
   crearRespaldo(motivo = 'manual'): string {
-    const nombre = `vetcompras-${marcaDeTiempo()}-${motivo.replace(/[^a-z0-9-]/gi, '_')}.db`;
-    const destino = path.join(this.carpetaRespaldos, nombre);
+    const base = `vetcompras-${marcaDeTiempo()}-${motivo.replace(/[^a-z0-9-]/gi, '_')}`;
+    let destino = path.join(this.carpetaRespaldos, `${base}.db`);
+    for (let n = 2; fs.existsSync(destino); n++) destino = path.join(this.carpetaRespaldos, `${base}-${n}.db`);
     this.db.prepare('VACUUM INTO ?').run(destino);
     this.depurarRespaldos();
+    this.copiarARespaldoExterno(destino);
     return destino;
   }
 
-  private respaldoDiario(): void {
+  /** Crea el respaldo del día si aún no existe. El servidor lo llama al iniciar y cada hora. */
+  respaldoDiario(): void {
     const hoy = new Date().toISOString().slice(0, 10);
     const yaExiste = this.listarRespaldos().some((r) => r.nombre.includes(hoy) && r.nombre.includes('diario'));
     if (!yaExiste) this.crearRespaldo('diario');
+  }
+
+  rutaRespaldo(nombre: string): string {
+    // Solo nombres de la carpeta de respaldos (evita rutas como ..\otro-archivo)
+    if (!/^vetcompras-[\w-]+\.db$/.test(nombre)) throw Object.assign(new Error('Nombre de respaldo no válido.'), { status: 400 });
+    const ruta = path.join(this.carpetaRespaldos, nombre);
+    if (!fs.existsSync(ruta)) throw Object.assign(new Error('El respaldo no existe.'), { status: 404 });
+    return ruta;
+  }
+
+  /**
+   * Reemplaza la base de datos actual por un respaldo. Antes guarda un respaldo
+   * del estado actual, de modo que la restauración también se puede deshacer.
+   */
+  restaurarRespaldo(nombre: string): string {
+    const origen = this.rutaRespaldo(nombre);
+
+    // Validar que sea una base de VetCompras compatible antes de tocar nada
+    const prueba = new DatabaseSync(origen, { readOnly: true });
+    try {
+      const { user_version } = prueba.prepare('PRAGMA user_version').get() as { user_version: number };
+      const tabla = prueba.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'registros'").get();
+      if (!tabla) throw new Error('El archivo no es un respaldo de VetCompras.');
+      if (user_version > VERSION_ESQUEMA) throw new Error('El respaldo es de una versión más nueva del programa.');
+    } finally {
+      prueba.close();
+    }
+
+    const previo = this.crearRespaldo('antes-de-restaurar');
+    this.db.close();
+    for (const sufijo of ['-wal', '-shm']) fs.rmSync(this.rutaArchivo + sufijo, { force: true });
+    fs.copyFileSync(origen, this.rutaArchivo);
+    this.abrir(true);
+    this.tocar();
+    return previo;
+  }
+
+  // ------------------------------------------------------- respaldo externo
+  /** Segunda carpeta (otro disco, USB u OneDrive) donde se copia cada respaldo. */
+  carpetaRespaldoExterno(): string | undefined {
+    return this.obtenerConfig<{ carpeta?: string }>('respaldoExterno')?.carpeta || undefined;
+  }
+
+  configurarRespaldoExterno(carpeta: string | null): void {
+    if (carpeta) {
+      if (!path.isAbsolute(carpeta)) throw Object.assign(new Error('Escriba la ruta completa de la carpeta (ej. D:\\Respaldos).'), { status: 400 });
+      try {
+        fs.mkdirSync(carpeta, { recursive: true });
+        const prueba = path.join(carpeta, '.vetcompras-prueba');
+        fs.writeFileSync(prueba, 'ok');
+        fs.rmSync(prueba);
+      } catch {
+        throw Object.assign(new Error('No se puede escribir en esa carpeta. Verifique que la USB o el disco estén conectados.'), { status: 400 });
+      }
+    }
+    this.guardarConfig('respaldoExterno', { carpeta: carpeta || '' });
+  }
+
+  ultimoRespaldoExterno: { fecha: string; ok: boolean; mensaje: string } | null = null;
+
+  private copiarARespaldoExterno(archivo: string): void {
+    const carpeta = this.carpetaRespaldoExterno();
+    if (!carpeta) return;
+    const fecha = new Date().toISOString();
+    try {
+      fs.mkdirSync(carpeta, { recursive: true });
+      fs.copyFileSync(archivo, path.join(carpeta, path.basename(archivo)));
+      // Conservar solo los últimos respaldos rotativos también en la carpeta externa
+      const rotativos = fs
+        .readdirSync(carpeta)
+        .filter((f) => /^vetcompras-.*\.db$/.test(f) && !f.includes('antes-de-actualizar'))
+        .sort()
+        .reverse();
+      for (const f of rotativos.slice(RESPALDOS_A_CONSERVAR)) fs.rmSync(path.join(carpeta, f), { force: true });
+      this.ultimoRespaldoExterno = { fecha, ok: true, mensaje: `Copiado a ${carpeta}` };
+    } catch (err: any) {
+      this.ultimoRespaldoExterno = { fecha, ok: false, mensaje: `No se pudo copiar a ${carpeta}: ${err?.message}` };
+      console.warn('[VetCompras]', this.ultimoRespaldoExterno.mensaje);
+    }
   }
 
   listarRespaldos(): { nombre: string; tamano: number; fecha: string }[] {
@@ -211,7 +334,7 @@ export class BaseDatosLocal {
     return `${this.inicioServidor}-${this.revision}`;
   }
 
-  private tocar(): void {
+  tocar(): void {
     this.revision++;
   }
 
@@ -231,6 +354,10 @@ export class BaseDatosLocal {
     const registro = JSON.parse(fila.datos);
     if (coleccion === 'documentos') this.adjuntarContenido(registro);
     return registro;
+  }
+
+  existe(coleccion: Coleccion, id: string): boolean {
+    return !!this.db.prepare('SELECT 1 AS si FROM registros WHERE coleccion = ? AND id = ?').get(coleccion, id);
   }
 
   guardar(coleccion: Coleccion, registro: Registro): void {
@@ -373,6 +500,26 @@ export class BaseDatosLocal {
     });
     this.tocar();
     return conteo;
+  }
+
+  // -------------------------------------------------------------- auditoría
+  auditar(e: { usuario: string; accion: string; coleccion?: string; registroId?: string; detalle?: string; ip?: string }): void {
+    this.db
+      .prepare(
+        'INSERT INTO auditoria (fecha, usuario, accion, coleccion, registro_id, detalle, ip) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      )
+      .run(new Date().toISOString(), e.usuario, e.accion, e.coleccion ?? null, e.registroId ?? null, e.detalle ?? null, e.ip ?? null);
+  }
+
+  listarAuditoria(limite = 300, texto = ''): Record<string, unknown>[] {
+    const filtro = `%${texto}%`;
+    return this.db
+      .prepare(
+        `SELECT fecha, usuario, accion, coleccion, registro_id AS registroId, detalle, ip FROM auditoria
+         WHERE ? = '%%' OR usuario LIKE ? OR accion LIKE ? OR detalle LIKE ? OR registro_id LIKE ?
+         ORDER BY id DESC LIMIT ?`
+      )
+      .all(filtro, filtro, filtro, filtro, filtro, Math.min(Math.max(limite, 1), 2000)) as Record<string, unknown>[];
   }
 
   cerrar(): void {

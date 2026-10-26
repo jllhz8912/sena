@@ -226,7 +226,7 @@ export const CargaExcelModal: React.FC<CargaExcelModalProps> = ({
           historialCambios: [
             {
               fecha: new Date().toISOString(),
-              usuario: 'Usuario actual',
+              usuario: dataService.usuarioActual()?.nombre || 'Usuario',
               accion: 'Importación masiva desde archivo Excel',
               detalle: `Archivo origen: ${nombreArchivo}`,
             },
