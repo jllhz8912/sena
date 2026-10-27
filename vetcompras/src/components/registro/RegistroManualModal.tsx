@@ -24,7 +24,7 @@ import {
   FormaPago,
   EstadoPago,
 } from '../../types';
-import { formatCOP } from '../../utils/formatters';
+import { formatCOP, fechaLocal } from '../../utils/formatters';
 import { dataService } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
 
@@ -57,16 +57,16 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
   const [folio, setFolio] = useState(documentoParaEditar?.folio || '');
   const [cufe, setCufe] = useState(documentoParaEditar?.cufe || '');
   const [fechaEmision, setFechaEmision] = useState(
-    documentoParaEditar?.fechaEmision || new Date().toISOString().split('T')[0]
+    documentoParaEditar?.fechaEmision || fechaLocal()
   );
   const [fechaVencimiento, setFechaVencimiento] = useState(
-    documentoParaEditar?.fechaVencimiento || new Date().toISOString().split('T')[0]
+    documentoParaEditar?.fechaVencimiento || fechaLocal()
   );
   const [formaPago, setFormaPago] = useState<FormaPago>(documentoParaEditar?.formaPago || 'contado');
   const [medioPago, setMedioPago] = useState(documentoParaEditar?.medioPago || 'Transferencia (Electrónico)');
   const [estadoPago, setEstadoPago] = useState<EstadoPago>(documentoParaEditar?.estadoPago || 'pagada');
   const [fechaPago, setFechaPago] = useState(
-    documentoParaEditar?.fechaPago || new Date().toISOString().split('T')[0]
+    documentoParaEditar?.fechaPago || fechaLocal()
   );
 
   // Proveedor seleccionado o texto libre

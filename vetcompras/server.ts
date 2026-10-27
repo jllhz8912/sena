@@ -12,6 +12,7 @@
  *   MINUTOS_INACTIVIDAD Minutos sin uso para cerrar la sesión (60 por defecto)
  */
 
+import './server/registro';
 import './server/silenciarAvisos';
 import express from 'express';
 import path from 'node:path';

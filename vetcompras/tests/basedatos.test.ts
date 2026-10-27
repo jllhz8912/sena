@@ -85,4 +85,24 @@ describe('BaseDatosLocal', () => {
     bd.guardarConfig('empresa', { razonSocial: 'X' });
     expect(bd.obtenerRevision()).not.toBe(antes);
   });
+
+  it('migración v3: corrige total y saldo de compras registradas con el criterio anterior', () => {
+    // Manual antiguo: total = 100.000 + 19.000 − 2.500 de retención; abonó 50.000
+    bd.guardar('documentos', {
+      id: 'manual', subtotal: 100000, descuentos: 0, totalIva: 19000, impoconsumo: 0, totalRetenciones: 2500,
+      total: 116500, saldoPendiente: 66500, estadoPago: 'parcial', pagos: [{ id: 'p', monto: 50000 }],
+    });
+    // XML antiguo: total = valor de la factura, saldo sin descontar retenciones
+    bd.guardar('documentos', {
+      id: 'xml', subtotal: 100000, descuentos: 0, totalIva: 19000, impoconsumo: 0, totalRetenciones: 2500,
+      total: 119000, saldoPendiente: 119000, estadoPago: 'pendiente', pagos: [],
+    });
+    bd.db.exec('PRAGMA user_version = 2');
+    bd.cerrar();
+    bd = new BaseDatosLocal(carpeta);
+
+    expect(bd.obtener('documentos', 'manual')).toMatchObject({ total: 119000, saldoPendiente: 66500, estadoPago: 'parcial' });
+    expect(bd.obtener('documentos', 'xml')).toMatchObject({ total: 119000, saldoPendiente: 116500 });
+    expect(bd.listarRespaldos().some((r) => r.nombre.includes('antes-de-actualizar-v2'))).toBe(true);
+  });
 });

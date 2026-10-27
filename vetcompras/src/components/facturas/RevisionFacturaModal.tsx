@@ -16,7 +16,7 @@ import {
   Percent,
 } from 'lucide-react';
 import { CompraDocumento, LineaFactura, Categoria, CentroCosto, Proveedor } from '../../types';
-import { formatCOP } from '../../utils/formatters';
+import { formatCOP, fechaLocal } from '../../utils/formatters';
 import { dataService } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
 import { resolverCategoriaId, resolverCentroCostoId } from '../../services/normalizarDocumento';
@@ -47,8 +47,8 @@ export const RevisionFacturaModal: React.FC<RevisionFacturaModalProps> = ({
     prefijo: borradorInicial.prefijo || '',
     folio: borradorInicial.folio || '',
     cufe: borradorInicial.cufe || '',
-    fechaEmision: borradorInicial.fechaEmision || new Date().toISOString().split('T')[0],
-    fechaVencimiento: borradorInicial.fechaVencimiento || borradorInicial.fechaEmision || new Date().toISOString().split('T')[0],
+    fechaEmision: borradorInicial.fechaEmision || fechaLocal(),
+    fechaVencimiento: borradorInicial.fechaVencimiento || borradorInicial.fechaEmision || fechaLocal(),
     formaPago: borradorInicial.formaPago || 'contado',
     medioPago: borradorInicial.medioPago || 'transferencia',
     diasCredito: borradorInicial.diasCredito || 0,

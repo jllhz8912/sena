@@ -1,5 +1,6 @@
 import { CompraDocumento, Proveedor, Categoria, CentroCosto, RegistroPago, EmpresaInfo, Venta } from '../types';
 import { EMPRESA_DEFECTO } from '../data/defaults';
+import { fechaLocal } from '../utils/formatters';
 
 /**
  * Capa de acceso a datos de VetCompras.
@@ -347,7 +348,7 @@ export const dataService = {
   async marcarPagadosLote(ids: string[]): Promise<void> {
     const seleccion = new Set(ids);
     const docs = (await listar<CompraDocumento>('documentos')).filter((d) => seleccion.has(d.id));
-    const hoy = new Date().toISOString().split('T')[0];
+    const hoy = fechaLocal();
     const ahora = new Date().toISOString();
 
     const actualizados = docs
@@ -420,6 +421,37 @@ export const dataService = {
 
     await guardar('documentos', docActualizado);
     return docActualizado;
+  },
+
+  /** Anula un abono registrado por error y devuelve su valor al saldo de la factura. */
+  async anularAbono(documentoId: string, pagoId: string, motivo: string): Promise<CompraDocumento> {
+    const docItem = await obtener<CompraDocumento>('documentos', documentoId);
+    if (!docItem) throw new Error('Documento no encontrado');
+    const pago = (docItem.pagos || []).find((p) => p.id === pagoId);
+    if (!pago) throw new Error('El abono ya no existe.');
+    const pagos = docItem.pagos.filter((p) => p.id !== pagoId);
+    const neto = Math.max(0, Math.abs(docItem.total) - Math.abs(docItem.totalRetenciones || 0));
+    const saldo = Math.min(neto || Infinity, Math.max(0, docItem.saldoPendiente) + pago.monto);
+    const ahora = new Date().toISOString();
+    const actualizado: CompraDocumento = {
+      ...docItem,
+      pagos,
+      saldoPendiente: Math.round(saldo),
+      estadoPago: saldo <= 0 ? 'pagada' : pagos.length > 0 ? 'parcial' : 'pendiente',
+      fechaPago: saldo <= 0 ? docItem.fechaPago : undefined,
+      actualizadoEn: ahora,
+      historialCambios: [
+        ...(docItem.historialCambios || []),
+        {
+          fecha: ahora,
+          usuario: usuarioActual?.nombre || 'Usuario',
+          accion: 'Abono anulado',
+          detalle: `${pago.fecha} · $${pago.monto.toLocaleString('es-CO')} · ${pago.medio}. Motivo: ${motivo || 'sin motivo'}`,
+        },
+      ],
+    };
+    await guardar('documentos', actualizado);
+    return actualizado;
   },
 
   async registrarAbono(

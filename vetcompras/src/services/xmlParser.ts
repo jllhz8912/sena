@@ -13,6 +13,7 @@
  */
 
 import { CompraDocumento, LineaFactura, TipoDocumento } from '../types';
+import { fechaLocal } from '../utils/formatters';
 
 /**
  * Busca el primer elemento descendiente que coincida con el localName especificado,
@@ -223,7 +224,7 @@ export function procesarFacturaXml(xmlContent: string, nombreArchivo = 'factura.
   const cufe = textoHijo(root, 'UUID');
 
   // 2. Fechas
-  const fechaEmision = textoHijo(root, 'IssueDate', new Date().toISOString().split('T')[0]);
+  const fechaEmision = textoHijo(root, 'IssueDate', fechaLocal());
   const paymentMeansEl = hijosDirectos(root, 'PaymentMeans')[0];
   let fechaVencimiento =
     textoHijo(root, 'DueDate') || (paymentMeansEl ? textoHijo(paymentMeansEl, 'PaymentDueDate') : '') || fechaEmision;

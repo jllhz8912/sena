@@ -19,6 +19,7 @@ import {
   CATEGORIAS_VENTA,
   MEDIOS_PAGO_VENTA,
   SUBCATEGORIAS_POR_CATEGORIA,
+  fechaLocal,
 } from '../../utils/formatters';
 import {
   cerrarVenta,
@@ -39,7 +40,7 @@ interface ModalRegistroVentaProps {
 }
 
 const nuevoId = (p: string) => `${p}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-const hoy = () => new Date().toISOString().split('T')[0];
+const hoy = () => fechaLocal();
 
 const claseInput =
   'w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500';

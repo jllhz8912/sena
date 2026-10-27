@@ -1,4 +1,5 @@
 import { Categoria, CentroCosto, CompraDocumento, Proveedor } from '../types';
+import { fechaLocal } from '../utils/formatters';
 
 interface Catalogos {
   categorias: Categoria[];
@@ -46,7 +47,7 @@ export function completarDocumento(parcial: Partial<CompraDocumento>, c: Catalog
   const total = Number(parcial.total || 0);
   const esNotaCredito = parcial.tipoDocumento === 'nota_credito';
   const sinSaldo = parcial.formaPago !== 'credito' || esNotaCredito || total <= 0;
-  const fechaEmision = parcial.fechaEmision || ahora.split('T')[0];
+  const fechaEmision = parcial.fechaEmision || fechaLocal();
 
   return {
     tipoDocumento: 'factura_electronica',

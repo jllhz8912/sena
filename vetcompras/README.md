@@ -25,7 +25,19 @@ Respaldos que el sistema hace solo:
 Además, desde **Datos y Respaldo** se puede crear un respaldo en el PC en cualquier
 momento o exportar un archivo JSON completo para llevarlo a otro equipo o a una USB.
 
-## Instalación (Windows)
+## Versión portable (USB o disco, sin instalar nada)
+
+`npm run build:portable -- <ruta-a-node.exe>` genera `dist-portable/VetCompras-<versión>-portable-windows.zip`
+(≈32 MB) con Node.js incluido. Se descomprime en una USB o en el disco y:
+
+- **Instalar en este PC.bat**: copia el programa a `%LOCALAPPDATA%\VetCompras\programa`, crea el icono del
+  escritorio y (opcional) el arranque con Windows. Los datos quedan en `C:\Users\<usuario>\VetCompras\datos`.
+  Para actualizar se repite con el zip nuevo: los datos no se tocan y la base se migra sola.
+- **Usar desde la USB.bat**: ejecuta el sistema desde la USB con los datos en la carpeta `datos` de la misma USB.
+
+El node.exe debe ser el oficial de nodejs.org (win-x64, 22.13 o superior); verifique su SHA-256 con `SHASUMS256.txt`.
+
+## Instalación con Node.js (Windows)
 
 1. Instale **Node.js LTS** (versión 22.13 o superior) desde <https://nodejs.org>.
 2. Copie la carpeta `vetcompras` al PC (por ejemplo `C:\VetCompras`).
@@ -93,7 +105,8 @@ que ella, el programa se detiene sin modificar nada y pide instalar la versión 
 ```bash
 npm install
 npm run dev      # servidor + Vite con recarga en caliente (http://localhost:3000)
-npm test         # pruebas: lector XML UBL, base de datos, seguridad, formateadores
+npm test         # pruebas: lector XML UBL, base de datos, seguridad, ventas, cartera
+npm run build:demo   # demostración sin servidor (dist-demo/)
 npm run lint     # verificación de tipos
 npm run build    # compila la interfaz en dist/
 npm start        # modo instalado

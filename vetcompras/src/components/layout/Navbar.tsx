@@ -26,7 +26,9 @@ import { dataService } from '../../services/dataService';
 import { ModalDatosEmpresa } from '../catalogos/ModalDatosEmpresa';
 import { ModalConfirmacion } from '../common/ModalConfirmacion';
 import { ModalCambiarClave } from '../seguridad/ModalCambiarClave';
-import { EmpresaInfo } from '../../types';
+import { CompraDocumento, EmpresaInfo } from '../../types';
+import { AlertasVencimiento } from '../cartera/AlertasVencimiento';
+import { fechaLocal } from '../../utils/formatters';
 
 interface NavbarProps {
   onAbrirCargaFactura: () => void;
@@ -36,6 +38,8 @@ interface NavbarProps {
   tituloModulo: string;
   onAbrirMenuMovil?: () => void;
   onSalir: () => void;
+  documentos: CompraDocumento[];
+  onVerCartera: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -46,6 +50,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   tituloModulo,
   onAbrirMenuMovil,
   onSalir,
+  documentos,
+  onVerCartera,
 }) => {
   const usuario = dataService.usuarioActual();
   const esAdmin = dataService.esAdministrador();
@@ -136,7 +142,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `VetCompras_Respaldo_${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `VetCompras_Respaldo_${fechaLocal()}.json`;
       a.click();
       URL.revokeObjectURL(url);
       mostrarToast('success', 'Copia de seguridad descargada', 'Archivo JSON generado exitosamente.');
@@ -338,6 +344,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           )}
         </div>
+
+        {/* Alertas de vencimiento de facturas */}
+        <AlertasVencimiento documentos={documentos} onVerCartera={onVerCartera} />
 
         {/* Usuario y sesión */}
         <div className="relative">

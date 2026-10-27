@@ -8,3 +8,4 @@ datos/
 .env*
 !.env.example
 dist-demo/
+dist-portable/

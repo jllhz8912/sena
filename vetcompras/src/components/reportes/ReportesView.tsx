@@ -52,6 +52,7 @@ import {
   SUBCATEGORIAS_POR_CATEGORIA,
   SUBCATEGORIAS_TRATAMIENTOS,
   SUBCATEGORIAS_VITRINA,
+  fechaLocal,
 } from '../../utils/formatters';
 import { itemsDeVenta, montosPorMedio, categoriaNormalizada, saldoDeVenta } from '../../utils/ventas';
 import {
@@ -113,15 +114,15 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
   // Filtros de Período: Días, Meses, Años
   const [periodoTipo, setPeriodoTipo] = useState<TipoPeriodoReporte>('mes_actual');
   const [diaEspecifico, setDiaEspecifico] = useState<string>(
-    new Date().toISOString().split('T')[0]
+    fechaLocal()
   );
   const [anioSeleccionado, setAnioSeleccionado] = useState<number>(new Date().getFullYear());
   const [mesSeleccionado, setMesSeleccionado] = useState<number>(new Date().getMonth() + 1);
   const [fechaInicioPersonalizada, setFechaInicioPersonalizada] = useState<string>(
-    new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
+    fechaLocal(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
   );
   const [fechaFinPersonalizada, setFechaFinPersonalizada] = useState<string>(
-    new Date().toISOString().split('T')[0]
+    fechaLocal()
   );
 
   // Filtros por Categoría específicos
@@ -605,7 +606,7 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
       proveedores,
       categorias,
       centrosCosto,
-      `VetCompras_Base_Completa_${new Date().toISOString().split('T')[0]}.xlsx`
+      `VetCompras_Base_Completa_${fechaLocal()}.xlsx`
     );
     mostrarToast('success', 'Base de datos exportada', 'Excel completo generado con todas las compras y proveedores.');
   };

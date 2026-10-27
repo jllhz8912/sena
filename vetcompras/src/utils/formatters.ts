@@ -3,6 +3,14 @@
  */
 
 /**
+ * Fecha AAAA-MM-DD en la hora local del equipo. No usar toISOString() para
+ * "hoy": está en UTC y en Colombia (UTC-5) después de las 7 p. m. da el día siguiente.
+ */
+export function fechaLocal(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
  * Formatea un valor numérico a pesos colombianos (COP) sin decimales
  * Ejemplo: 1234567 -> "$ 1.234.567"
  */

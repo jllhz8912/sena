@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
-import { BaseDatosLocal } from '../server/basedatos';
+import { BaseDatosLocal, VERSION_ESQUEMA } from '../server/basedatos';
 import { crearApi } from '../server/api';
 import { cifrarClave, verificarClave } from '../server/seguridad';
 
@@ -183,8 +183,8 @@ describe('actualización del programa', () => {
     bd.cerrar();
 
     bd = new BaseDatosLocal(carpeta);
-    expect(bd.versionEsquema()).toBe(2);
+    expect(bd.versionEsquema()).toBe(VERSION_ESQUEMA);
     expect(bd.obtener('ventas', 'v-antigua')).toMatchObject({ monto: 123 });
-    expect(bd.listarRespaldos().some((r) => r.nombre.includes('antes-de-actualizar-v1-a-v2'))).toBe(true);
+    expect(bd.listarRespaldos().some((r) => r.nombre.includes('antes-de-actualizar-v1-a-v'))).toBe(true);
   });
 });

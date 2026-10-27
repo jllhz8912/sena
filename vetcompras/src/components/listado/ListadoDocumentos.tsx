@@ -23,7 +23,7 @@ import {
   FileSpreadsheet,
 } from 'lucide-react';
 import { CompraDocumento, Categoria, CentroCosto, Proveedor, FiltrosBusqueda } from '../../types';
-import { formatCOP, formatFecha, getTipoDocumentoLabel, getEstadoPagoLabel, diasParaVencimiento, getMedioPagoInfo } from '../../utils/formatters';
+import { formatCOP, formatFecha, getTipoDocumentoLabel, getEstadoPagoLabel, diasParaVencimiento, getMedioPagoInfo, fechaLocal } from '../../utils/formatters';
 import { dataService } from '../../services/dataService';
 import { exportarDocumentosAExcel } from '../../services/excelService';
 import { useToast } from '../../context/ToastContext';
@@ -111,10 +111,10 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
   // Filtrado de documentos
   const documentosFiltrados = useMemo(() => {
     const hoy = new Date();
-    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
-    const inicioMesAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1).toISOString().split('T')[0];
-    const finMesAnterior = new Date(hoy.getFullYear(), hoy.getMonth(), 0).toISOString().split('T')[0];
-    const inicioAnio = new Date(hoy.getFullYear(), 0, 1).toISOString().split('T')[0];
+    const inicioMes = fechaLocal(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+    const inicioMesAnterior = fechaLocal(new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1));
+    const finMesAnterior = fechaLocal(new Date(hoy.getFullYear(), hoy.getMonth(), 0));
+    const inicioAnio = fechaLocal(new Date(hoy.getFullYear(), 0, 1));
 
     return documentos.filter((d) => {
       // 1. Texto de búsqueda libre
@@ -304,8 +304,8 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
         id: 'doc-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
         folio: `${doc.folio}-COPIA`,
         cufe: undefined,
-        fechaEmision: new Date().toISOString().split('T')[0],
-        fechaVencimiento: new Date().toISOString().split('T')[0],
+        fechaEmision: fechaLocal(),
+        fechaVencimiento: fechaLocal(),
         pagos: [],
         saldoPendiente: doc.total,
         estadoPago: 'pendiente',
@@ -338,7 +338,7 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
       documentosOrdenados,
       categorias,
       centrosCosto,
-      `VetCompras_${new Date().toISOString().split('T')[0]}.xlsx`
+      `VetCompras_${fechaLocal()}.xlsx`
     );
     mostrarToast('success', 'Excel generado', 'Archivo .xlsx descargado con fórmulas de suma y formato en COP.');
   };

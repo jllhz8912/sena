@@ -16,6 +16,9 @@ import { CompraDocumento, Categoria, CentroCosto, Proveedor, Venta } from './typ
 import { dataService, EVENTO_SESION, UsuarioActual } from './services/dataService';
 import { PantallaAcceso } from './components/seguridad/PantallaAcceso';
 import { SeguridadView } from './components/seguridad/SeguridadView';
+import { CuentasPorPagarView } from './components/cartera/CuentasPorPagarView';
+import { resumenAlertas, sumaSaldos } from './utils/cartera';
+import { formatCOP } from './utils/formatters';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Loader2 } from 'lucide-react';
@@ -92,12 +95,37 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
     setModalManualAbierto(true);
   };
 
+  const { mostrarToast } = useToast();
+  const avisoMostrado = React.useRef(false);
+  useEffect(() => {
+    if (cargando || avisoMostrado.current) return;
+    avisoMostrado.current = true;
+    const r = resumenAlertas(documentos);
+    if (r.urgentes === 0) return;
+    const partes = [
+      r.vencidas.length && `${r.vencidas.length} vencida(s) por ${formatCOP(sumaSaldos(r.vencidas))}`,
+      r.hoy.length && `${r.hoy.length} vence(n) hoy por ${formatCOP(sumaSaldos(r.hoy))}`,
+      r.manana.length && `${r.manana.length} vence(n) mañana por ${formatCOP(sumaSaldos(r.manana))}`,
+    ].filter(Boolean);
+    const texto = `Facturas de proveedores: ${partes.join('; ')}.`;
+    mostrarToast('warning', 'Pagos próximos a vencer', texto, 12000);
+    try {
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        new Notification('VetCompras: pagos por vencer', { body: texto });
+      }
+    } catch {
+      // Avisos de Windows no disponibles
+    }
+  }, [cargando, documentos, mostrarToast]);
+
   const totalPendientes = documentos.filter((d) => d.saldoPendiente > 0).length;
+  const alertasPago = resumenAlertas(documentos);
 
   const titulos: Record<NavItem, string> = {
     dashboard: 'Panel Central • Año en Curso',
     ventas: 'Módulo de Ventas de la Veterinaria',
     compras: 'Registro de Compras y Gastos',
+    cuentas_pagar: 'Cuentas por Pagar a Proveedores',
     cargar_factura: 'Cargar Factura Electrónica (DIAN)',
     cargar_excel: 'Importar Facturas desde Excel',
     registro_manual: 'Registro Manual de Documento',
@@ -116,6 +144,7 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
         collapsed={sidebarCollapsed}
         setCollapsed={setSidebarCollapsed}
         totalPendientes={totalPendientes}
+        alertasPago={alertasPago.urgentes}
         mobileOpen={mobileMenuAbierto}
         setMobileOpen={setMobileMenuAbierto}
       />
@@ -134,6 +163,8 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
           onDatosActualizados={recargarDatos}
           onAbrirMenuMovil={() => setMobileMenuAbierto(true)}
           onSalir={onSalir}
+          documentos={documentos}
+          onVerCartera={() => setCurrentTab('cuentas_pagar')}
         />
 
         {/* Área de Contenido con Scroll */}
@@ -169,6 +200,7 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
                   centrosCosto={centrosCosto}
                   ventas={ventas}
                   onIrACompras={() => setCurrentTab('compras')}
+                  onIrACuentasPorPagar={() => setCurrentTab('cuentas_pagar')}
                   onIrAVentas={() => setCurrentTab('ventas')}
                   onIrACargarFactura={() => setModalCargaAbierto(true)}
                   onIrACargarExcel={() => setModalExcelAbierto(true)}
@@ -198,6 +230,10 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
                     setModalManualAbierto(true);
                   }}
                 />
+              )}
+
+              {currentTab === 'cuentas_pagar' && (
+                <CuentasPorPagarView documentos={documentos} onDatosActualizados={recargarDatos} />
               )}
 
               {currentTab === 'reportes' && (

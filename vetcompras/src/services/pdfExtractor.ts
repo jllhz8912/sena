@@ -3,6 +3,7 @@
  */
 
 import { Categoria, CentroCosto, CompraDocumento, LineaFactura, TipoDocumento } from '../types';
+import { fechaLocal } from '../utils/formatters';
 
 export interface CatalogosExtraccion {
   categorias: Categoria[];
@@ -108,8 +109,8 @@ export async function procesarPdfDesdeDataUrl(
     prefijo: raw.prefijo || '',
     folio: raw.folio || '',
     cufe: raw.cufe || '',
-    fechaEmision: raw.fechaEmision || new Date().toISOString().split('T')[0],
-    fechaVencimiento: raw.fechaVencimiento || raw.fechaEmision || new Date().toISOString().split('T')[0],
+    fechaEmision: raw.fechaEmision || fechaLocal(),
+    fechaVencimiento: raw.fechaVencimiento || raw.fechaEmision || fechaLocal(),
     formaPago,
     medioPago: raw.medioPago || 'transferencia',
     diasCredito: raw.diasCredito ? Number(raw.diasCredito) : 0,

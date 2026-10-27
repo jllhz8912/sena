@@ -131,6 +131,38 @@ const MIGRACIONES: Migracion[] = [
       `);
     },
   },
+  {
+    version: 3,
+    descripcion: 'Compras: total = valor de la factura; saldo por pagar = total − retenciones − abonos',
+    aplicar: (db) => {
+      const filas = db.prepare("SELECT id, datos FROM registros WHERE coleccion = 'documentos'").all() as { id: string; datos: string }[];
+      const actualizar = db.prepare("UPDATE registros SET datos = ? WHERE coleccion = 'documentos' AND id = ?");
+      for (const fila of filas) {
+        const d = JSON.parse(fila.datos);
+        const signo = d.tipoDocumento === 'nota_credito' ? -1 : 1;
+        const abs = (v: unknown) => Math.abs(Number(v) || 0);
+        const ret = abs(d.totalRetenciones);
+        const valorFactura = abs(d.subtotal) - abs(d.descuentos) + abs(d.totalIva) + abs(d.impoconsumo);
+        let cambio = false;
+        // Registros manuales anteriores guardaban el total ya restadas las retenciones
+        if (ret > 0 && Math.abs(abs(d.total) - (valorFactura - ret)) <= 2) {
+          d.total = Math.round(valorFactura) * signo;
+          cambio = true;
+        }
+        // Saldo pendiente coherente con el nuevo criterio (solo facturas con saldo)
+        if (signo > 0 && Number(d.saldoPendiente) > 0) {
+          const abonado = (d.pagos || []).reduce((s: number, p: any) => s + (Number(p.monto) || 0), 0);
+          const saldo = Math.max(0, Math.round(abs(d.total) - ret - abonado));
+          if (saldo !== d.saldoPendiente) {
+            d.saldoPendiente = saldo;
+            d.estadoPago = saldo === 0 ? 'pagada' : abonado > 0 ? 'parcial' : 'pendiente';
+            cambio = true;
+          }
+        }
+        if (cambio) actualizar.run(JSON.stringify(d), fila.id);
+      }
+    },
+  },
 ];
 
 export const VERSION_ESQUEMA = MIGRACIONES[MIGRACIONES.length - 1].version;

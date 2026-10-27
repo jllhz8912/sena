@@ -1,4 +1,5 @@
 import { Categoria, CentroCosto, Proveedor, CompraDocumento, EmpresaInfo, Venta } from '../types';
+import { fechaLocal } from '../utils/formatters';
 
 export const EMPRESA_DEFECTO: EmpresaInfo = {
   razonSocial: 'CLÍNICA VETERINARIA SAN ROQUE S.A.S.',
@@ -463,7 +464,7 @@ export const PROVEEDORES_DEFECTO: Proveedor[] = [
  */
 export function generarDatosDemostracion(): CompraDocumento[] {
   const hoy = new Date();
-  const formatFecha = (d: Date) => d.toISOString().split('T')[0];
+  const formatFecha = (d: Date) => fechaLocal(d);
 
   const subDays = (days: number) => {
     const d = new Date(hoy);
@@ -477,7 +478,7 @@ export function generarDatosDemostracion(): CompraDocumento[] {
     return d;
   };
 
-  return [
+  return normalizarSaldosDemo([
     {
       id: 'demo-doc-1',
       tipoDocumento: 'factura_electronica',
@@ -925,7 +926,7 @@ export function generarDatosDemostracion(): CompraDocumento[] {
       prefijo: 'FAC',
       folio: '1890',
       fechaEmision: formatFecha(subDays(2)),
-      fechaVencimiento: formatFecha(addDays(13)),
+      fechaVencimiento: formatFecha(addDays(1)),
       formaPago: 'credito',
       medioPago: 'transferencia',
       diasCredito: 15,
@@ -1302,5 +1303,15 @@ export function generarDatosDemostracion(): CompraDocumento[] {
       creadoEn: '2025-05-10T10:00:00.000Z',
       actualizadoEn: '2025-05-10T10:00:00.000Z',
     },
-  ];
+  ]);
+}
+
+/** Saldo de las facturas de ejemplo = total − retenciones − abonos (igual que el sistema). */
+function normalizarSaldosDemo(docs: CompraDocumento[]): CompraDocumento[] {
+  return docs.map((d) => {
+    if (!(d.saldoPendiente > 0)) return d;
+    const abonado = (d.pagos || []).reduce((s, p) => s + p.monto, 0);
+    const saldo = Math.max(0, Math.abs(d.total) - Math.abs(d.totalRetenciones || 0) - abonado);
+    return { ...d, saldoPendiente: saldo, estadoPago: saldo === 0 ? 'pagada' : abonado > 0 ? 'parcial' : 'pendiente' };
+  });
 }

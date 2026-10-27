@@ -16,6 +16,7 @@ import {
   CircleDollarSign,
   Settings,
   ShieldCheck,
+  HandCoins,
 } from 'lucide-react';
 import { dataService } from '../../services/dataService';
 import { EmpresaInfo } from '../../types';
@@ -24,6 +25,7 @@ export type NavItem =
   | 'dashboard'
   | 'ventas'
   | 'compras'
+  | 'cuentas_pagar'
   | 'cargar_factura'
   | 'cargar_excel'
   | 'registro_manual'
@@ -38,6 +40,8 @@ interface SidebarProps {
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
   totalPendientes: number;
+  /** Facturas vencidas, que vencen hoy o mañana */
+  alertasPago?: number;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
 }
@@ -48,6 +52,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   collapsed,
   setCollapsed,
   totalPendientes,
+  alertasPago = 0,
   mobileOpen,
   setMobileOpen,
 }) => {
@@ -80,6 +85,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: ReceiptText,
       badge: totalPendientes > 0 ? `${totalPendientes} por pagar` : null,
       badgeColor: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
+    },
+    {
+      id: 'cuentas_pagar' as NavItem,
+      label: 'Cuentas por Pagar',
+      icon: HandCoins,
+      badge: alertasPago > 0 ? `${alertasPago} por vencer` : null,
+      badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
     },
     {
       id: 'cargar_factura' as NavItem,

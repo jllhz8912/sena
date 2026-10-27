@@ -34,6 +34,7 @@ import {
 } from 'recharts';
 import { CompraDocumento, Categoria, CentroCosto, Venta } from '../../types';
 import { formatCOP, formatFecha, diasParaVencimiento } from '../../utils/formatters';
+import { resumenAlertas, sumaSaldos } from '../../utils/cartera';
 import { saldoDeVenta } from '../../utils/ventas';
 
 interface DashboardViewProps {
@@ -42,6 +43,7 @@ interface DashboardViewProps {
   centrosCosto: CentroCosto[];
   ventas?: Venta[];
   onIrACompras: () => void;
+  onIrACuentasPorPagar?: () => void;
   onIrAVentas?: () => void;
   onIrACargarFactura: () => void;
   onIrACargarExcel?: () => void;
@@ -67,6 +69,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   centrosCosto,
   ventas = [],
   onIrACompras,
+  onIrACuentasPorPagar,
   onIrAVentas,
   onIrACargarFactura,
   onIrACargarExcel,
@@ -77,6 +80,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [anioSeleccionado, setAnioSeleccionado] = useState<number>(anioActualSistema);
 
   const catMap = useMemo(() => new Map(categorias.map((c) => [c.id, c])), [categorias]);
+  const alertasPago = useMemo(() => resumenAlertas(documentos), [documentos]);
   const ccMap = useMemo(() => new Map(centrosCosto.map((cc) => [cc.id, cc])), [centrosCosto]);
 
   // Ventas del año seleccionado
@@ -344,8 +348,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Alerta de Cuentas por Pagar Vencidas si existen */}
-      {metricas.facturasVencidasCount > 0 && (
+      {/* Alerta de facturas vencidas o que vencen hoy/mañana */}
+      {alertasPago.urgentes > 0 && (
         <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400">
@@ -353,15 +357,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <div>
               <h4 className="text-sm font-bold text-rose-900 dark:text-rose-200">
-                ¡Tienes {metricas.facturasVencidasCount} factura(s) de proveedores vencidas!
+                {[
+                  alertasPago.vencidas.length && `${alertasPago.vencidas.length} factura(s) vencida(s)`,
+                  alertasPago.hoy.length && `${alertasPago.hoy.length} vence(n) hoy`,
+                  alertasPago.manana.length && `${alertasPago.manana.length} vence(n) mañana`,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               </h4>
               <p className="text-xs text-rose-700 dark:text-rose-300">
-                Revisa los plazos de crédito para evitar intereses o suspensión de despachos médicos.
+                Saldo comprometido: {formatCOP(sumaSaldos([...alertasPago.vencidas, ...alertasPago.hoy, ...alertasPago.manana]))}. Programe
+                los pagos para evitar intereses o suspensión de despachos.
               </p>
             </div>
           </div>
           <button
-            onClick={onIrACompras}
+            onClick={onIrACuentasPorPagar || onIrACompras}
             className="text-xs font-bold px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white shadow-sm"
           >
             Ver Cartera
