@@ -3,6 +3,16 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.3.0
+- **Borrar todo**: botón en *Datos y Respaldo* y en *Copias de Seguridad* para empezar
+  de cero. Borra compras, ventas, proveedores y catálogos; conserva los datos y el logo
+  de la veterinaria, la forma de ingreso, la bitácora y las copias de seguridad.
+- **Antes de cualquier borrado pregunta "¿Desea hacer una copia de seguridad?"**
+  (hacer copia, hacer copia y descargarla, o continuar sin copia). Aplica a Borrar todo,
+  Limpiar compras, Borrar todas las ventas y Cargar datos de demostración. Para Borrar todo
+  además hay que escribir BORRAR. Aunque se elija no hacer copia, el sistema deja una
+  copia automática interna.
+
 ## 2.2.0
 - **Pantalla de inicio sin usuario ni contraseña**: muestra el logo y el nombre de la
   veterinaria y un botón grande "Ingresar" (también con la tecla Enter).

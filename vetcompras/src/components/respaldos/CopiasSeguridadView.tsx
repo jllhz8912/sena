@@ -13,10 +13,12 @@ import {
   ShieldCheck,
   Upload,
   BellRing,
+  Trash2,
 } from 'lucide-react';
 import { dataService, EstadoCopias } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
 import { ModalConfirmacion } from '../common/ModalConfirmacion';
+import { ModalBorradoSeguro } from './ModalBorradoSeguro';
 
 type Respaldos = Awaited<ReturnType<typeof dataService.listarRespaldos>>;
 
@@ -66,6 +68,7 @@ export const CopiasSeguridadView: React.FC<{ onSesionTerminada: () => void; onDa
   const [aRestaurar, setARestaurar] = useState<string | null>(null);
   const [jsonPorImportar, setJsonPorImportar] = useState<File | null>(null);
   const [confirmarApagado, setConfirmarApagado] = useState(false);
+  const [borrarTodoAbierto, setBorrarTodoAbierto] = useState(false);
   const [recienCargado, setRecienCargado] = useState<string | null>(null);
   const archivoRef = useRef<HTMLInputElement>(null);
 
@@ -361,8 +364,40 @@ export const CopiasSeguridadView: React.FC<{ onSesionTerminada: () => void; onDa
               Apagar
             </button>
           </div>
+
+          <div className={claseTarjeta + ' border-rose-200 dark:border-rose-900'}>
+            <h3 className="font-bold text-sm flex items-center gap-2 text-rose-700 dark:text-rose-400">
+              <Trash2 className="w-4 h-4" /> Borrar todo y empezar de cero
+            </h3>
+            <p className="text-xs text-slate-600 dark:text-slate-300">
+              Borra compras, ventas, proveedores y catálogos. Antes le pregunta si desea hacer una copia de seguridad. Se conservan los
+              datos y el logo de la veterinaria, la bitácora y las copias.
+            </p>
+            <button
+              onClick={() => setBorrarTodoAbierto(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold"
+            >
+              <Trash2 className="w-4 h-4" /> Borrar todo
+            </button>
+          </div>
         </>
       )}
+
+      <ModalBorradoSeguro
+        abierto={borrarTodoAbierto}
+        titulo="Borrar toda la información"
+        borra={['Compras, gastos y anexos', 'Ventas y recibos', 'Proveedores', 'Catálogos (vuelven a los de fábrica)', 'Observaciones de prueba']}
+        conserva={['Datos y logo de la veterinaria', 'Forma de ingreso', 'Bitácora', 'Copias de seguridad']}
+        textoBoton="Borrar todo"
+        palabraConfirmacion="BORRAR"
+        onEjecutar={async () => {
+          await dataService.borrarTodo();
+          mostrarToast('info', 'Información borrada', 'El sistema quedó en cero. Las copias de seguridad siguen disponibles.');
+          cargar();
+          onDatosActualizados();
+        }}
+        onCerrar={() => setBorrarTodoAbierto(false)}
+      />
 
       <ModalConfirmacion
         abierto={!!aRestaurar}

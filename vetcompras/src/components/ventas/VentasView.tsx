@@ -45,6 +45,7 @@ import { itemsDeVenta, montosPorMedio, saldoDeVenta, categoriaNormalizada } from
 import { ModalRegistroVenta } from './ModalRegistroVenta';
 import { ModalDocumentoVenta } from './ModalDocumentoVenta';
 import { ModalConfirmacion } from '../common/ModalConfirmacion';
+import { ModalBorradoSeguro } from '../respaldos/ModalBorradoSeguro';
 
 interface VentasViewProps {
   ventas: Venta[];
@@ -211,15 +212,10 @@ export const VentasView: React.FC<VentasViewProps> = ({
 
   // Limpiar todas las ventas
   const confirmarLimpiarTodo = async () => {
-    try {
-      await dataService.limpiarVentas();
-      mostrarToast('info', 'Registro de ventas limpio', 'Se han borrado todas las ventas registradas.');
-      setSeleccionadas([]);
-      setLimpiarTodoAbierto(false);
-      onDatosActualizados();
-    } catch (err: any) {
-      mostrarToast('error', 'Error al limpiar ventas', err?.message);
-    }
+    await dataService.limpiarVentas();
+    mostrarToast('info', 'Registro de ventas limpio', 'Se han borrado todas las ventas registradas.');
+    setSeleccionadas([]);
+    onDatosActualizados();
   };
 
   // Selección individual o total
@@ -889,15 +885,14 @@ export const VentasView: React.FC<VentasViewProps> = ({
       />
 
       {/* Modal Confirmación Limpiar Todo */}
-      <ModalConfirmacion
+      <ModalBorradoSeguro
         abierto={limpiarTodoAbierto}
-        titulo="¿Borrar todas las ventas registradas?"
-        mensaje="Esta acción borrará todas las ventas registradas en la veterinaria. Las facturas de compra y gastos NO se verán afectadas."
-        textoConfirmar="Sí, borrar todas las ventas"
-        textoCancelar="Cancelar"
-        tipo="peligro"
-        enConfirmar={confirmarLimpiarTodo}
-        enCancelar={() => setLimpiarTodoAbierto(false)}
+        titulo="Borrar todas las ventas registradas"
+        borra={['Todas las ventas y recibos']}
+        conserva={['Compras y gastos', 'Proveedores y catálogos', 'Datos de la veterinaria']}
+        textoBoton="Sí, borrar todas las ventas"
+        onEjecutar={confirmarLimpiarTodo}
+        onCerrar={() => setLimpiarTodoAbierto(false)}
       />
 
       {/* Modal Generar Documento de Venta / Recibo Oficial */}

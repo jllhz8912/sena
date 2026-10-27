@@ -19,8 +19,10 @@ Respaldos que el sistema hace solo:
 
 - **Diario**: al abrir el programa por primera vez en el día (se guardan los últimos 30).
 - **Antes de actualizar** la estructura de la base de datos (nunca se borran solos).
-- **Antes de cualquier operación masiva**: limpiar compras o ventas, cargar datos de
-  demostración, restablecer catálogos o importar un respaldo.
+- **Antes de cualquier operación masiva**: borrar todo, limpiar compras o ventas, cargar
+  datos de demostración, restablecer catálogos o importar un respaldo. Además, antes de
+  borrar el sistema pregunta **"¿Desea hacer una copia de seguridad?"** para que usted
+  guarde (y si quiere descargue) su propia copia.
 
 Además, desde **Datos y Respaldo** se puede crear un respaldo en el PC en cualquier
 momento o exportar un archivo JSON completo para llevarlo a otro equipo o a una USB.

@@ -230,7 +230,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
       marca: { nombre: e.nombreComercial || e.razonSocial || 'Mi Veterinaria', slogan: e.slogan || '', logoUrl: e.logoUrl || '', colorPrimario: e.colorPrimario || '' },
       requiereConfiguracion: modoAcceso === 'usuarios' && estado.usuarios.length === 0,
       minutosInactividad: MINUTOS_INACTIVIDAD,
-      version: '2.2.0-demo',
+      version: '2.3.0-demo',
     };
   }
   if (metodo === 'POST' && ruta === '/sesion/ingresar-libre') {
@@ -461,6 +461,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
   if (ruta.startsWith('/mantenimiento/') && metodo === 'POST') {
     admin();
     const accion = ruta.split('/')[2];
+    if (accion === 'borrar-todo' && cuerpo?.confirmacion !== 'BORRAR') throw new ErrorHttp(400, 'Para borrar todo escriba la palabra BORRAR.');
     crearRespaldo(`antes-de-${accion}`);
     if (accion === 'limpiar-documentos') {
       estado.colecciones.documentos = [];
@@ -471,6 +472,10 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
     } else if (accion === 'cargar-demo') {
       estado.colecciones.documentos = generarDatosDemostracion();
       auditar(yo.usuario, 'Datos de demostración cargados (reemplazan las compras)');
+    } else if (accion === 'borrar-todo') {
+      const d = datosIniciales();
+      Object.assign(estado.colecciones, { documentos: [], ventas: [], proveedores: [], observaciones: [], categorias: d.colecciones.categorias, centrosCosto: d.colecciones.centrosCosto });
+      auditar(yo.usuario, 'Se borró toda la información (compras, ventas, proveedores y catálogos)');
     } else if (accion === 'restablecer') {
       const d = datosIniciales();
       Object.assign(estado.colecciones, { documentos: [], proveedores: d.colecciones.proveedores, categorias: d.colecciones.categorias, centrosCosto: d.colecciones.centrosCosto });

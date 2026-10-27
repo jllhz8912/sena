@@ -24,7 +24,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import { dataService, EstadoCopias } from '../../services/dataService';
 import { ModalDatosEmpresa } from '../catalogos/ModalDatosEmpresa';
-import { ModalConfirmacion } from '../common/ModalConfirmacion';
+import { ModalBorradoSeguro } from '../respaldos/ModalBorradoSeguro';
 import { ModalCambiarClave } from '../seguridad/ModalCambiarClave';
 import { CompraDocumento, EmpresaInfo } from '../../types';
 import { AlertasVencimiento } from '../cartera/AlertasVencimiento';
@@ -67,10 +67,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const [menuNuevoAbierto, setMenuNuevoAbierto] = useState(false);
   const [menuDatosAbierto, setMenuDatosAbierto] = useState(false);
-  const [cargandoDemo, setCargandoDemo] = useState(false);
   const [modalEmpresaAbierto, setModalEmpresaAbierto] = useState(false);
-  const [confirmarLimpiarAbierto, setConfirmarLimpiarAbierto] = useState(false);
-  const [limpiando, setLimpiando] = useState(false);
+  const [borrado, setBorrado] = useState<null | 'compras' | 'todo' | 'demo'>(null);
   const [empresa, setEmpresa] = useState<EmpresaInfo>(() => dataService.obtenerDatosEmpresa());
   const [carpetaDatos, setCarpetaDatos] = useState('');
 
@@ -107,38 +105,46 @@ export const Navbar: React.FC<NavbarProps> = ({
     return () => unsub();
   }, []);
 
-  const handleCargarDemo = async () => {
-    try {
-      setCargandoDemo(true);
-      await dataService.cargarDatosDemostracion();
-      mostrarToast('success', 'Datos cargados', 'Se cargaron las compras y facturas de demostración de veterinaria.');
-      onDatosActualizados();
-    } catch (err: any) {
-      mostrarToast('error', 'Error al cargar demo', err?.message);
-    } finally {
-      setCargandoDemo(false);
-      setMenuDatosAbierto(false);
-    }
-  };
-
-  const handleLimpiarDatos = () => {
+  const abrirBorrado = (tipo: 'compras' | 'todo' | 'demo') => {
     setMenuDatosAbierto(false);
-    setConfirmarLimpiarAbierto(true);
+    setBorrado(tipo);
   };
 
-  const ejecutarLimpieza = async () => {
-    try {
-      setLimpiando(true);
-      await dataService.limpiarTodosLosDatos();
-      mostrarToast('info', 'Datos limpiados', 'Se han borrado las compras y facturas de la base de datos.');
-      onDatosActualizados();
-    } catch (err: any) {
-      mostrarToast('error', 'Error al limpiar', err?.message);
-    } finally {
-      setLimpiando(false);
-      setConfirmarLimpiarAbierto(false);
-    }
+  // Las tres operaciones reemplazan o borran información: pasan por la pregunta de la copia
+  const BORRADOS: Record<'compras' | 'todo' | 'demo', { titulo: string; borra: string[]; conserva: string[]; textoBoton: string; palabra?: string; ejecutar: () => Promise<void> }> = {
+    compras: {
+      titulo: 'Borrar las compras registradas',
+      borra: ['Facturas de compra y gastos', 'Abonos y PDF/XML anexos'],
+      conserva: ['Ventas', 'Proveedores y catálogos', 'Datos de la veterinaria'],
+      textoBoton: 'Sí, borrar compras',
+      ejecutar: async () => {
+        await dataService.limpiarTodosLosDatos();
+        mostrarToast('info', 'Compras borradas', 'Se borraron las compras y facturas.');
+      },
+    },
+    todo: {
+      titulo: 'Borrar toda la información',
+      borra: ['Compras, gastos y anexos', 'Ventas y recibos', 'Proveedores', 'Catálogos (vuelven a los de fábrica)', 'Observaciones de prueba'],
+      conserva: ['Datos y logo de la veterinaria', 'Forma de ingreso', 'Bitácora', 'Copias de seguridad'],
+      textoBoton: 'Borrar todo',
+      palabra: 'BORRAR',
+      ejecutar: async () => {
+        await dataService.borrarTodo();
+        mostrarToast('info', 'Información borrada', 'El sistema quedó en cero. Las copias de seguridad siguen disponibles.');
+      },
+    },
+    demo: {
+      titulo: 'Cargar datos de demostración',
+      borra: ['Las compras actuales (se reemplazan por facturas de ejemplo)'],
+      conserva: ['Ventas', 'Proveedores y catálogos', 'Datos de la veterinaria'],
+      textoBoton: 'Reemplazar por demostración',
+      ejecutar: async () => {
+        await dataService.cargarDatosDemostracion();
+        mostrarToast('success', 'Datos cargados', 'Se cargaron las compras y facturas de demostración de veterinaria.');
+      },
+    },
   };
+  const borradoActual = borrado ? BORRADOS[borrado] : null;
 
   const handleExportarRespaldo = async () => {
     try {
@@ -271,11 +277,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               <button
-                onClick={handleCargarDemo}
-                disabled={cargandoDemo}
+                onClick={() => abrirBorrado('demo')}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300 text-left transition-colors"
               >
-                <RefreshCw className={`w-4 h-4 text-emerald-600 shrink-0 ${cargandoDemo ? 'animate-spin' : ''}`} />
+                <RefreshCw className="w-4 h-4 text-emerald-600 shrink-0" />
                 <div>
                   <p className="font-medium text-xs">Cargar datos de demostración</p>
                   <p className="text-[11px] text-slate-400">Facturas Zoetis, Royal Canin, etc.</p>
@@ -283,13 +288,24 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               <button
-                onClick={handleLimpiarDatos}
+                onClick={() => abrirBorrado('compras')}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-left transition-colors"
               >
                 <Trash2 className="w-4 h-4 shrink-0" />
                 <div>
                   <p className="font-medium text-xs">Limpiar compras registradas</p>
                   <p className="text-[11px] text-slate-400">Borra facturas pero conserva catálogos</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => abrirBorrado('todo')}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-left transition-colors"
+              >
+                <Trash2 className="w-4 h-4 shrink-0" />
+                <div>
+                  <p className="font-bold text-xs">Borrar todo</p>
+                  <p className="text-[11px] text-slate-400">Empezar de cero (pregunta antes por la copia)</p>
                 </div>
               </button>
 
@@ -500,17 +516,21 @@ export const Navbar: React.FC<NavbarProps> = ({
       />
 
       {/* Modal de Confirmación para Limpiar Datos */}
-      <ModalConfirmacion
-        abierto={confirmarLimpiarAbierto}
-        titulo="¿Limpiar todas las compras y facturas?"
-        mensaje="Esta acción borrará todas las facturas y compras registradas de este computador (antes se crea un respaldo automático). Tus catálogos de proveedores y categorías se conservarán intactos."
-        textoConfirmar="Sí, limpiar todo"
-        textoCancelar="Cancelar"
-        tipo="peligro"
-        cargando={limpiando}
-        enConfirmar={ejecutarLimpieza}
-        enCancelar={() => setConfirmarLimpiarAbierto(false)}
-      />
+      {borradoActual && (
+        <ModalBorradoSeguro
+          abierto
+          titulo={borradoActual.titulo}
+          borra={borradoActual.borra}
+          conserva={borradoActual.conserva}
+          textoBoton={borradoActual.textoBoton}
+          palabraConfirmacion={borradoActual.palabra}
+          onEjecutar={async () => {
+            await borradoActual.ejecutar();
+            onDatosActualizados();
+          }}
+          onCerrar={() => setBorrado(null)}
+        />
+      )}
     </header>
   );
 };

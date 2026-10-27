@@ -600,6 +600,11 @@ export const dataService = {
     await api('/mantenimiento/limpiar-documentos', { method: 'POST' });
   },
 
+  /** Borra compras, ventas, proveedores y catálogos (deja antes una copia automática). */
+  async borrarTodo(): Promise<void> {
+    await api('/mantenimiento/borrar-todo', { method: 'POST', body: JSON.stringify({ confirmacion: 'BORRAR' }) });
+  },
+
   async resetearTodoPorDefecto(): Promise<void> {
     await api('/mantenimiento/restablecer', { method: 'POST' });
   },

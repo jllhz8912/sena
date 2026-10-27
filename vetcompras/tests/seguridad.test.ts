@@ -310,3 +310,33 @@ describe('ingreso sin contraseña (pantalla de inicio)', () => {
     expect((await aux('/configuracion/acceso', { method: 'PUT', body: { modo: 'libre' } })).status).toBe(403);
   });
 });
+
+describe('borrar todo', () => {
+  it('exige la palabra BORRAR, deja copia y conserva la veterinaria y los respaldos', async () => {
+    const admin = await configurarAdmin();
+    await admin('/documentos/d1', { method: 'PUT', body: { id: 'd1', total: 1000 } });
+    await admin('/ventas/v1', { method: 'PUT', body: { id: 'v1', monto: 500 } });
+    await admin('/proveedores/p1', { method: 'PUT', body: { id: 'p1', razonSocial: 'X' } });
+
+    expect((await admin('/mantenimiento/borrar-todo', { method: 'POST', body: {} })).status).toBe(400);
+    expect(bd.listar('documentos')).toHaveLength(1);
+
+    const r = await admin('/mantenimiento/borrar-todo', { method: 'POST', body: { confirmacion: 'BORRAR' } });
+    expect(r.status).toBe(200);
+    expect(bd.listar('documentos')).toHaveLength(0);
+    expect(bd.listar('ventas')).toHaveLength(0);
+    expect(bd.listar('proveedores')).toHaveLength(0);
+    expect(bd.listar('categorias').length).toBeGreaterThan(0);
+    expect(bd.obtenerConfig<any>('empresa').razonSocial).toBe('Vet Prueba');
+    expect(bd.listarRespaldos().some((x) => x.nombre.includes('antes-de-borrar-todo'))).toBe(true);
+  });
+
+  it('un auxiliar no puede borrar todo', async () => {
+    const admin = await configurarAdmin();
+    await admin('/usuarios', { method: 'POST', body: { usuario: 'aux', nombre: 'Aux', rol: 'auxiliar', clave: 'Temporal2026' } });
+    const aux = cliente();
+    await aux('/sesion/ingresar', { method: 'POST', body: { usuario: 'aux', clave: 'Temporal2026' } });
+    await aux('/sesion/cambiar-clave', { method: 'POST', body: { claveActual: 'Temporal2026', claveNueva: 'Propia2026x' } });
+    expect((await aux('/mantenimiento/borrar-todo', { method: 'POST', body: { confirmacion: 'BORRAR' } })).status).toBe(403);
+  });
+});

@@ -445,6 +445,26 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
     })
   );
 
+  // Borrar todo para empezar de cero. Se conservan los datos de la veterinaria (nombre,
+  // logo), la forma de ingreso, la bitácora y las copias de seguridad, para poder volver atrás.
+  api.post(
+    '/mantenimiento/borrar-todo',
+    soloAdministrador,
+    seguro((req, res) => {
+      if (req.body?.confirmacion !== 'BORRAR') {
+        return res.status(400).json({ error: 'Para borrar todo escriba la palabra BORRAR.' });
+      }
+      const respaldo = bd.crearRespaldo('antes-de-borrar-todo');
+      for (const c of ['documentos', 'ventas', 'proveedores', 'categorias', 'centrosCosto', 'observaciones'] as const) {
+        bd.vaciar(c);
+      }
+      bd.lote('categorias', CATEGORIAS_DEFECTO);
+      bd.lote('centrosCosto', CENTROS_COSTO_DEFECTO);
+      auditar(req, 'Se borró toda la información (compras, ventas, proveedores y catálogos)', { detalle: respaldo });
+      res.json({ ok: true, respaldo });
+    })
+  );
+
   api.post(
     '/mantenimiento/cargar-demo',
     soloAdministrador,
