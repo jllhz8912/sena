@@ -3,6 +3,10 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.4.1
+- Reportes F300/F350 en pantalla, corrección de la diferencia falsa con retenciones
+  y archivo de prueba que abre con doble clic en Windows.
+
 ## 2.4.0
 - **Marca Los Criollos Vet**: el logo viene incluido con el programa y aparece en la
   pantalla de inicio, el menú, la barra superior y los recibos (no hay que cargarlo).
