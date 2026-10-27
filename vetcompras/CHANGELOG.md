@@ -14,6 +14,11 @@ hace una copia de seguridad y adapta la base de datos al abrir.
   recibo se dibuja como imagen y se ve siempre. Nuevo botón "Abrir PDF / imprimir".
 - Al actualizar, si la veterinaria seguía como "Mi Veterinaria" toma el nombre Los
   Criollos Vet; un nombre o un color ya elegidos no se cambian.
+- **Reportes para la DIAN**: botones "IVA · Form. 300" (bases e IVA descontable por
+  tarifa con detalle de facturas) y "Retenciones · Form. 350" (ReteFuente, ReteIVA y
+  ReteICA practicadas por proveedor) para el período elegido.
+- Corrección: al revisar una factura electrónica con retenciones aparecía una
+  "Diferencia" falsa; el total de la factura ya no se compara restando retenciones.
 - Archivo de prueba (.html): corregido el error "VetCompras no está abierto en este PC"
   al abrirlo con doble clic en Windows.
 

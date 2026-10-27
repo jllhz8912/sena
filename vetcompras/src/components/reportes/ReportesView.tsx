@@ -63,6 +63,8 @@ import {
   exportarReporteUtilidadYCategoriasExcel,
 } from '../../services/excelService';
 import { dataService } from '../../services/dataService';
+import { exportarReporteIvaExcel, exportarReporteRetencionesExcel } from '../../services/excelService';
+import { resumenIvaPeriodo, retencionesPorTercero } from '../../utils/dian';
 import { useToast } from '../../context/ToastContext';
 import { ModalDatosEmpresa } from '../catalogos/ModalDatosEmpresa';
 
@@ -600,6 +602,23 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
     mostrarToast('success', 'Reporte Excel generado', 'Archivo descargado con Utilidad, Ventas por Categoría y Compras.');
   };
 
+  const nombrePeriodo = periodoTexto.replace(/[\s\(\)\:\/]+/g, '_');
+
+  const handleExportarIva300 = () => {
+    exportarReporteIvaExcel(resumenIvaPeriodo(docsEnPeriodo, periodoTexto), docsEnPeriodo, `VetCompras_IVA_Form300_${nombrePeriodo}.xlsx`);
+    mostrarToast('success', 'IVA · Formulario 300', 'Excel con el IVA descontable por tarifa y el detalle de facturas del período.');
+  };
+
+  const handleExportarRetenciones350 = () => {
+    const terceros = retencionesPorTercero(docsEnPeriodo);
+    if (!terceros.length) {
+      mostrarToast('info', 'Sin retenciones', 'En este período no hay compras con retención en la fuente, ReteIVA ni ReteICA.');
+      return;
+    }
+    exportarReporteRetencionesExcel(terceros, periodoTexto, `VetCompras_Retenciones_Form350_${nombrePeriodo}.xlsx`);
+    mostrarToast('success', 'Retenciones · Formulario 350', 'Excel con las retenciones practicadas por proveedor en el período.');
+  };
+
   const handleExportarTodaLaBase = () => {
     exportarTodaLaBaseAExcel(
       documentos,
@@ -651,6 +670,22 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
             >
               <Download className="w-4 h-4" />
               <span>Exportar Informe a Excel</span>
+            </button>
+            <button
+              onClick={handleExportarIva300}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md transition-all"
+              title="IVA descontable por tarifa del período (Formulario 300 DIAN)"
+            >
+              <Download className="w-4 h-4" />
+              <span>IVA · Form. 300</span>
+            </button>
+            <button
+              onClick={handleExportarRetenciones350}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md transition-all"
+              title="Retenciones practicadas a proveedores en el período (Formulario 350 DIAN)"
+            >
+              <Download className="w-4 h-4" />
+              <span>Retenciones · Form. 350</span>
             </button>
             <button
               onClick={handleExportarTodaLaBase}

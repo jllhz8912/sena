@@ -132,21 +132,19 @@ export const RevisionFacturaModal: React.FC<RevisionFacturaModalProps> = ({
     const desc = Number(doc.descuentos) || 0;
     const iva = Number(doc.totalIva) || 0;
     const inc = Number(doc.impoconsumo) || 0;
-    const ret = Number(doc.totalRetenciones) || 0;
     const tot = Number(doc.total) || 0;
 
-    const esperadoSinRet = sub - desc + iva + inc;
-    const esperadoConRet = esperadoSinRet - ret;
-
-    const diferencia = Math.abs(esperadoConRet - tot);
+    // El total es el valor de la factura: las retenciones no lo afectan, se restan del saldo por pagar
+    const esperado = sub - desc + iva + inc;
+    const diferencia = Math.abs(esperado - tot);
     const cuadrado = diferencia <= 2; // Tolerancia de $2 pesos por redondeos en líneas
 
     return {
-      esperadoConRet,
-      diferencia: Math.round(esperadoConRet - tot),
+      esperado,
+      diferencia: Math.round(esperado - tot),
       cuadrado,
     };
-  }, [doc.subtotal, doc.descuentos, doc.totalIva, doc.impoconsumo, doc.totalRetenciones, doc.total]);
+  }, [doc.subtotal, doc.descuentos, doc.totalIva, doc.impoconsumo, doc.total]);
 
   // Recalcular retenciones totales
   const actualizarRetenciones = (campo: 'reteFuente' | 'reteIva' | 'reteIca', valor: number) => {
