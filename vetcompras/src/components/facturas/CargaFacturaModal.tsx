@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
 import { CompraDocumento, Categoria, CentroCosto, Proveedor } from '../../types';
 import { procesarFacturaXml } from '../../services/xmlParser';
-import { procesarFacturaPdf, procesarPdfDesdeDataUrl } from '../../services/pdfExtractor';
+import { procesarFacturaPdf } from '../../services/pdfExtractor';
+import { leerFacturaLocal } from '../../services/pdfLocal';
 import { completarDocumento } from '../../services/normalizarDocumento';
 import { procesarArchivoZip } from '../../services/zipExtractor';
 import { procesarExcelFacturas, descargarPlantillaExcel } from '../../services/excelService';
@@ -110,6 +111,27 @@ export const CargaFacturaModal: React.FC<CargaFacturaModalProps> = ({
 
     const catalogos = { categorias, centrosCosto };
 
+    /**
+     * PDF o foto: primero se lee en este PC (QR de la DIAN, texto y, si es escaneado,
+     * reconocimiento de imagen). Solo si no alcanza se intenta Gemini (si está configurado).
+     * Con datos parciales igual se abre la revisión, con el documento al lado para completarlos.
+     */
+    const leerDocumento = async (blob: Blob, nombre: string): Promise<Partial<CompraDocumento>> => {
+      const local = await leerFacturaLocal(blob, nombre, proveedores);
+      if (local.suficiente) return local.datos;
+      try {
+        const archivoIa = blob instanceof File ? blob : new File([blob], nombre, { type: blob.type || 'application/pdf' });
+        return (await procesarFacturaPdf(archivoIa, catalogos)).datos;
+      } catch {
+        const d = local.datos;
+        if (d.total || d.proveedor?.nit || d.folio || d.subtotal) return d;
+        throw new Error(
+          'No se encontraron datos legibles en el documento (puede ser una imagen borrosa o protegida). ' +
+            'Regístrelo en "Registro Manual" o pida al proveedor el archivo XML/ZIP de la factura electrónica.'
+        );
+      }
+    };
+
     // Procesar cada archivo (un ZIP puede traer varias facturas)
     for (let i = 0; i < archivos.length; i++) {
       const archivo = archivos[i];
@@ -130,19 +152,17 @@ export const CargaFacturaModal: React.FC<CargaFacturaModalProps> = ({
         } else if (lowerName.endsWith('.xml')) {
           resultados = [procesarFacturaXml(await archivo.text(), archivo.name)];
         } else if (/\.(pdf|png|jpe?g|webp)$/.test(lowerName)) {
-          resultados = [(await procesarFacturaPdf(archivo, catalogos)).datos];
+          resultados = [await leerDocumento(archivo, archivo.name)];
         } else if (lowerName.endsWith('.zip')) {
           const zipResultados = await procesarArchivoZip(archivo);
           if (zipResultados.length === 0) {
             throw new Error('El archivo ZIP no contiene un XML o PDF de factura válido.');
           }
           for (const r of zipResultados) {
-            // ZIP sin XML: el PDF se analiza con Gemini
+            // ZIP sin XML: se lee el PDF que traiga
             if (!r.folio && r.archivoAdjunto?.dataUrl) {
               const adj = r.archivoAdjunto;
-              resultados.push(
-                (await procesarPdfDesdeDataUrl(adj.dataUrl!, adj.nombre, adj.tamano, 'application/pdf', catalogos)).datos
-              );
+              resultados.push(await leerDocumento(await (await fetch(adj.dataUrl!)).blob(), adj.nombre));
             } else {
               resultados.push(r);
             }
@@ -298,7 +318,7 @@ export const CargaFacturaModal: React.FC<CargaFacturaModalProps> = ({
                     Arrastra aquí tus facturas o haz clic para explorar
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    Formatos soportados: <strong>.XML</strong> (UBL 2.1 DIAN), <strong>.PDF</strong> (con IA), <strong>.ZIP</strong> o <strong>.XLSX</strong>
+                    Formatos soportados: <strong>.XML</strong> (UBL 2.1 DIAN), <strong>.PDF</strong> o foto (se lee en este PC), <strong>.ZIP</strong> o <strong>.XLSX</strong>
                   </p>
                 </div>
 
@@ -395,9 +415,16 @@ export const CargaFacturaModal: React.FC<CargaFacturaModalProps> = ({
                               {item.nombreArchivo}
                             </p>
                             {datos ? (
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                                Factura <strong>{datos.folio || 'S/N'}</strong> • {datos.proveedor?.razonSocial || 'Proveedor'} • {formatCOP(datos.total)}
-                              </p>
+                              <>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                                  Factura <strong>{datos.folio || 'S/N'}</strong> • {datos.proveedor?.razonSocial || 'Proveedor'} • {formatCOP(datos.total)}
+                                </p>
+                                {datos.metadatosExtraccion?.confianzaBaja && (
+                                  <p className="text-[11px] text-amber-700 dark:text-amber-400">Revise los datos antes de guardar: algunos no se pudieron leer con certeza.</p>
+                                )}
+                              </>
+                            ) : item.estado === 'error' && item.mensajeError ? (
+                              <p className="text-[11px] text-rose-700 dark:text-rose-400 whitespace-normal">{item.mensajeError}</p>
                             ) : (
                               <p className="text-[11px] text-slate-400">
                                 {(item.tamano / 1024).toFixed(1)} KB

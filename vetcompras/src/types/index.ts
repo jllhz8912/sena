@@ -50,6 +50,10 @@ export interface LineaFactura {
   valorIva: number;
   totalLinea: number;
   categoriaSugerida?: string;
+  /** Línea que resume toda la factura (lectura de PDF sin detalle): no mueve inventario */
+  resumen?: boolean;
+  /** Producto del inventario asociado a la línea */
+  productoId?: string;
 }
 
 export interface ArchivoAdjunto {
@@ -78,7 +82,7 @@ export interface RegistroPago {
 }
 
 export interface MetadatosExtraccion {
-  motor: 'xml_parser' | 'gemini_flash';
+  motor: 'xml_parser' | 'gemini_flash' | 'pdf_local';
   confianzaBaja?: boolean;
   camposDudosos?: string[];
   tiempoExtraccionMs?: number;

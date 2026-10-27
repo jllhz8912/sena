@@ -99,7 +99,12 @@ export const RevisionFacturaModal: React.FC<RevisionFacturaModalProps> = ({
         fecha: new Date().toISOString(),
         usuario: 'Sistema',
         accion: 'Extracción de documento',
-        detalle: borradorInicial.metadatosExtraccion?.motor === 'gemini_flash' ? 'Extracción con Gemini AI' : 'Extracción XML UBL 2.1',
+        detalle:
+          borradorInicial.metadatosExtraccion?.motor === 'gemini_flash'
+            ? 'Extracción con Gemini AI'
+            : borradorInicial.metadatosExtraccion?.motor === 'pdf_local'
+              ? 'Lectura del PDF en este PC (QR DIAN y texto)'
+              : 'Extracción XML UBL 2.1',
       },
     ],
     creadoEn: borradorInicial.creadoEn || new Date().toISOString(),

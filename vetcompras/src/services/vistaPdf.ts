@@ -8,7 +8,7 @@
  */
 let cargador: Promise<typeof import('pdfjs-dist')> | null = null;
 
-function pdfjs() {
+export function pdfjs() {
   cargador ??= (async () => {
     const trabajador = await import('pdfjs-dist/build/pdf.worker.mjs');
     (globalThis as any).pdfjsWorker = trabajador;

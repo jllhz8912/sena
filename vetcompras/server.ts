@@ -54,7 +54,9 @@ async function iniciar() {
         'Content-Security-Policy',
         [
           "default-src 'self'",
-          "script-src 'self'",
+          // wasm-unsafe-eval: el lector de texto de facturas escaneadas (OCR) usa WebAssembly
+          "script-src 'self' 'wasm-unsafe-eval'",
+          "worker-src 'self'",
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
           "font-src 'self' https://fonts.gstatic.com",
           "img-src 'self' data: blob:",
