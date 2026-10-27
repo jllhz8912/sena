@@ -53,6 +53,7 @@ import {
   SUBCATEGORIAS_TRATAMIENTOS,
   SUBCATEGORIAS_VITRINA,
 } from '../../utils/formatters';
+import { itemsDeVenta, montosPorMedio, categoriaNormalizada, saldoDeVenta } from '../../utils/ventas';
 import {
   exportarDocumentosAExcel,
   exportarVentasAExcel,
@@ -208,12 +209,14 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
     return ventas.filter((v) => {
       const enRango = v.fecha >= fechaInicio && v.fecha <= fechaFin;
       if (!enRango) return false;
-      if (filtroCategoriaVenta !== 'todas' && v.categoria !== filtroCategoriaVenta) return false;
-      if (filtroSubcategoriaVenta !== 'todas' && v.subcategoria !== filtroSubcategoriaVenta) return false;
+      const items = itemsDeVenta(v);
+      if (filtroCategoriaVenta !== 'todas' && !items.some((i) => categoriaNormalizada(i.categoria) === filtroCategoriaVenta)) return false;
+      if (filtroSubcategoriaVenta !== 'todas' && !items.some((i) => i.subcategoria === filtroSubcategoriaVenta)) return false;
       if (busquedaTexto.trim()) {
         const q = busquedaTexto.toLowerCase();
         const coincide =
           v.concepto.toLowerCase().includes(q) ||
+          itemsDeVenta(v).some((i) => i.concepto.toLowerCase().includes(q)) ||
           (v.clienteNombre && v.clienteNombre.toLowerCase().includes(q)) ||
           (v.mascotaNombre && v.mascotaNombre.toLowerCase().includes(q)) ||
           v.consecutivo.toLowerCase().includes(q);
@@ -271,7 +274,7 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
     // Cartera del negocio:
     // - Cartera por Cobrar (Ventas pendientes a crédito)
     const carteraPorCobrar = Math.round(
-      ventas.filter((v) => v.estado === 'pendiente').reduce((acc, v) => acc + v.monto, 0)
+      ventas.reduce((acc, v) => acc + saldoDeVenta(v), 0)
     );
     // - Cartera por Pagar (Compras pendientes con saldo a proveedores)
     const carteraPorPagar = Math.round(
@@ -314,25 +317,23 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
       });
     });
 
+    // Cada ítem suma a su categoría; "cantidad" = ventas en que aparece la categoría
     todasVentasPeriodo.forEach((v) => {
-      let key = v.categoria;
-      // Normalizar posibles aliases
-      if (key === 'clinica') key = 'consultas_clinica';
-      if (key === 'pet_shop') key = 'vitrina';
-      if (key === 'purinas') key = 'purinas_empaque';
-      if (key === 'medicamentos') key = 'tratamientos_clinica';
-
-      const entry = mapa.get(key) || {
-        categoriaKey: key,
-        nombre: getCategoriaVentaInfo(key).label,
-        cantidad: 0,
-        total: 0,
-        porcentaje: 0,
-      };
-
-      entry.cantidad += 1;
-      entry.total += v.monto;
-      mapa.set(key, entry);
+      const contadas = new Set<string>();
+      for (const item of itemsDeVenta(v)) {
+        const key = categoriaNormalizada(item.categoria);
+        const entry = mapa.get(key) || {
+          categoriaKey: key as CategoriaVenta,
+          nombre: getCategoriaVentaInfo(key).label,
+          cantidad: 0,
+          total: 0,
+          porcentaje: 0,
+        };
+        if (!contadas.has(key)) entry.cantidad += 1;
+        contadas.add(key);
+        entry.total += item.subtotal;
+        mapa.set(key, entry);
+      }
     });
 
     const granTotal = resumenFinanciero.totalVentas;
@@ -372,16 +373,15 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
       });
     });
 
-    const ventasTrat = todasVentasPeriodo.filter(
-      (v) => v.categoria === 'tratamientos_clinica' || v.categoria === 'medicamentos'
-    );
-    const granTotalTrat = ventasTrat.reduce((acc, v) => acc + v.monto, 0);
+    const itemsTrat = todasVentasPeriodo
+      .flatMap(itemsDeVenta)
+      .filter((i) => categoriaNormalizada(i.categoria) === 'tratamientos_clinica');
+    const granTotalTrat = itemsTrat.reduce((acc, i) => acc + i.subtotal, 0);
 
-    ventasTrat.forEach((v) => {
-      const subKey = v.subcategoria || 'varios';
-      const item = mapa.get(subKey) || mapa.get('varios')!;
+    itemsTrat.forEach((i) => {
+      const item = mapa.get(i.subcategoria || 'varios') || mapa.get('varios')!;
       item.cantidad += 1;
-      item.total += v.monto;
+      item.total += i.subtotal;
     });
 
     return Array.from(mapa.values())
@@ -420,16 +420,13 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
       });
     });
 
-    const ventasVit = todasVentasPeriodo.filter(
-      (v) => v.categoria === 'vitrina' || v.categoria === 'pet_shop'
-    );
-    const granTotalVit = ventasVit.reduce((acc, v) => acc + v.monto, 0);
+    const itemsVit = todasVentasPeriodo.flatMap(itemsDeVenta).filter((i) => categoriaNormalizada(i.categoria) === 'vitrina');
+    const granTotalVit = itemsVit.reduce((acc, i) => acc + i.subtotal, 0);
 
-    ventasVit.forEach((v) => {
-      const subKey = v.subcategoria || 'medicamentos';
-      const item = mapa.get(subKey) || mapa.get('medicamentos')!;
+    itemsVit.forEach((i) => {
+      const item = mapa.get(i.subcategoria || 'varios') || mapa.get('varios')!;
       item.cantidad += 1;
-      item.total += v.monto;
+      item.total += i.subtotal;
     });
 
     return Array.from(mapa.values())
@@ -484,12 +481,15 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
   // 6. Consolidado de Medios de Pago en Ventas
   const mediosPagoVentas = useMemo(() => {
     const mapa = new Map<string, { label: string; cantidad: number; total: number; porcentaje: number }>();
+    // Cada forma de pago suma por separado; el saldo no pagado cuenta como crédito
     todasVentasPeriodo.forEach((v) => {
-      const info = getMedioPagoVentaInfo(v.medioPago);
-      const item = mapa.get(info.label) || { label: info.label, cantidad: 0, total: 0, porcentaje: 0 };
-      item.cantidad += 1;
-      item.total += v.monto;
-      mapa.set(info.label, item);
+      for (const [medio, monto] of Object.entries(montosPorMedio(v))) {
+        const info = getMedioPagoVentaInfo(medio);
+        const item = mapa.get(info.label) || { label: info.label, cantidad: 0, total: 0, porcentaje: 0 };
+        item.cantidad += 1;
+        item.total += monto as number;
+        mapa.set(info.label, item);
+      }
     });
     const total = resumenFinanciero.totalVentas;
     return Array.from(mapa.values()).map((m) => ({
@@ -520,7 +520,7 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
   // 8. Cuentas por Cobrar (Ventas pendientes a crédito)
   const cuentasPorCobrar = useMemo(() => {
     return ventas
-      .filter((v) => v.estado === 'pendiente')
+      .filter((v) => saldoDeVenta(v) > 0)
       .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
   }, [ventas]);
 
@@ -1648,7 +1648,10 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
                         <td className="py-3 px-4 text-slate-500">{v.clienteTelefono || '-'}</td>
                         <td className="py-3 px-4 text-slate-700 dark:text-slate-300">{v.concepto}</td>
                         <td className="py-3 px-4 text-right font-black text-blue-600 dark:text-blue-400">
-                          {formatCOP(v.monto)}
+                          {formatCOP(saldoDeVenta(v))}
+                          {saldoDeVenta(v) < v.monto && (
+                            <div className="text-[10px] font-normal text-slate-400">de {formatCOP(v.monto)}</div>
+                          )}
                         </td>
                       </tr>
                     ))

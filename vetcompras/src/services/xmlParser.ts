@@ -504,7 +504,8 @@ export function procesarFacturaXml(xmlContent: string, nombreArchivo = 'factura.
     porcentajeReteIca,
     totalRetenciones: r(totalRetenciones),
     total,
-    saldoPendiente: sinSaldo ? 0 : total,
+    // Lo que se le debe al proveedor: valor de la factura menos retenciones (se pagan a la DIAN)
+    saldoPendiente: sinSaldo ? 0 : total - r(totalRetenciones),
     estadoPago: sinSaldo ? 'pagada' : 'pendiente',
     fechaPago: sinSaldo ? fechaEmision : undefined,
     categoriaId: categoriaDocumento,

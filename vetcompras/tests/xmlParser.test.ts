@@ -38,7 +38,7 @@ describe('procesarFacturaXml - factura UBL 2.1', () => {
     expect(r.formaPago).toBe('credito');
     expect(r.diasCredito).toBe(30);
     expect(r.total).toBe(320500);
-    expect(r.saldoPendiente).toBe(320500);
+    expect(r.saldoPendiente).toBe(320500 - 8932); // neto de retenciones
     expect(r.estadoPago).toBe('pendiente');
     expect(r.metadatosExtraccion?.advertencias).toEqual([]);
   });

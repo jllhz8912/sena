@@ -48,6 +48,7 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
   onProveedorCreado,
 }) => {
   const { mostrarToast } = useToast();
+  const abs = (v: number | undefined) => Math.abs(Number(v) || 0);
 
   const [tipoDocumento, setTipoDocumento] = useState<TipoDocumento>(
     documentoParaEditar?.tipoDocumento || 'factura_electronica'
@@ -92,21 +93,29 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
     documentoParaEditar?.centroCostoId || 'cc-clinica'
   );
 
-  // Modo de ingreso: simplificado (Subtotal + IVA = Total)
-  const [modoDetallado, setModoDetallado] = useState(false);
+  // Modo de ingreso: simplificado (Subtotal + IVA = Total) o por líneas.
+  // Al editar un documento con detalle (p. ej. cargado desde XML) se abre por líneas
+  // para no perder las líneas ni la discriminación de tarifas de IVA.
+  const tieneDetalle =
+    !!documentoParaEditar?.lineas?.length && !(documentoParaEditar.lineas.length === 1 && documentoParaEditar.lineas[0].id === 'lin-global');
+  const [modoDetallado, setModoDetallado] = useState(tieneDetalle);
 
   // Valores de factura simplificada (No Responsable de IVA)
-  const [subtotalRapido, setSubtotalRapido] = useState(documentoParaEditar?.subtotal || 0);
-  const [ivaRapido, setIvaRapido] = useState(documentoParaEditar?.totalIva || 0);
+  const [subtotalRapido, setSubtotalRapido] = useState(abs(documentoParaEditar?.subtotal));
+  const [ivaRapido, setIvaRapido] = useState(abs(documentoParaEditar?.totalIva));
 
   // Retenciones
-  const [reteFuente, setReteFuente] = useState(documentoParaEditar?.reteFuente || 0);
-  const [reteIva, setReteIva] = useState(documentoParaEditar?.reteIva || 0);
-  const [reteIca, setReteIca] = useState(documentoParaEditar?.reteIca || 0);
+  const [reteFuente, setReteFuente] = useState(abs(documentoParaEditar?.reteFuente));
+  const [reteIva, setReteIva] = useState(abs(documentoParaEditar?.reteIva));
+  const [reteIca, setReteIca] = useState(abs(documentoParaEditar?.reteIca));
+
+  // Valores del documento original sin campo propio en este formulario (se conservan)
+  const descuentosDocumento = abs(documentoParaEditar?.descuentos);
+  const impoconsumo = abs(documentoParaEditar?.impoconsumo);
 
   // Líneas detalladas
   const [lineas, setLineas] = useState<LineaFactura[]>(
-    documentoParaEditar?.lineas || [
+    documentoParaEditar?.lineas?.map((l) => ({ ...l, valorIva: abs(l.valorIva), totalLinea: abs(l.totalLinea) })) || [
       {
         id: 'lin-1',
         descripcion: 'Compra o servicio veterinario',
@@ -155,7 +164,10 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
 
   const totalRetenciones = (Number(reteFuente) || 0) + (Number(reteIva) || 0) + (Number(reteIca) || 0);
 
-  const totalGeneral = Math.max(0, totalSubtotal + totalIva - totalRetenciones);
+  // Total = valor de la factura (costo/gasto). Las retenciones no lo reducen:
+  // disminuyen lo que se le paga al proveedor (se le pagan a la DIAN).
+  const totalGeneral = Math.max(0, totalSubtotal - descuentosDocumento + totalIva + impoconsumo);
+  const netoAPagar = Math.max(0, totalGeneral - totalRetenciones);
 
   // Actualizar cálculo de línea
   const handleCambioLinea = (id: string, campo: keyof LineaFactura, valor: any) => {
@@ -236,7 +248,30 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
       setGuardando(true);
 
       const catObj = categorias.find((c) => c.id === categoriaId);
-      const saldoPend = estadoPago === 'pagada' ? 0 : totalGeneral;
+      const signo = tipoDocumento === 'nota_credito' ? -1 : 1;
+      const conSigno = (v: number) => Math.round(v) * signo;
+
+      // Pagos: al editar se conservan los abonos ya registrados
+      const pagosPrevios = documentoParaEditar?.pagos || [];
+      const pagadoPrevio = pagosPrevios.reduce((acc, p) => acc + (Number(p.monto) || 0), 0);
+      const pagosFinales =
+        signo < 0
+          ? pagosPrevios
+          : estadoPago === 'pagada' && pagadoPrevio < netoAPagar
+            ? [
+                ...pagosPrevios,
+                {
+                  id: 'pago-' + Date.now(),
+                  fecha: fechaPago,
+                  monto: Math.round(netoAPagar - pagadoPrevio),
+                  medio: medioPago,
+                  nota: documentoParaEditar ? 'Pago registrado al editar el documento' : 'Pago inicial registrado al crear documento',
+                },
+              ]
+            : pagosPrevios;
+      const pagadoFinal = pagosFinales.reduce((acc, p) => acc + (Number(p.monto) || 0), 0);
+      const saldoPend = signo < 0 ? 0 : Math.max(0, Math.round(netoAPagar - pagadoFinal));
+      const estadoFinal: EstadoPago = saldoPend === 0 ? 'pagada' : pagadoFinal > 0 ? 'parcial' : 'pendiente';
 
       // Calcular bases de IVA
       let base0 = 0;
@@ -248,10 +283,10 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
       if (modoDetallado) {
         lineas.forEach((l) => {
           const base = (Number(l.cantidad) || 0) * (Number(l.valorUnitario) || 0) - (Number(l.descuento) || 0);
-          if (l.porcentajeIva === 19) {
+          if (Math.abs(l.porcentajeIva - 19) < 0.5) {
             base19 += base;
             iva19Val += l.valorIva;
-          } else if (l.porcentajeIva === 5) {
+          } else if (Math.abs(l.porcentajeIva - 5) < 0.5) {
             base5 += base;
             iva5Val += l.valorIva;
           } else {
@@ -259,7 +294,12 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
           }
         });
       } else {
-        if (totalIva > 0) {
+        // Modo simplificado: la tarifa se deduce de la relación IVA / subtotal
+        const tarifa = totalSubtotal > 0 ? (totalIva / totalSubtotal) * 100 : 0;
+        if (totalIva > 0 && Math.abs(tarifa - 5) < 1) {
+          base5 = totalSubtotal;
+          iva5Val = totalIva;
+        } else if (totalIva > 0) {
           base19 = totalSubtotal;
           iva19Val = totalIva;
         } else {
@@ -268,6 +308,9 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
       }
 
       const doc: CompraDocumento = {
+        // Se parte del documento original para no perder datos sin campo en este formulario
+        // (adquirente, DV y dirección del proveedor, datos de extracción, nota crédito, etc.)
+        ...(documentoParaEditar || {}),
         id: documentoParaEditar?.id || 'doc-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
         tipoDocumento,
         origen: tipoDocumento === 'factura_electronica' ? 'electronica' : 'manual',
@@ -280,6 +323,7 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
         medioPago,
         proveedorId: proveedorSeleccionadoId || undefined,
         proveedor: {
+          ...(documentoParaEditar?.proveedor || {}),
           nit: nitProveedor.trim(),
           razonSocial: razonSocialProveedor.trim(),
           telefono: telefonoProveedor.trim(),
@@ -290,25 +334,25 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
         centroCostoId,
         esGasto: catObj ? catObj.esGasto : false,
         moneda: 'COP',
-        subtotal: Math.round(totalSubtotal),
-        descuentos: 0,
-        baseIva0: Math.round(base0),
-        baseIva5: Math.round(base5),
-        baseIva19: Math.round(base19),
-        iva5: Math.round(iva5Val),
-        iva19: Math.round(iva19Val),
-        totalIva: Math.round(totalIva),
-        impoconsumo: 0,
-        reteFuente: Math.round(reteFuente),
-        reteIva: Math.round(reteIva),
-        reteIca: Math.round(reteIca),
-        totalRetenciones: Math.round(totalRetenciones),
-        total: Math.round(totalGeneral),
-        saldoPendiente: Math.round(saldoPend),
-        estadoPago,
-        fechaPago: estadoPago === 'pagada' ? fechaPago : undefined,
+        subtotal: conSigno(totalSubtotal),
+        descuentos: conSigno(descuentosDocumento),
+        baseIva0: conSigno(base0),
+        baseIva5: conSigno(base5),
+        baseIva19: conSigno(base19),
+        iva5: conSigno(iva5Val),
+        iva19: conSigno(iva19Val),
+        totalIva: conSigno(totalIva),
+        impoconsumo: conSigno(impoconsumo),
+        reteFuente: conSigno(reteFuente),
+        reteIva: conSigno(reteIva),
+        reteIca: conSigno(reteIca),
+        totalRetenciones: conSigno(totalRetenciones),
+        total: conSigno(totalGeneral),
+        saldoPendiente: saldoPend,
+        estadoPago: estadoFinal,
+        fechaPago: estadoFinal === 'pagada' ? fechaPago : undefined,
         lineas: modoDetallado
-          ? lineas
+          ? lineas.map((l) => ({ ...l, valorIva: conSigno(l.valorIva), totalLinea: conSigno(l.totalLinea) }))
           : [
               {
                 id: 'lin-global',
@@ -324,18 +368,7 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
             ],
         archivoAdjunto,
         observaciones,
-        pagos:
-          estadoPago === 'pagada'
-            ? [
-                {
-                  id: 'pago-' + Date.now(),
-                  fecha: fechaPago,
-                  monto: Math.round(totalGeneral),
-                  medio: medioPago,
-                  nota: 'Pago inicial registrado al crear documento',
-                },
-              ]
-            : [],
+        pagos: pagosFinales,
         historialCambios: documentoParaEditar
           ? [
               ...(documentoParaEditar.historialCambios || []),
@@ -940,11 +973,18 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
           <div className="p-4 rounded-2xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <p className="text-xs uppercase font-bold tracking-wider text-teal-900 dark:text-teal-300">
-                Total a Registrar
+                Total de la factura
               </p>
               <p className="text-xs text-teal-700 dark:text-teal-400">
-                Subtotal: {formatCOP(totalSubtotal)} • IVA: {formatCOP(totalIva)} • Retenciones: - {formatCOP(totalRetenciones)}
+                Subtotal: {formatCOP(totalSubtotal)}
+                {descuentosDocumento > 0 && <> • Descuentos: - {formatCOP(descuentosDocumento)}</>} • IVA: {formatCOP(totalIva)}
+                {impoconsumo > 0 && <> • INC: {formatCOP(impoconsumo)}</>}
               </p>
+              {totalRetenciones > 0 && (
+                <p className="text-xs text-teal-700 dark:text-teal-400">
+                  Retenciones practicadas: - {formatCOP(totalRetenciones)} → <strong>Neto a pagar al proveedor: {formatCOP(netoAPagar)}</strong>
+                </p>
+              )}
             </div>
             <div className="text-2xl font-black text-teal-950 dark:text-teal-100">
               {formatCOP(totalGeneral)}

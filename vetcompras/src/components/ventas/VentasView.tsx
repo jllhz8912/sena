@@ -27,7 +27,7 @@ import {
   Package,
   Receipt,
 } from 'lucide-react';
-import { Venta, CategoriaVenta, MedioPagoVenta, EstadoVenta } from '../../types';
+import { Venta, CategoriaVenta, MedioPagoVenta } from '../../types';
 import {
   formatCOP,
   formatFecha,
@@ -41,6 +41,7 @@ import {
 import { exportarVentasAExcel } from '../../services/excelService';
 import { dataService } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
+import { itemsDeVenta, montosPorMedio, saldoDeVenta, categoriaNormalizada } from '../../utils/ventas';
 import { ModalRegistroVenta } from './ModalRegistroVenta';
 import { ModalDocumentoVenta } from './ModalDocumentoVenta';
 import { ModalConfirmacion } from '../common/ModalConfirmacion';
@@ -83,22 +84,21 @@ export const VentasView: React.FC<VentasViewProps> = ({
       // Búsqueda de texto
       if (busqueda.trim()) {
         const query = busqueda.toLowerCase().trim();
-        const textoCompleto = `${v.consecutivo} ${v.concepto} ${v.clienteNombre || ''} ${v.mascotaNombre || ''} ${v.clienteTelefono || ''} ${v.observaciones || ''}`.toLowerCase();
+        const textoCompleto = `${v.consecutivo} ${v.concepto} ${itemsDeVenta(v).map((i) => i.concepto).join(' ')} ${v.clienteDocumento || ''} ${v.clienteNombre || ''} ${v.mascotaNombre || ''} ${v.clienteTelefono || ''} ${v.observaciones || ''}`.toLowerCase();
         if (!textoCompleto.includes(query)) return false;
       }
 
-      // Categoría
-      if (filtroCategoria !== 'todas' && v.categoria !== filtroCategoria) {
+      // Categoría y subcategoría: basta con que algún ítem de la venta coincida
+      const items = itemsDeVenta(v);
+      if (filtroCategoria !== 'todas' && !items.some((i) => categoriaNormalizada(i.categoria) === filtroCategoria)) {
+        return false;
+      }
+      if (filtroSubcategoria !== 'todas' && !items.some((i) => i.subcategoria === filtroSubcategoria)) {
         return false;
       }
 
-      // Subcategoría (para tratamientos o vitrina)
-      if (filtroSubcategoria !== 'todas') {
-        if (v.subcategoria !== filtroSubcategoria) return false;
-      }
-
-      // Medio de pago
-      if (filtroMedioPago !== 'todos' && v.medioPago !== filtroMedioPago) {
+      // Medio de pago: alguno de los pagos (o el saldo a crédito)
+      if (filtroMedioPago !== 'todos' && !(filtroMedioPago in montosPorMedio(v))) {
         return false;
       }
 
@@ -120,8 +120,9 @@ export const VentasView: React.FC<VentasViewProps> = ({
   // Cálculos estadísticos (KPIs)
   const estadisticas = useMemo(() => {
     const total = ventasFiltradas.reduce((acc, v) => acc + v.monto, 0);
-    const pagadas = ventasFiltradas.filter((v) => v.estado === 'pagada').reduce((acc, v) => acc + v.monto, 0);
-    const pendientes = ventasFiltradas.filter((v) => v.estado === 'pendiente').reduce((acc, v) => acc + v.monto, 0);
+    // Recaudado vs. por cobrar (una venta puede tener parte pagada y parte a crédito)
+    const pendientes = ventasFiltradas.reduce((acc, v) => acc + saldoDeVenta(v), 0);
+    const pagadas = total - pendientes;
 
     // Por las 7 categorías de venta
     const porCategoria: Record<string, { total: number; cantidad: number }> = {
@@ -138,47 +139,46 @@ export const VentasView: React.FC<VentasViewProps> = ({
     const porMedio: Record<MedioPagoVenta, { total: number; cantidad: number }> = {
       efectivo: { total: 0, cantidad: 0 },
       nequi: { total: 0, cantidad: 0 },
+      daviplata: { total: 0, cantidad: 0 },
       bancos: { total: 0, cantidad: 0 },
+      tarjeta: { total: 0, cantidad: 0 },
       credito: { total: 0, cantidad: 0 },
     };
 
     ventasFiltradas.forEach((v) => {
-      let catKey = v.categoria as string;
-      if (catKey === 'pet_shop') catKey = 'vitrina';
-      else if (catKey === 'clinica') catKey = 'consultas_clinica';
-      else if (catKey === 'purinas') catKey = 'purinas_empaque';
-      else if (catKey === 'medicamentos') catKey = 'tratamientos_clinica';
-
-      if (porCategoria[catKey]) {
-        porCategoria[catKey].total += v.monto;
-        porCategoria[catKey].cantidad += 1;
+      // Cada ítem suma a su propia categoría
+      const categoriasDeVenta = new Set<string>();
+      for (const item of itemsDeVenta(v)) {
+        const catKey = categoriaNormalizada(item.categoria);
+        if (porCategoria[catKey]) {
+          porCategoria[catKey].total += item.subtotal;
+          categoriasDeVenta.add(catKey);
+        }
       }
-      if (porMedio[v.medioPago]) {
-        porMedio[v.medioPago].total += v.monto;
-        porMedio[v.medioPago].cantidad += 1;
+      categoriasDeVenta.forEach((c) => (porCategoria[c].cantidad += 1));
+
+      // Cada pago suma a su medio; el saldo, a crédito
+      for (const [medio, monto] of Object.entries(montosPorMedio(v)) as [MedioPagoVenta, number][]) {
+        if (porMedio[medio]) {
+          porMedio[medio].total += monto;
+          porMedio[medio].cantidad += 1;
+        }
       }
     });
 
     return { total, pagadas, pendientes, porCategoria, porMedio };
   }, [ventasFiltradas]);
 
-  // Manejar cambio rápido de estado (Pagada <-> Pendiente)
+  // Cobrar el saldo: abre la venta para registrar con qué medio pagó el cliente
   const handleToggleEstado = async (venta: Venta) => {
-    const nuevoEstado: EstadoVenta = venta.estado === 'pagada' ? 'pendiente' : 'pagada';
-    try {
-      await dataService.actualizarVenta({
-        ...venta,
-        estado: nuevoEstado,
-      });
-      mostrarToast(
-        'success',
-        'Estado actualizado',
-        `La venta ${venta.consecutivo} ahora está ${nuevoEstado === 'pagada' ? 'Pagada' : 'Pendiente'}`
-      );
-      onDatosActualizados();
-    } catch (err: any) {
-      mostrarToast('error', 'Error al actualizar', err?.message);
+    const saldo = saldoDeVenta(venta);
+    if (saldo <= 0) {
+      mostrarToast('info', 'Venta pagada', `${venta.consecutivo} no tiene saldo pendiente.`);
+      return;
     }
+    mostrarToast('info', 'Registrar el pago', `Agregue en "Forma de pago" el abono de ${formatCOP(saldo)}.`);
+    setVentaParaEditar(venta);
+    setModalRegistroAbierto(true);
   };
 
   // Confirmar eliminación individual
@@ -363,8 +363,12 @@ export const VentasView: React.FC<VentasViewProps> = ({
               <span className="font-bold text-slate-800 dark:text-slate-100">{formatCOP(estadisticas.porMedio.nequi.total)}</span>
             </div>
             <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-              <span className="flex items-center gap-1.5"><CreditCard className="w-3.5 h-3.5 text-sky-500" /> Bancos</span>
-              <span className="font-bold text-slate-800 dark:text-slate-100">{formatCOP(estadisticas.porMedio.bancos.total)}</span>
+              <span className="flex items-center gap-1.5"><Smartphone className="w-3.5 h-3.5 text-red-500" /> Daviplata</span>
+              <span className="font-bold text-slate-800 dark:text-slate-100">{formatCOP(estadisticas.porMedio.daviplata.total)}</span>
+            </div>
+            <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+              <span className="flex items-center gap-1.5"><CreditCard className="w-3.5 h-3.5 text-sky-500" /> Bancos y tarjeta</span>
+              <span className="font-bold text-slate-800 dark:text-slate-100">{formatCOP(estadisticas.porMedio.bancos.total + estadisticas.porMedio.tarjeta.total)}</span>
             </div>
           </div>
         </div>
@@ -481,8 +485,10 @@ export const VentasView: React.FC<VentasViewProps> = ({
             <option value="todos">Todos los medios</option>
             <option value="efectivo">Efectivo</option>
             <option value="nequi">Nequi</option>
-            <option value="bancos">Bancos / Tarjeta</option>
-            <option value="credito">A Crédito</option>
+            <option value="daviplata">Daviplata</option>
+            <option value="bancos">Transferencia bancaria</option>
+            <option value="tarjeta">Tarjeta</option>
+            <option value="credito">Con saldo a crédito</option>
           </select>
 
           {/* Filtro Estado */}
@@ -493,6 +499,7 @@ export const VentasView: React.FC<VentasViewProps> = ({
           >
             <option value="todas">Todos los estados</option>
             <option value="pagada">Pagadas</option>
+            <option value="parcial">Con abono parcial</option>
             <option value="pendiente">Pendientes</option>
           </select>
 
@@ -618,6 +625,14 @@ export const VentasView: React.FC<VentasViewProps> = ({
                               <span className={`w-1.5 h-1.5 rounded-full ${catInfo.dotColor}`} />
                               {catInfo.label}
                             </span>
+                            {(() => {
+                              const otras = new Set(itemsDeVenta(v).map((i) => categoriaNormalizada(i.categoria))).size - 1;
+                              return otras > 0 ? (
+                                <span className="text-[10px] font-semibold text-slate-500" title={itemsDeVenta(v).map((i) => i.concepto).join(', ')}>
+                                  +{otras} categoría{otras > 1 ? 's' : ''}
+                                </span>
+                              ) : null;
+                            })()}
                             {subInfo && (
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${subInfo.badgeColor}`}>
                                 {subInfo.nombreCorto}
@@ -630,6 +645,11 @@ export const VentasView: React.FC<VentasViewProps> = ({
                           <div className="font-semibold text-slate-800 dark:text-slate-200">
                             {v.concepto}
                           </div>
+                          {itemsDeVenta(v).length > 1 && (
+                            <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
+                              {itemsDeVenta(v).length} ítems
+                            </div>
+                          )}
                           {v.observaciones && (
                             <div className="text-[11px] text-slate-400 line-clamp-1">
                               {v.observaciones}
@@ -672,14 +692,14 @@ export const VentasView: React.FC<VentasViewProps> = ({
                           <button
                             type="button"
                             onClick={() => handleToggleEstado(v)}
-                            title="Haz clic para alternar entre Pagada y Pendiente"
+                            title={saldoDeVenta(v) > 0 ? 'Registrar el pago del saldo' : 'Venta pagada'}
                             className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-transform hover:scale-105 active:scale-95 ${
-                              v.estado === 'pagada'
+                              saldoDeVenta(v) === 0
                                 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
                                 : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300 dark:border-rose-800'
                             }`}
                           >
-                            {v.estado === 'pagada' ? (
+                            {saldoDeVenta(v) === 0 ? (
                               <>
                                 <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                                 <span>Pagada</span>
@@ -687,7 +707,7 @@ export const VentasView: React.FC<VentasViewProps> = ({
                             ) : (
                               <>
                                 <Clock className="w-3 h-3 text-rose-600" />
-                                <span>Pendiente</span>
+                                <span>Debe {formatCOP(saldoDeVenta(v))}</span>
                               </>
                             )}
                           </button>
@@ -787,12 +807,12 @@ export const VentasView: React.FC<VentasViewProps> = ({
                         type="button"
                         onClick={() => handleToggleEstado(v)}
                         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
-                          v.estado === 'pagada'
+                          saldoDeVenta(v) === 0
                             ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300'
                             : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300'
                         }`}
                       >
-                        {v.estado === 'pagada' ? '✓ Pagada' : '⏳ Pendiente'}
+                        {saldoDeVenta(v) === 0 ? '✓ Pagada' : `⏳ Debe ${formatCOP(saldoDeVenta(v))}`}
                       </button>
 
                       <div className="flex items-center gap-2">

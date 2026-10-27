@@ -83,7 +83,7 @@ export function completarDocumento(parcial: Partial<CompraDocumento>, c: Catalog
     centroCostoId: resolverCentroCostoId(parcial.centroCostoId, nit, c),
     esGasto: categoria ? categoria.esGasto : !!parcial.esGasto,
     total,
-    saldoPendiente: sinSaldo ? 0 : total,
+    saldoPendiente: sinSaldo ? 0 : Math.max(0, total - Math.abs(Number(parcial.totalRetenciones) || 0)),
     estadoPago: sinSaldo ? 'pagada' : 'pendiente',
     fechaPago: sinSaldo ? fechaEmision : undefined,
     pagos: parcial.pagos || [],

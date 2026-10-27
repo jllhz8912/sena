@@ -5,6 +5,7 @@
  */
 
 import * as XLSX from 'xlsx';
+import { itemsDeVenta, pagosDeVenta, saldoDeVenta } from '../utils/ventas';
 import { CompraDocumento, Proveedor, Categoria, CentroCosto, Venta } from '../types';
 import {
   getTipoDocumentoLabel,
@@ -1162,53 +1163,40 @@ export function exportarVentasAExcel(
   ventas: Venta[],
   nombreArchivo = 'VetCompras_Ventas.xlsx'
 ): void {
+  // Una fila por ítem vendido: permite tablas dinámicas por categoría y concepto
   const headers = [
-    'Consecutivo',
-    'Fecha',
-    'Categoría',
-    'Subcategoría',
-    'Concepto / Producto o Servicio',
-    'Monto (COP)',
-    'Medio de Pago',
-    'Estado',
-    'Cliente',
-    'Teléfono Cliente',
-    'Mascota',
-    'Observaciones',
+    'Recibo', 'Fecha', 'Cliente', 'CC/NIT', 'Teléfono', 'Mascota',
+    'Categoría', 'Subcategoría', 'Concepto', 'Cantidad', 'Valor unitario', 'Descuento', 'Subtotal ítem',
+    'Total venta', 'Formas de pago', 'Saldo a crédito', 'Estado', 'Observaciones',
   ];
-
-  const filas = ventas.map((v) => {
-    const catInfo = getCategoriaVentaInfo(v.categoria);
-    const subInfo = getSubcategoriaVentaInfo(v.categoria, v.subcategoria);
-    const medioInfo = getMedioPagoVentaInfo(v.medioPago);
-    return [
-      v.consecutivo,
-      v.fecha,
-      catInfo.label,
-      subInfo?.label || '-',
-      v.concepto,
-      v.monto,
-      medioInfo.label,
-      v.estado === 'pagada' ? 'Pagada' : 'Pendiente (Crédito)',
-      v.clienteNombre || '-',
-      v.clienteTelefono || '-',
-      v.mascotaNombre || '-',
-      v.observaciones || '',
-    ];
-  });
-
-  const totalVentas = ventas.reduce((acc, v) => acc + v.monto, 0);
-  const filaTotal = ['TOTAL VENTAS', '', '', '', '', totalVentas, '', '', '', '', '', ''];
-
-  const dataRows: any[][] = [headers, ...filas, filaTotal];
-  const ws = XLSX.utils.aoa_to_sheet(dataRows);
-
-  // Formato COP en columna F
-  for (let r = 2; r <= dataRows.length; r++) {
-    const ref = `F${r}`;
-    if (ws[ref]) ws[ref].z = '"$"#,##0';
+  const filas: any[][] = [];
+  for (const v of ventas) {
+    const pagos = pagosDeVenta(v)
+      .map((p) => `${getMedioPagoVentaInfo(p.medio).label} ${p.monto}`)
+      .join(' + ');
+    const saldo = saldoDeVenta(v);
+    itemsDeVenta(v).forEach((i, n) => {
+      filas.push([
+        v.consecutivo, v.fecha, v.clienteNombre || '', v.clienteDocumento || '', v.clienteTelefono || '', v.mascotaNombre || '',
+        getCategoriaVentaInfo(i.categoria).label, getSubcategoriaVentaInfo(i.categoria, i.subcategoria)?.label || '',
+        i.concepto, i.cantidad, i.precioUnitario, i.descuento || 0, i.subtotal,
+        // Los valores de la venta solo en la primera fila, para que las sumas no se dupliquen
+        n === 0 ? v.monto : '', n === 0 ? pagos || 'A crédito' : '', n === 0 ? saldo : '',
+        n === 0 ? (saldo === 0 ? 'Pagada' : saldo < v.monto ? 'Abono parcial' : 'Pendiente') : '',
+        n === 0 ? v.observaciones || '' : '',
+      ]);
+    });
   }
-
+  const totalVentas = ventas.reduce((acc, v) => acc + v.monto, 0);
+  const totalSaldo = ventas.reduce((acc, v) => acc + saldoDeVenta(v), 0);
+  const dataRows: any[][] = [headers, ...filas, ['TOTAL', '', '', '', '', '', '', '', '', '', '', '', '', totalVentas, '', totalSaldo, '', '']];
+  const ws = XLSX.utils.aoa_to_sheet(dataRows);
+  for (let r = 2; r <= dataRows.length; r++) {
+    for (const col of ['K', 'L', 'M', 'N', 'P']) {
+      const ref = `${col}${r}`;
+      if (ws[ref] && typeof ws[ref].v === 'number') ws[ref].z = '"$"#,##0';
+    }
+  }
   ws['!cols'] = autoAjustarColumnas(dataRows);
 
   const wb = XLSX.utils.book_new();
@@ -1340,7 +1328,7 @@ export function exportarReporteUtilidadYCategoriasExcel(
         v.concepto,
         v.monto,
         getMedioPagoVentaInfo(v.medioPago).label,
-        v.estado === 'pagada' ? 'Pagada' : 'Pendiente (Crédito)',
+        saldoDeVenta(v) === 0 ? 'Pagada' : `Saldo ${saldoDeVenta(v)}`,
         v.clienteNombre || '-',
         v.mascotaNombre || '-',
       ];

@@ -34,6 +34,7 @@ import {
 } from 'recharts';
 import { CompraDocumento, Categoria, CentroCosto, Venta } from '../../types';
 import { formatCOP, formatFecha, diasParaVencimiento } from '../../utils/formatters';
+import { saldoDeVenta } from '../../utils/ventas';
 
 interface DashboardViewProps {
   documentos: CompraDocumento[];
@@ -159,10 +160,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       }
     });
 
-    const totalCarteraCobrar = ventasDelAnio
-      .filter((v) => v.estado === 'pendiente')
-      .reduce((acc, v) => acc + v.monto, 0);
-    const ventasPendientesCount = ventasDelAnio.filter((v) => v.estado === 'pendiente').length;
+    const totalCarteraCobrar = ventasDelAnio.reduce((acc, v) => acc + saldoDeVenta(v), 0);
+    const ventasPendientesCount = ventasDelAnio.filter((v) => saldoDeVenta(v) > 0).length;
 
     const diffComprasPct =
       comprasAnioAnt > 0

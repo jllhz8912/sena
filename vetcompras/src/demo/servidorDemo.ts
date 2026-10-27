@@ -59,7 +59,7 @@ export const CREDENCIALES_DEMO = [
   { rol: 'Auxiliar', usuario: 'auxiliar', clave: 'Auxiliar2026' },
 ];
 
-const CLAVE_ALMACEN = 'vetcompras_demo_v1';
+const CLAVE_ALMACEN = 'vetcompras_demo_v2';
 const MINUTOS_INACTIVIDAD = 60;
 const clonar = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 const ahoraIso = () => new Date().toISOString();

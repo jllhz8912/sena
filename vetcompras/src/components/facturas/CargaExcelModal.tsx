@@ -194,7 +194,7 @@ export const CargaExcelModal: React.FC<CargaExcelModalProps> = ({
           reteIca: f.reteIca || 0,
           totalRetenciones: (f.reteFuente || 0) + (f.reteIva || 0) + (f.reteIca || 0),
           total: f.total,
-          saldoPendiente: f.estadoPago === 'pagada' ? 0 : f.total,
+          saldoPendiente: f.estadoPago === 'pagada' ? 0 : Math.max(0, f.total - (Number(f.reteFuente || 0) + Number(f.reteIva || 0) + Number(f.reteIca || 0))),
           estadoPago: f.estadoPago,
           fechaPago: f.estadoPago === 'pagada' ? f.fechaEmision : undefined,
           lineas: [

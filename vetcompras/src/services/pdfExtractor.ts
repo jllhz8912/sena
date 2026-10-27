@@ -146,7 +146,7 @@ export async function procesarPdfDesdeDataUrl(
         (Number(raw.reteFuente || 0) + Number(raw.reteIva || 0) + Number(raw.reteIca || 0))
     ),
     total: n(total),
-    saldoPendiente: formaPago === 'contado' || signo < 0 ? 0 : total,
+    saldoPendiente: formaPago === 'contado' || signo < 0 ? 0 : Math.max(0, total - Math.round(Number(raw.totalRetenciones) || Number(raw.reteFuente || 0) + Number(raw.reteIva || 0) + Number(raw.reteIca || 0))),
     estadoPago: formaPago === 'contado' || signo < 0 ? 'pagada' : 'pendiente',
     fechaPago: formaPago === 'contado' || signo < 0 ? raw.fechaEmision : undefined,
     // Si la IA devolvió un id inexistente, completarDocumento/RevisionFactura lo reasignan

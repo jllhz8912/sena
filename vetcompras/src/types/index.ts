@@ -274,10 +274,13 @@ export type SubcategoriaVenta = SubcategoriaTratamiento | SubcategoriaVitrina | 
 export type MedioPagoVenta =
   | 'efectivo'
   | 'nequi'
+  | 'daviplata'
   | 'bancos'
+  | 'tarjeta'
   | 'credito';
 
-export type EstadoVenta = 'pagada' | 'pendiente';
+/** 'parcial' = abonó una parte y el resto quedó a crédito */
+export type EstadoVenta = 'pagada' | 'pendiente' | 'parcial';
 
 export interface VentaItem {
   id: string;
@@ -286,7 +289,17 @@ export interface VentaItem {
   concepto: string;
   cantidad: number;
   precioUnitario: number;
-  subtotal: number;
+  descuento?: number; // Valor en pesos descontado a la línea
+  subtotal: number; // cantidad × precio − descuento
+}
+
+/** Una de las formas de pago con que se pagó la venta (puede haber varias). */
+export interface PagoVenta {
+  id: string;
+  medio: Exclude<MedioPagoVenta, 'credito'>;
+  monto: number;
+  referencia?: string; // N.º de comprobante Nequi, voucher, etc.
+  recibido?: number; // Solo efectivo: lo que entregó el cliente (para calcular el cambio)
 }
 
 export interface Venta {
@@ -294,15 +307,19 @@ export interface Venta {
   consecutivo: string; // ej: VNT-001
   fecha: string; // YYYY-MM-DD
   clienteNombre?: string;
+  clienteDocumento?: string; // CC o NIT
   clienteTelefono?: string;
+  clienteEmail?: string;
   mascotaNombre?: string;
-  items?: VentaItem[]; // Lista de conceptos / ítems en una misma venta o recibo
-  categoria: CategoriaVenta; // Categoría principal (o 'varios' si tiene múltiples)
-  subcategoria?: SubcategoriaVenta; // Subdivisión de la categoría principal
-  concepto: string; // Qué se vendió (resumen de ítems)
-  monto: number; // Valor total de la venta (suma de todos los ítems)
-  medioPago: MedioPagoVenta;
-  estado: EstadoVenta; // 'pagada' o 'pendiente' (si fue a crédito)
+  items?: VentaItem[]; // Conceptos vendidos (ventas antiguas pueden no tenerlos: ver utils/ventas.ts)
+  categoria: CategoriaVenta; // Categoría del ítem de mayor valor (compatibilidad con reportes anteriores)
+  subcategoria?: SubcategoriaVenta;
+  concepto: string; // Resumen legible de los ítems
+  monto: number; // Total de la venta (suma de los ítems)
+  pagos?: PagoVenta[]; // Formas de pago; lo no cubierto queda a crédito
+  saldoPendiente?: number; // Valor a crédito por cobrar
+  medioPago: MedioPagoVenta | 'mixto'; // Medio principal ('mixto' si se pagó con varios)
+  estado: EstadoVenta;
   observaciones?: string;
   creadoEn: string;
   actualizadoEn: string;

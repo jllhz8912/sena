@@ -254,7 +254,7 @@ export const RevisionFacturaModal: React.FC<RevisionFacturaModalProps> = ({
       const sinSaldo = doc.formaPago === 'contado' || doc.tipoDocumento === 'nota_credito' || Number(doc.total || 0) <= 0;
       const docParaGuardar = {
         ...doc,
-        saldoPendiente: sinSaldo ? 0 : Number(doc.total || 0),
+        saldoPendiente: sinSaldo ? 0 : Math.max(0, Number(doc.total || 0) - Math.abs(Number(doc.totalRetenciones || 0))),
         estadoPago: sinSaldo ? 'pagada' : (doc.estadoPago || 'pendiente'),
         fechaPago: sinSaldo ? doc.fechaEmision : doc.fechaPago,
       } as CompraDocumento;

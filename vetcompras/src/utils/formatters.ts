@@ -332,6 +332,24 @@ export function getMedioPagoVentaInfo(medio: string) {
         tipo: 'electronico',
         badgeColor: 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800',
       };
+    case 'daviplata':
+      return {
+        label: 'Daviplata',
+        tipo: 'electronico',
+        badgeColor: 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300 border-red-200 dark:border-red-800',
+      };
+    case 'tarjeta':
+      return {
+        label: 'Tarjeta débito/crédito',
+        tipo: 'tarjeta',
+        badgeColor: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+      };
+    case 'mixto':
+      return {
+        label: 'Varios medios',
+        tipo: 'mixto',
+        badgeColor: 'bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 border-teal-200 dark:border-teal-800',
+      };
     case 'credito':
       return {
         label: 'A Crédito (Pendiente)',
@@ -346,6 +364,27 @@ export function getMedioPagoVentaInfo(medio: string) {
       };
   }
 }
+
+/** Categorías de venta disponibles para nuevos ítems (en el orden en que se muestran). */
+export const CATEGORIAS_VENTA: { id: string; label: string }[] = [
+  { id: 'consultas_clinica', label: 'Consultas clínica' },
+  { id: 'tratamientos_clinica', label: 'Tratamientos clínica' },
+  { id: 'vacunas', label: 'Vacunas' },
+  { id: 'banos', label: 'Baños y peluquería' },
+  { id: 'purinas_empaque', label: 'Purinas (bultos y paquetes)' },
+  { id: 'purinas_granel', label: 'Purinas a granel' },
+  { id: 'vitrina', label: 'Vitrina' },
+  { id: 'varios', label: 'Varios / Otros' },
+];
+
+/** Medios con que el cliente puede pagar (lo no pagado queda a crédito). */
+export const MEDIOS_PAGO_VENTA: { id: 'efectivo' | 'nequi' | 'daviplata' | 'bancos' | 'tarjeta'; label: string }[] = [
+  { id: 'efectivo', label: 'Efectivo' },
+  { id: 'nequi', label: 'Nequi' },
+  { id: 'daviplata', label: 'Daviplata' },
+  { id: 'bancos', label: 'Transferencia bancaria' },
+  { id: 'tarjeta', label: 'Tarjeta' },
+];
 
 export interface SubcategoriaItem {
   value: string;

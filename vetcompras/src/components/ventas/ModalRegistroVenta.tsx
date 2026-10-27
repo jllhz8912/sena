@@ -1,33 +1,36 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   X,
-  CircleDollarSign,
-  ShoppingBag,
-  Stethoscope,
-  Scissors,
-  Wheat,
-  Pill,
-  Calendar,
-  User,
-  Phone,
-  Heart,
-  CreditCard,
-  Banknote,
-  Smartphone,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
+  Plus,
+  Trash2,
   Save,
-  Syringe,
-  Activity,
-  Package,
-  Sparkles,
-  Tag,
+  Receipt,
+  User,
+  Heart,
+  CalendarDays,
+  ShoppingCart,
+  Wallet,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react';
-import { Venta, CategoriaVenta, MedioPagoVenta, EstadoVenta, SubcategoriaVenta } from '../../types';
-import { formatCOP, SUBCATEGORIAS_POR_CATEGORIA } from '../../utils/formatters';
+import { Venta, VentaItem, PagoVenta, CategoriaVenta } from '../../types';
+import {
+  formatCOP,
+  CATEGORIAS_VENTA,
+  MEDIOS_PAGO_VENTA,
+  SUBCATEGORIAS_POR_CATEGORIA,
+} from '../../utils/formatters';
+import {
+  cerrarVenta,
+  itemsDeVenta,
+  pagosDeVenta,
+  subtotalItem,
+  totalPagado,
+  cambioEfectivo,
+} from '../../utils/ventas';
 import { dataService } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
+import { ModalDocumentoVenta } from './ModalDocumentoVenta';
 
 interface ModalRegistroVentaProps {
   ventaParaEditar?: Venta;
@@ -35,536 +38,604 @@ interface ModalRegistroVentaProps {
   onCerrar: () => void;
 }
 
-export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({
-  ventaParaEditar,
-  onGuardado,
-  onCerrar,
-}) => {
-  const { mostrarToast } = useToast();
+const nuevoId = (p: string) => `${p}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+const hoy = () => new Date().toISOString().split('T')[0];
 
+const claseInput =
+  'w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500';
+const claseCelda =
+  'w-full px-2 py-1.5 rounded-lg border border-transparent hover:border-slate-300 focus:border-emerald-500 dark:hover:border-slate-600 bg-transparent text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500';
+const claseEtiqueta = 'block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1';
+
+/** Campo numérico en pesos: muestra separador de miles mientras se escribe. */
+const CampoPesos: React.FC<{
+  id?: string;
+  valor: number;
+  onChange: (v: number) => void;
+  className?: string;
+  onEnter?: () => void;
+  placeholder?: string;
+  autoFocus?: boolean;
+}> = ({ id, valor, onChange, className, onEnter, placeholder, autoFocus }) => (
+  <input
+    id={id}
+    inputMode="numeric"
+    value={valor ? valor.toLocaleString('es-CO') : ''}
+    placeholder={placeholder ?? '0'}
+    autoFocus={autoFocus}
+    onChange={(e) => onChange(Number(e.target.value.replace(/\D/g, '')) || 0)}
+    onKeyDown={(e) => {
+      if (e.key === 'Enter' && onEnter) {
+        e.preventDefault();
+        onEnter();
+      }
+    }}
+    className={(className || claseInput) + ' text-right tabular-nums'}
+  />
+);
+
+const Seccion: React.FC<{ numero: number; titulo: string; icono: React.ElementType; children: React.ReactNode; extra?: React.ReactNode }> = ({
+  numero,
+  titulo,
+  icono: Icono,
+  children,
+  extra,
+}) => (
+  <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3">
+    <div className="flex items-center justify-between gap-2">
+      <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <span className="w-6 h-6 rounded-full bg-emerald-600 text-white text-xs flex items-center justify-center">{numero}</span>
+        <Icono className="w-4 h-4 text-emerald-600" />
+        {titulo}
+      </h3>
+      {extra}
+    </div>
+    {children}
+  </section>
+);
+
+interface ClienteConocido {
+  nombre: string;
+  documento?: string;
+  telefono?: string;
+  email?: string;
+  mascotas: string[];
+}
+
+export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaParaEditar, onGuardado, onCerrar }) => {
+  const { mostrarToast } = useToast();
+  const editando = !!ventaParaEditar;
+
+  // 1. Documento
+  const [fecha, setFecha] = useState(ventaParaEditar?.fecha || hoy());
   const [consecutivo, setConsecutivo] = useState(ventaParaEditar?.consecutivo || '');
-  const [fecha, setFecha] = useState(
-    ventaParaEditar?.fecha || new Date().toISOString().split('T')[0]
-  );
-  const [categoria, setCategoria] = useState<CategoriaVenta>(
-    ventaParaEditar?.categoria || 'consultas_clinica'
-  );
-  const [subcategoria, setSubcategoria] = useState<string>(
-    ventaParaEditar?.subcategoria || ''
-  );
-  const [concepto, setConcepto] = useState(ventaParaEditar?.concepto || '');
-  const [monto, setMonto] = useState<number | ''>(
-    ventaParaEditar ? ventaParaEditar.monto : ''
-  );
-  const [medioPago, setMedioPago] = useState<MedioPagoVenta>(
-    ventaParaEditar?.medioPago || 'efectivo'
-  );
-  const [estado, setEstado] = useState<EstadoVenta>(
-    ventaParaEditar?.estado || 'pagada'
-  );
+  // 2. Cliente
   const [clienteNombre, setClienteNombre] = useState(ventaParaEditar?.clienteNombre || '');
+  const [clienteDocumento, setClienteDocumento] = useState(ventaParaEditar?.clienteDocumento || '');
   const [clienteTelefono, setClienteTelefono] = useState(ventaParaEditar?.clienteTelefono || '');
+  const [clienteEmail, setClienteEmail] = useState(ventaParaEditar?.clienteEmail || '');
+  // 3. Mascota
   const [mascotaNombre, setMascotaNombre] = useState(ventaParaEditar?.mascotaNombre || '');
+  // 4. Ítems
+  const [items, setItems] = useState<VentaItem[]>(() => (ventaParaEditar ? itemsDeVenta(ventaParaEditar).map((i) => ({ ...i })) : []));
+  const [nuevo, setNuevo] = useState({ categoria: 'consultas_clinica', concepto: '', cantidad: 1, precioUnitario: 0, descuento: 0 });
+  // 5. Pagos
+  const [pagos, setPagos] = useState<PagoVenta[]>(() => (ventaParaEditar ? pagosDeVenta(ventaParaEditar).map((p) => ({ ...p })) : []));
   const [observaciones, setObservaciones] = useState(ventaParaEditar?.observaciones || '');
 
+  const [ventasPrevias, setVentasPrevias] = useState<Venta[]>([]);
   const [guardando, setGuardando] = useState(false);
+  const [ventaParaRecibo, setVentaParaRecibo] = useState<Venta | null>(null);
+  const conceptoRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!ventaParaEditar) {
-      dataService.generarSiguienteConsecutivoVenta().then((sig) => {
-        setConsecutivo(sig);
-      });
-    }
-  }, [ventaParaEditar]);
+    dataService
+      .obtenerVentas()
+      .then(setVentasPrevias)
+      .catch(() => setVentasPrevias([]));
+    if (!editando) dataService.generarSiguienteConsecutivoVenta().then(setConsecutivo);
+  }, [editando]);
 
-  const handleCategoriaChange = (nuevaCat: CategoriaVenta) => {
-    setCategoria(nuevaCat);
-    const lista = SUBCATEGORIAS_POR_CATEGORIA[nuevaCat] || [];
-    if (lista.length > 0) {
-      if (!lista.some((s) => s.value === subcategoria)) {
-        setSubcategoria(lista[0].value);
-      }
-    } else {
-      setSubcategoria('');
+  // Clientes ya atendidos: al escribir el nombre se completan sus datos
+  const clientesConocidos = useMemo(() => {
+    const mapa = new Map<string, ClienteConocido>();
+    for (const v of [...ventasPrevias].reverse()) {
+      if (!v.clienteNombre) continue;
+      const clave = v.clienteNombre.trim().toLowerCase();
+      const c = mapa.get(clave) || { nombre: v.clienteNombre.trim(), mascotas: [] };
+      c.documento = v.clienteDocumento || c.documento;
+      c.telefono = v.clienteTelefono || c.telefono;
+      c.email = v.clienteEmail || c.email;
+      if (v.mascotaNombre && !c.mascotas.includes(v.mascotaNombre)) c.mascotas.push(v.mascotaNombre);
+      mapa.set(clave, c);
+    }
+    return mapa;
+  }, [ventasPrevias]);
+
+  // Último precio cobrado por cada concepto, para sugerirlo
+  const preciosConocidos = useMemo(() => {
+    const mapa = new Map<string, { precio: number; categoria: string }>();
+    for (const v of [...ventasPrevias].reverse()) {
+      for (const i of itemsDeVenta(v)) mapa.set(i.concepto.trim().toLowerCase(), { precio: i.precioUnitario, categoria: i.categoria });
+    }
+    return mapa;
+  }, [ventasPrevias]);
+
+  const sugerenciasConcepto = useMemo(() => {
+    const sub = (SUBCATEGORIAS_POR_CATEGORIA[nuevo.categoria] || []).map((s) => s.nombreCorto);
+    const usados = [...preciosConocidos.entries()].filter(([, v]) => v.categoria === nuevo.categoria).map(([k]) => k);
+    return [...new Set([...sub, ...usados])];
+  }, [nuevo.categoria, preciosConocidos]);
+
+  const alCambiarCliente = (nombre: string) => {
+    setClienteNombre(nombre);
+    const c = clientesConocidos.get(nombre.trim().toLowerCase());
+    if (c && !editando) {
+      if (!clienteDocumento && c.documento) setClienteDocumento(c.documento);
+      if (!clienteTelefono && c.telefono) setClienteTelefono(c.telefono);
+      if (!clienteEmail && c.email) setClienteEmail(c.email);
+      if (!mascotaNombre && c.mascotas.length === 1) setMascotaNombre(c.mascotas[0]);
     }
   };
 
-  // Si selecciona a crédito, sugerir marcar como pendiente automáticamente
-  const handleMedioPagoChange = (nuevoMedio: MedioPagoVenta) => {
-    setMedioPago(nuevoMedio);
-    if (nuevoMedio === 'credito') {
-      setEstado('pendiente');
-    } else if (estado === 'pendiente' && !ventaParaEditar) {
-      setEstado('pagada');
-    }
+  const alCambiarConceptoNuevo = (concepto: string) => {
+    const conocido = preciosConocidos.get(concepto.trim().toLowerCase());
+    setNuevo((n) => ({ ...n, concepto, precioUnitario: n.precioUnitario || conocido?.precio || 0 }));
   };
 
-  const handleGuardar = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // ------------------------------------------------------------ cálculos
+  const total = items.reduce((s, i) => s + subtotalItem(i), 0);
+  const pagado = totalPagado(pagos);
+  const saldo = Math.max(0, total - pagado);
+  const exceso = Math.max(0, pagado - total);
+  const cambio = cambioEfectivo(pagos);
+  const subtotalNuevo = subtotalItem(nuevo);
 
-    if (!concepto.trim()) {
-      mostrarToast('error', 'Falta concepto', 'Por favor describe qué se vendió.');
+  // ------------------------------------------------------------ ítems
+  const agregarItem = () => {
+    if (!nuevo.concepto.trim()) {
+      mostrarToast('warning', 'Falta el concepto', 'Escriba o elija qué se está vendiendo.');
+      conceptoRef.current?.focus();
+      return;
+    }
+    if (!(nuevo.cantidad > 0) || !(nuevo.precioUnitario > 0)) {
+      mostrarToast('warning', 'Revise cantidad y precio', 'Ambos deben ser mayores a cero.');
+      return;
+    }
+    const sub = SUBCATEGORIAS_POR_CATEGORIA[nuevo.categoria]?.find((s) => s.nombreCorto.toLowerCase() === nuevo.concepto.trim().toLowerCase());
+    setItems((lista) => [
+      ...lista,
+      {
+        id: nuevoId('itm'),
+        categoria: nuevo.categoria as CategoriaVenta,
+        subcategoria: sub?.value,
+        concepto: nuevo.concepto.trim(),
+        cantidad: nuevo.cantidad,
+        precioUnitario: nuevo.precioUnitario,
+        descuento: nuevo.descuento || undefined,
+        subtotal: subtotalNuevo,
+      },
+    ]);
+    setNuevo((n) => ({ ...n, concepto: '', cantidad: 1, precioUnitario: 0, descuento: 0 }));
+    conceptoRef.current?.focus();
+  };
+
+  const editarItem = (id: string, cambios: Partial<VentaItem>) =>
+    setItems((lista) =>
+      lista.map((i) => {
+        if (i.id !== id) return i;
+        const actualizado = { ...i, ...cambios };
+        return { ...actualizado, subtotal: subtotalItem(actualizado) };
+      })
+    );
+
+  const quitarItem = (id: string) => setItems((lista) => lista.filter((i) => i.id !== id));
+
+  // ------------------------------------------------------------ pagos
+  const agregarPago = (medio: PagoVenta['medio'] = 'efectivo') =>
+    setPagos((lista) => [...lista, { id: nuevoId('pag'), medio, monto: Math.max(0, total - totalPagado(lista)) }]);
+
+  const pagarTodoCon = (medio: PagoVenta['medio']) => setPagos([{ id: nuevoId('pag'), medio, monto: total }]);
+
+  const editarPago = (id: string, cambios: Partial<PagoVenta>) =>
+    setPagos((lista) => lista.map((p) => (p.id === id ? { ...p, ...cambios } : p)));
+
+  const quitarPago = (id: string) => setPagos((lista) => lista.filter((p) => p.id !== id));
+
+  // ------------------------------------------------------------ guardar
+  const guardar = async (verRecibo: boolean) => {
+    if (items.length === 0) {
+      mostrarToast('warning', 'Venta vacía', 'Agregue al menos un ítem antes de cerrar la venta.');
+      return;
+    }
+    if (items.some((i) => !i.concepto.trim() || !(i.cantidad > 0) || !(i.precioUnitario > 0))) {
+      mostrarToast('warning', 'Revise los ítems', 'Cada ítem necesita concepto, cantidad y precio mayores a cero.');
+      return;
+    }
+    if (exceso > 0) {
+      mostrarToast('warning', 'Los pagos superan el total', `Sobran ${formatCOP(exceso)}. Si el cliente entregó más efectivo, escríbalo en "Recibido" para calcular el cambio.`);
+      return;
+    }
+    if (saldo > 0 && !clienteNombre.trim()) {
+      mostrarToast('warning', 'Venta a crédito sin cliente', `Quedan ${formatCOP(saldo)} por cobrar: escriba el nombre del cliente.`);
+      return;
+    }
+    const numero = consecutivo.trim();
+    if (!numero) {
+      mostrarToast('warning', 'Falta el número', 'Escriba el número del recibo.');
+      return;
+    }
+    if (ventasPrevias.some((v) => v.consecutivo === numero && v.id !== ventaParaEditar?.id)) {
+      mostrarToast('warning', 'Número repetido', `Ya existe una venta con el número ${numero}.`);
       return;
     }
 
-    const valorMonto = Number(monto);
-    if (isNaN(valorMonto) || valorMonto <= 0) {
-      mostrarToast('error', 'Monto inválido', 'Por favor ingresa un monto mayor a cero.');
-      return;
-    }
+    const ahora = new Date().toISOString();
+    const venta = cerrarVenta({
+      id: ventaParaEditar?.id || nuevoId('vnt'),
+      consecutivo: numero,
+      fecha,
+      clienteNombre: clienteNombre.trim() || undefined,
+      clienteDocumento: clienteDocumento.trim() || undefined,
+      clienteTelefono: clienteTelefono.trim() || undefined,
+      clienteEmail: clienteEmail.trim() || undefined,
+      mascotaNombre: mascotaNombre.trim() || undefined,
+      items,
+      pagos,
+      observaciones: observaciones.trim() || undefined,
+      creadoEn: ventaParaEditar?.creadoEn || ahora,
+      actualizadoEn: ahora,
+    });
 
     try {
       setGuardando(true);
-
-      const nuevaVenta: Venta = {
-        id: ventaParaEditar?.id || `vnt-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-        consecutivo: consecutivo.trim() || 'VNT-001',
-        fecha,
-        categoria,
-        subcategoria: subcategoria.trim() || undefined,
-        concepto: concepto.trim(),
-        monto: Math.round(valorMonto),
-        medioPago,
-        estado,
-        clienteNombre: clienteNombre.trim() || undefined,
-        clienteTelefono: clienteTelefono.trim() || undefined,
-        mascotaNombre: mascotaNombre.trim() || undefined,
-        observaciones: observaciones.trim() || undefined,
-        creadoEn: ventaParaEditar?.creadoEn || new Date().toISOString(),
-        actualizadoEn: new Date().toISOString(),
-      };
-
-      if (ventaParaEditar) {
-        await dataService.actualizarVenta(nuevaVenta);
-        mostrarToast('success', 'Venta actualizada', `Registro ${nuevaVenta.consecutivo} guardado exitosamente.`);
-      } else {
-        await dataService.guardarVenta(nuevaVenta);
-        mostrarToast('success', 'Venta registrada', `Registro ${nuevaVenta.consecutivo} guardado correctamente.`);
-      }
-
-      onGuardado(nuevaVenta.id);
+      if (editando) await dataService.actualizarVenta(venta);
+      else await dataService.guardarVenta(venta);
+      mostrarToast('success', editando ? 'Venta actualizada' : 'Venta registrada', `${venta.consecutivo} por ${formatCOP(venta.monto)}.`);
+      if (verRecibo) setVentaParaRecibo(venta);
+      else onGuardado(venta.id);
     } catch (err: any) {
-      mostrarToast('error', 'Error al guardar venta', err?.message || 'Ocurrió un problema');
+      mostrarToast('error', 'No se guardó la venta', err?.message);
     } finally {
       setGuardando(false);
     }
   };
 
-  const categoriasConfig: { id: CategoriaVenta; label: string; desc: string; icon: any; color: string }[] = [
-    {
-      id: 'banos',
-      label: 'Baños',
-      desc: 'Baño medicado, secado, corte y estética',
-      icon: Scissors,
-      color: 'border-purple-500 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300',
-    },
-    {
-      id: 'vacunas',
-      label: 'Vacunas',
-      desc: 'Antirrábica, séxtuple, triple felina, KC',
-      icon: Syringe,
-      color: 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300',
-    },
-    {
-      id: 'consultas_clinica',
-      label: 'Consultas clinica',
-      desc: 'Consulta médica general y especializada',
-      icon: Stethoscope,
-      color: 'border-sky-500 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300',
-    },
-    {
-      id: 'tratamientos_clinica',
-      label: 'Tratamientos clinica',
-      desc: 'Canalizaciones, cirugías, curaciones, inyecciones',
-      icon: Activity,
-      color: 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300',
-    },
-    {
-      id: 'purinas_empaque',
-      label: 'Purinas (bultos y paquetes)',
-      desc: 'Bultos cerrados y bolsas selladas de fábrica',
-      icon: Package,
-      color: 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300',
-    },
-    {
-      id: 'purinas_granel',
-      label: 'Purinas a granel',
-      desc: 'Alimento pesado en báscula por kilos o libras',
-      icon: Wheat,
-      color: 'border-orange-500 bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300',
-    },
-    {
-      id: 'vitrina',
-      label: 'Vitrina',
-      desc: 'Accesorios, correas, pecheras, snacks, juguetes',
-      icon: ShoppingBag,
-      color: 'border-rose-500 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300',
-    },
-    {
-      id: 'varios',
-      label: 'Varios / Otros',
-      desc: 'Guardería, transporte, domicilios, nuevos conceptos',
-      icon: Sparkles,
-      color: 'border-slate-500 bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300',
-    },
-  ];
+  if (ventaParaRecibo) {
+    return (
+      <ModalDocumentoVenta
+        venta={ventaParaRecibo}
+        empresa={dataService.obtenerDatosEmpresa()}
+        onCerrar={() => onGuardado(ventaParaRecibo.id)}
+      />
+    );
+  }
 
-  const mediosPagoConfig: { id: MedioPagoVenta; label: string; icon: any; desc: string }[] = [
-    { id: 'efectivo', label: 'Efectivo', icon: Banknote, desc: 'Caja menor / Dinero físico' },
-    { id: 'nequi', label: 'Transferencia Nequi / Daviplata', icon: Smartphone, desc: 'Pago electrónico por app móvil' },
-    { id: 'bancos', label: 'Bancos / Tarjeta', icon: CreditCard, desc: 'Datáfono o transferencia bancaria' },
-    { id: 'credito', label: 'A Crédito', icon: Clock, desc: 'Cuenta por cobrar al cliente' },
-  ];
+  const nombreCategoria = (id: string) => CATEGORIAS_VENTA.find((c) => c.id === id)?.label || id;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/75 backdrop-blur-sm overflow-hidden animate-in fade-in">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-slate-950/70 backdrop-blur-sm">
+      <div className="bg-slate-50 dark:bg-slate-950 sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-6xl h-full sm:h-[94vh] flex flex-col overflow-hidden">
         {/* Encabezado */}
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/80 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-inner">
-              <CircleDollarSign className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                {ventaParaEditar ? 'Editar Venta' : 'Registrar Venta Veterinaria'}
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-300 dark:border-emerald-800">
-                  {consecutivo || 'VNT-001'}
-                </span>
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Se guardará en la base de datos de este equipo.
-              </p>
-            </div>
+        <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between shrink-0">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">{editando ? `Editar venta ${ventaParaEditar?.consecutivo}` : 'Nueva venta'}</h2>
+            <p className="text-xs text-slate-500">Complete en orden: documento, cliente, mascota, ítems y forma de pago.</p>
           </div>
-
-          <button
-            onClick={onCerrar}
-            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            title="Cerrar ventana"
-          >
+          <button onClick={onCerrar} className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" title="Cerrar sin guardar">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Formulario */}
-        <form onSubmit={handleGuardar} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
-          {/* Fila 1: Fecha y Consecutivo */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                Fecha de la Venta *
-              </label>
-              <input
-                type="date"
-                required
-                value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Consecutivo / Recibo *
-              </label>
-              <input
-                type="text"
-                required
-                value={consecutivo}
-                onChange={(e) => setConsecutivo(e.target.value)}
-                placeholder="Ej: VNT-001"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500 uppercase"
-              />
-            </div>
-          </div>
-
-          {/* Fila 2: Selector de Categoría (5 categorías de venta) */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
-              Categoría de la Venta *
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
-              {categoriasConfig.map((cat) => {
-                const Icono = cat.icon;
-                const seleccionada = categoria === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => handleCategoriaChange(cat.id)}
-                    className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all ${
-                      seleccionada
-                        ? `${cat.color} border-2 shadow-sm scale-[1.02]`
-                        : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className={`p-2 rounded-xl ${seleccionada ? 'bg-white dark:bg-slate-900 shadow-sm' : 'bg-slate-200 dark:bg-slate-700'}`}>
-                        <Icono className="w-4 h-4" />
-                      </div>
-                      {seleccionada && <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
-                    </div>
-                    <div>
-                      <div className="font-bold text-xs">{cat.label}</div>
-                      <div className="text-[10px] opacity-75 line-clamp-1">{cat.desc}</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Subdivisión interactiva para cualquier categoría de ventas (con opción Varios en todas) */}
-            {(() => {
-              const subcategoriasDisponibles = SUBCATEGORIAS_POR_CATEGORIA[categoria] || [];
-              if (subcategoriasDisponibles.length === 0) return null;
-
-              return (
-                <div className="mt-3.5 p-4 rounded-2xl bg-slate-50/90 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2.5 animate-in fade-in">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                      <Tag className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                      <span>Subcategoría o Tipo de Servicio / Producto *</span>
-                    </label>
-                    <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                      Incluye opción &quot;Varios&quot; para conceptos nuevos
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                    {subcategoriasDisponibles.map((sub) => {
-                      const activo = subcategoria === sub.value;
-                      const esVarios = sub.value === 'varios';
-                      return (
-                        <button
-                          key={sub.value}
-                          type="button"
-                          onClick={() => {
-                            setSubcategoria(sub.value);
-                            if (esVarios) {
-                              if (!concepto.trim() || subcategoriasDisponibles.some((s) => concepto === s.nombreCorto || concepto.startsWith('Tratamiento '))) {
-                                setConcepto('');
-                              }
-                            } else {
-                              if (!concepto.trim() || subcategoriasDisponibles.some((s) => concepto === s.nombreCorto || concepto.startsWith('Tratamiento '))) {
-                                setConcepto(categoria === 'tratamientos_clinica' ? `Tratamiento ${sub.nombreCorto}` : sub.nombreCorto);
-                              }
-                            }
-                          }}
-                          className={`px-3 py-2.5 rounded-xl text-xs font-semibold text-left transition-all border flex items-center justify-between gap-1.5 ${
-                            activo
-                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/30'
-                              : esVarios
-                              ? 'bg-amber-50/80 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border-amber-200 dark:border-amber-800 hover:border-amber-400'
-                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-300'
-                          }`}
-                        >
-                          <span className="line-clamp-1">{sub.label}</span>
-                          {activo && <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-white" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {subcategoria === 'varios' && (
-                    <div className="flex items-center gap-2 text-[11px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 p-2.5 rounded-xl border border-amber-200 dark:border-amber-800">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                      <span>Has seleccionado <strong>Varios</strong>: Describe el nuevo concepto o producto específico en el campo &quot;Concepto / ¿Qué se vendió?&quot;.</span>
-                    </div>
-                  )}
+        <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
+          {/* Formulario */}
+          <div className="flex-1 min-w-0 overflow-y-auto p-4 space-y-4">
+            <Seccion numero={1} titulo="Datos del documento" icono={CalendarDays}>
+              <div className="grid grid-cols-2 gap-3 max-w-md">
+                <div>
+                  <label htmlFor="venta-fecha" className={claseEtiqueta}>Fecha</label>
+                  <input id="venta-fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={claseInput} />
                 </div>
-              );
-            })()}
-          </div>
+                <div>
+                  <label htmlFor="venta-numero" className={claseEtiqueta}>N.º de recibo</label>
+                  <input id="venta-numero" value={consecutivo} onChange={(e) => setConsecutivo(e.target.value.toUpperCase())} className={claseInput + ' font-mono'} />
+                </div>
+              </div>
+            </Seccion>
 
-          {/* Fila 3: Concepto y Monto */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Concepto / ¿Qué se vendió? *
-              </label>
-              <input
-                type="text"
-                required
-                value={concepto}
-                onChange={(e) => setConcepto(e.target.value)}
-                placeholder="Ej: Baño medicado perro mediano, Alimento Hills 3kg, Vacuna séxtuple..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold focus:ring-2 focus:ring-emerald-500 placeholder:font-normal"
-              />
-            </div>
+            <Seccion numero={2} titulo="Cliente" icono={User}>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="venta-cliente" className={claseEtiqueta}>Nombre del cliente</label>
+                  <input id="venta-cliente" list="clientes-conocidos" value={clienteNombre} onChange={(e) => alCambiarCliente(e.target.value)} placeholder="Escriba o elija un cliente anterior" className={claseInput} />
+                  <datalist id="clientes-conocidos">
+                    {[...clientesConocidos.values()].map((c) => (
+                      <option key={c.nombre} value={c.nombre} />
+                    ))}
+                  </datalist>
+                </div>
+                <div>
+                  <label htmlFor="venta-documento" className={claseEtiqueta}>Cédula o NIT</label>
+                  <input id="venta-documento" value={clienteDocumento} onChange={(e) => setClienteDocumento(e.target.value)} inputMode="numeric" className={claseInput} />
+                </div>
+                <div>
+                  <label htmlFor="venta-telefono" className={claseEtiqueta}>Celular / WhatsApp</label>
+                  <input id="venta-telefono" value={clienteTelefono} onChange={(e) => setClienteTelefono(e.target.value)} inputMode="tel" className={claseInput} />
+                </div>
+                <div>
+                  <label htmlFor="venta-email" className={claseEtiqueta}>Correo electrónico</label>
+                  <input id="venta-email" type="email" value={clienteEmail} onChange={(e) => setClienteEmail(e.target.value)} className={claseInput} />
+                </div>
+              </div>
+            </Seccion>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
-                <span>Valor de la Venta ($ COP) *</span>
-                {typeof monto === 'number' && monto > 0 && (
-                  <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                    {formatCOP(monto)}
-                  </span>
-                )}
-              </label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                  $
-                </span>
+            <Seccion numero={3} titulo="Mascota" icono={Heart}>
+              <div className="max-w-md">
+                <label htmlFor="venta-mascota" className={claseEtiqueta}>Nombre y especie / raza</label>
                 <input
-                  type="number"
-                  required
-                  min="0"
-                  step="100"
-                  value={monto}
-                  onChange={(e) => setMonto(e.target.value === '' ? '' : Number(e.target.value))}
-                  placeholder="50000"
-                  className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-emerald-700 dark:text-emerald-300 focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Fila 4: Medio de Pago y Estado */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Modalidad de Pago *
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {mediosPagoConfig.map((mp) => {
-                  const Icono = mp.icon;
-                  const activo = medioPago === mp.id;
-                  return (
-                    <button
-                      key={mp.id}
-                      type="button"
-                      onClick={() => handleMedioPagoChange(mp.id)}
-                      className={`p-2.5 rounded-xl border text-left flex items-center gap-2.5 transition-all text-xs font-medium ${
-                        activo
-                          ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-200 font-bold'
-                          : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'
-                      }`}
-                    >
-                      <Icono className={`w-4 h-4 ${activo ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />
-                      <span className="line-clamp-1">{mp.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Estado del Cobro *
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEstado('pagada')}
-                  className={`p-2.5 rounded-xl border text-center text-xs font-bold transition-all ${
-                    estado === 'pagada'
-                      ? 'border-emerald-500 bg-emerald-500 text-white shadow-sm'
-                      : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  ✓ Pagada / Cobrada
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEstado('pendiente')}
-                  className={`p-2.5 rounded-xl border text-center text-xs font-bold transition-all ${
-                    estado === 'pendiente'
-                      ? 'border-rose-500 bg-rose-500 text-white shadow-sm'
-                      : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  ⏳ Pendiente (Por cobrar)
-                </button>
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
-                {estado === 'pagada'
-                  ? 'El dinero ya ingresó a la veterinaria.'
-                  : 'Queda registrada en cartera de clientes hasta que se marque como pagada.'}
-              </p>
-            </div>
-          </div>
-
-          {/* Fila 5: Datos del Cliente y Mascota (Opcional) */}
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-3">
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
-              Datos del Cliente y Mascota (Opcional)
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-[11px] font-medium text-slate-500 mb-1 flex items-center gap-1">
-                  <User className="w-3 h-3" /> Nombre del Cliente
-                </label>
-                <input
-                  type="text"
-                  value={clienteNombre}
-                  onChange={(e) => setClienteNombre(e.target.value)}
-                  placeholder="Ej: Laura Gómez"
-                  className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-medium text-slate-500 mb-1 flex items-center gap-1">
-                  <Phone className="w-3 h-3" /> Teléfono / Celular
-                </label>
-                <input
-                  type="text"
-                  value={clienteTelefono}
-                  onChange={(e) => setClienteTelefono(e.target.value)}
-                  placeholder="Ej: 310 1234567"
-                  className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-medium text-slate-500 mb-1 flex items-center gap-1">
-                  <Heart className="w-3 h-3 text-rose-500" /> Mascota (Nombre / Raza)
-                </label>
-                <input
-                  type="text"
+                  id="venta-mascota"
+                  list="mascotas-cliente"
                   value={mascotaNombre}
                   onChange={(e) => setMascotaNombre(e.target.value)}
-                  placeholder="Ej: Toby (Pug)"
-                  className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                  placeholder="Ej. Lucas (Golden Retriever)"
+                  className={claseInput}
                 />
+                <datalist id="mascotas-cliente">
+                  {(clientesConocidos.get(clienteNombre.trim().toLowerCase())?.mascotas || []).map((m) => (
+                    <option key={m} value={m} />
+                  ))}
+                </datalist>
               </div>
+            </Seccion>
+
+            <Seccion
+              numero={4}
+              titulo="Ítems de la venta"
+              icono={ShoppingCart}
+              extra={<span className="text-xs text-slate-500">{items.length} ítem(s)</span>}
+            >
+              {/* Fila para agregar */}
+              <div className="grid grid-cols-2 md:grid-cols-12 gap-2 items-end rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 p-3">
+                <div className="col-span-2 md:col-span-3">
+                  <label htmlFor="nuevo-categoria" className={claseEtiqueta}>Categoría</label>
+                  <select id="nuevo-categoria" value={nuevo.categoria} onChange={(e) => setNuevo({ ...nuevo, categoria: e.target.value })} className={claseInput}>
+                    {CATEGORIAS_VENTA.map((c) => (
+                      <option key={c.id} value={c.id}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-span-2 md:col-span-4">
+                  <label htmlFor="nuevo-concepto" className={claseEtiqueta}>Concepto o producto</label>
+                  <input
+                    id="nuevo-concepto"
+                    ref={conceptoRef}
+                    list="sugerencias-concepto"
+                    value={nuevo.concepto}
+                    onChange={(e) => alCambiarConceptoNuevo(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), agregarItem())}
+                    placeholder="Ej. Consulta general, Nexgard 10-25 kg"
+                    className={claseInput}
+                  />
+                  <datalist id="sugerencias-concepto">
+                    {sugerenciasConcepto.map((s) => (
+                      <option key={s} value={s} />
+                    ))}
+                  </datalist>
+                </div>
+                <div className="md:col-span-1">
+                  <label htmlFor="nuevo-cantidad" className={claseEtiqueta}>Cant.</label>
+                  <input
+                    id="nuevo-cantidad"
+                    type="number"
+                    min={0}
+                    step="any"
+                    value={nuevo.cantidad}
+                    onChange={(e) => setNuevo({ ...nuevo, cantidad: Number(e.target.value) })}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), agregarItem())}
+                    className={claseInput + ' text-right'}
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label htmlFor="nuevo-precio" className={claseEtiqueta}>Precio unitario</label>
+                  <CampoPesos id="nuevo-precio" valor={nuevo.precioUnitario} onChange={(v) => setNuevo({ ...nuevo, precioUnitario: v })} onEnter={agregarItem} />
+                </div>
+                <div className="col-span-2 md:col-span-2">
+                  <button
+                    type="button"
+                    onClick={agregarItem}
+                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold"
+                    title="También puede presionar Enter"
+                  >
+                    <Plus className="w-4 h-4" /> Agregar {subtotalNuevo > 0 ? formatCOP(subtotalNuevo) : ''}
+                  </button>
+                </div>
+              </div>
+
+              {/* Ítems agregados: editables en la misma tabla */}
+              {items.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm min-w-[720px]">
+                    <thead className="text-[11px] uppercase tracking-wide text-slate-500">
+                      <tr>
+                        <th className="text-left py-2 pl-2 w-40">Categoría</th>
+                        <th className="text-left">Concepto</th>
+                        <th className="text-right w-16">Cant.</th>
+                        <th className="text-right w-28">Precio</th>
+                        <th className="text-right w-24">Descuento</th>
+                        <th className="text-right w-28 pr-2">Subtotal</th>
+                        <th className="w-10" />
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {items.map((i) => (
+                        <tr key={i.id}>
+                          <td className="py-1">
+                            <select value={i.categoria} onChange={(e) => editarItem(i.id, { categoria: e.target.value as CategoriaVenta, subcategoria: undefined })} className={claseCelda} title={nombreCategoria(i.categoria)}>
+                              {CATEGORIAS_VENTA.some((c) => c.id === i.categoria) ? null : <option value={i.categoria}>{nombreCategoria(i.categoria)}</option>}
+                              {CATEGORIAS_VENTA.map((c) => (
+                                <option key={c.id} value={c.id}>{c.label}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>
+                            <input value={i.concepto} onChange={(e) => editarItem(i.id, { concepto: e.target.value })} className={claseCelda} />
+                          </td>
+                          <td>
+                            <input type="number" min={0} step="any" value={i.cantidad} onChange={(e) => editarItem(i.id, { cantidad: Number(e.target.value) })} className={claseCelda + ' text-right'} />
+                          </td>
+                          <td>
+                            <CampoPesos valor={i.precioUnitario} onChange={(v) => editarItem(i.id, { precioUnitario: v })} className={claseCelda} />
+                          </td>
+                          <td>
+                            <CampoPesos valor={i.descuento || 0} onChange={(v) => editarItem(i.id, { descuento: v || undefined })} className={claseCelda} placeholder="—" />
+                          </td>
+                          <td className="text-right pr-2 font-semibold tabular-nums">{formatCOP(subtotalItem(i))}</td>
+                          <td>
+                            <button onClick={() => quitarItem(i.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" title="Quitar ítem">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500 text-center py-4">
+                  Aún no hay ítems. Elija la categoría, escriba el concepto y el precio, y presione <strong>Agregar</strong> o Enter.
+                </p>
+              )}
+            </Seccion>
+
+            <Seccion
+              numero={5}
+              titulo="Forma de pago"
+              icono={Wallet}
+              extra={
+                <button onClick={() => agregarPago()} disabled={total === 0} className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-emerald-600 text-emerald-700 dark:text-emerald-300 text-xs font-semibold disabled:opacity-40">
+                  <Plus className="w-3.5 h-3.5" /> Agregar forma de pago
+                </button>
+              }
+            >
+              <div className="flex flex-wrap gap-2">
+                <span className="text-xs text-slate-500 self-center">Pagar todo con:</span>
+                {MEDIOS_PAGO_VENTA.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => pagarTodoCon(m.id)}
+                    disabled={total === 0}
+                    className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-emerald-100 dark:hover:bg-emerald-950 text-xs font-semibold text-slate-700 dark:text-slate-200 disabled:opacity-40"
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+
+              {pagos.length > 0 && (
+                <div className="space-y-2">
+                  {pagos.map((p) => (
+                    <div key={p.id} className="grid grid-cols-2 md:grid-cols-12 gap-2 items-end">
+                      <div className="md:col-span-3">
+                        <label className={claseEtiqueta}>Medio</label>
+                        <select value={p.medio} onChange={(e) => editarPago(p.id, { medio: e.target.value as PagoVenta['medio'], recibido: undefined })} className={claseInput}>
+                          {MEDIOS_PAGO_VENTA.map((m) => (
+                            <option key={m.id} value={m.id}>{m.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="md:col-span-3">
+                        <label className={claseEtiqueta}>Valor</label>
+                        <CampoPesos valor={p.monto} onChange={(v) => editarPago(p.id, { monto: v })} />
+                      </div>
+                      {p.medio === 'efectivo' ? (
+                        <div className="md:col-span-3">
+                          <label className={claseEtiqueta}>Recibido (para el cambio)</label>
+                          <CampoPesos valor={p.recibido || 0} onChange={(v) => editarPago(p.id, { recibido: v || undefined })} placeholder="Opcional" />
+                        </div>
+                      ) : (
+                        <div className="md:col-span-3">
+                          <label className={claseEtiqueta}>Referencia / comprobante</label>
+                          <input value={p.referencia || ''} onChange={(e) => editarPago(p.id, { referencia: e.target.value })} className={claseInput} placeholder="Opcional" />
+                        </div>
+                      )}
+                      <div className="md:col-span-3 flex items-center gap-2">
+                        {p.medio === 'efectivo' && p.recibido && p.recibido > p.monto ? (
+                          <span className="text-xs font-semibold text-sky-700 dark:text-sky-300">Cambio: {formatCOP(p.recibido - p.monto)}</span>
+                        ) : (
+                          <span className="flex-1" />
+                        )}
+                        <button onClick={() => quitarPago(p.id)} className="ml-auto p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40" title="Quitar forma de pago">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-[11px] text-slate-500">Lo que no se pague queda como saldo a crédito del cliente.</p>
+            </Seccion>
+
+            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+              <label htmlFor="venta-observaciones" className={claseEtiqueta}>Observaciones (aparecen en el recibo)</label>
+              <textarea id="venta-observaciones" rows={2} value={observaciones} onChange={(e) => setObservaciones(e.target.value)} className={claseInput} />
+            </section>
+          </div>
+
+          {/* Resumen y cierre */}
+          <aside className="lg:w-80 shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 flex flex-col gap-3">
+            <div className="rounded-2xl bg-emerald-700 text-white p-4">
+              <p className="text-[11px] uppercase tracking-wider opacity-80">Total de la venta</p>
+              <p className="text-3xl font-extrabold tabular-nums">{formatCOP(total)}</p>
+              <p className="text-xs opacity-80">{items.length} ítem(s)</p>
             </div>
-          </div>
-
-          {/* Fila 6: Observaciones */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Observaciones o Notas (Opcional)
-            </label>
-            <input
-              type="text"
-              value={observaciones}
-              onChange={(e) => setObservaciones(e.target.value)}
-              placeholder="Ej: Entregar historia clínica por WhatsApp, pendiente saldo de $15.000..."
-              className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
-            />
-          </div>
-
-          {/* Botones de acción */}
-          <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-200 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={onCerrar}
-              className="px-4 py-2.5 rounded-xl text-xs font-semibold border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={guardando}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/25 transition-all disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              <span>{guardando ? 'Guardando...' : ventaParaEditar ? 'Guardar Cambios' : 'Registrar Venta'}</span>
-            </button>
-          </div>
-        </form>
+            <dl className="text-sm space-y-1.5">
+              <div className="flex justify-between">
+                <dt className="text-slate-500">Pagado</dt>
+                <dd className="font-semibold tabular-nums">{formatCOP(pagado)}</dd>
+              </div>
+              {pagos.map((p) => (
+                <div key={p.id} className="flex justify-between text-xs text-slate-500 pl-3">
+                  <dt>{MEDIOS_PAGO_VENTA.find((m) => m.id === p.medio)?.label}</dt>
+                  <dd className="tabular-nums">{formatCOP(p.monto)}</dd>
+                </div>
+              ))}
+              <div className={`flex justify-between ${saldo > 0 ? 'text-rose-700 dark:text-rose-300 font-bold' : 'text-slate-500'}`}>
+                <dt>Saldo a crédito</dt>
+                <dd className="tabular-nums">{formatCOP(saldo)}</dd>
+              </div>
+              {cambio > 0 && (
+                <div className="flex justify-between text-sky-700 dark:text-sky-300 font-bold">
+                  <dt>Cambio a devolver</dt>
+                  <dd className="tabular-nums">{formatCOP(cambio)}</dd>
+                </div>
+              )}
+            </dl>
+            {exceso > 0 && (
+              <p className="text-xs rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 p-2 flex gap-1.5">
+                <AlertTriangle className="w-4 h-4 shrink-0" /> Los pagos superan el total en {formatCOP(exceso)}.
+              </p>
+            )}
+            <div className="mt-auto grid gap-2">
+              <button
+                onClick={() => guardar(true)}
+                disabled={guardando}
+                className="flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold disabled:opacity-60"
+              >
+                {guardando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
+                {editando ? 'Guardar y ver recibo' : 'Cerrar venta y generar recibo'}
+              </button>
+              <button
+                onClick={() => guardar(false)}
+                disabled={guardando}
+                className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold text-slate-700 dark:text-slate-200 disabled:opacity-60"
+              >
+                <Save className="w-4 h-4" /> {editando ? 'Guardar cambios' : 'Guardar sin recibo'}
+              </button>
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
   );
 };
+
