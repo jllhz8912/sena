@@ -7,3 +7,4 @@ datos/
 *.log
 .env*
 !.env.example
+dist-demo/

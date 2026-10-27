@@ -17,6 +17,7 @@ import {
   Save,
 } from 'lucide-react';
 import { Proveedor, Categoria, CentroCosto, EmpresaInfo } from '../../types';
+import { ModalConfirmacion } from '../common/ModalConfirmacion';
 import { dataService } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
 
@@ -63,40 +64,26 @@ export const CatalogosView: React.FC<CatalogosViewProps> = ({
     }
   };
 
-  // Eliminar elementos
-  const handleEliminarProveedor = async (id: string, nombre: string) => {
-    if (window.confirm(`¿Eliminar proveedor ${nombre}?`)) {
-      try {
-        await dataService.eliminarProveedor(id);
-        mostrarToast('info', 'Proveedor eliminado', `Se eliminó ${nombre}.`);
-        onDatosActualizados();
-      } catch (err: any) {
-        mostrarToast('error', 'Error al eliminar', err?.message);
-      }
-    }
-  };
+  // Eliminar elementos (con confirmación en ventana propia)
+  const [aEliminar, setAEliminar] = useState<{ tipo: 'proveedor' | 'categoría' | 'centro de costo'; id: string; nombre: string } | null>(null);
 
-  const handleEliminarCategoria = async (id: string, nombre: string) => {
-    if (window.confirm(`¿Eliminar categoría ${nombre}?`)) {
-      try {
-        await dataService.eliminarCategoria(id);
-        mostrarToast('info', 'Categoría eliminada', `Se eliminó ${nombre}.`);
-        onDatosActualizados();
-      } catch (err: any) {
-        mostrarToast('error', 'Error al eliminar', err?.message);
-      }
-    }
-  };
+  const handleEliminarProveedor = (id: string, nombre: string) => setAEliminar({ tipo: 'proveedor', id, nombre });
+  const handleEliminarCategoria = (id: string, nombre: string) => setAEliminar({ tipo: 'categoría', id, nombre });
+  const handleEliminarCentro = (id: string, nombre: string) => setAEliminar({ tipo: 'centro de costo', id, nombre });
 
-  const handleEliminarCentro = async (id: string, nombre: string) => {
-    if (window.confirm(`¿Eliminar centro de costo ${nombre}?`)) {
-      try {
-        await dataService.eliminarCentroCosto(id);
-        mostrarToast('info', 'Centro eliminado', `Se eliminó ${nombre}.`);
-        onDatosActualizados();
-      } catch (err: any) {
-        mostrarToast('error', 'Error al eliminar', err?.message);
-      }
+  const confirmarEliminacion = async () => {
+    if (!aEliminar) return;
+    const { tipo, id, nombre } = aEliminar;
+    try {
+      if (tipo === 'proveedor') await dataService.eliminarProveedor(id);
+      else if (tipo === 'categoría') await dataService.eliminarCategoria(id);
+      else await dataService.eliminarCentroCosto(id);
+      mostrarToast('info', 'Registro eliminado', `Se eliminó ${tipo} ${nombre}.`);
+      onDatosActualizados();
+    } catch (err: any) {
+      mostrarToast('error', 'Error al eliminar', err?.message);
+    } finally {
+      setAEliminar(null);
     }
   };
 
@@ -652,6 +639,13 @@ export const CatalogosView: React.FC<CatalogosViewProps> = ({
           onCerrar={() => setModalCentro({ abierto: false })}
         />
       )}
+      <ModalConfirmacion
+        abierto={!!aEliminar}
+        titulo={`¿Eliminar ${aEliminar?.tipo}?`}
+        mensaje={`Se eliminará "${aEliminar?.nombre}". Los documentos ya registrados conservan su información.`}
+        enConfirmar={confirmarEliminacion}
+        enCancelar={() => setAEliminar(null)}
+      />
     </div>
   );
 };
