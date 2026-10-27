@@ -1,7 +1,7 @@
 {
   "name": "vetcompras",
   "private": true,
-  "version": "2.3.0",
+  "version": "2.4.0",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts --dev",
@@ -24,6 +24,7 @@
     "jspdf-autotable": "^5.0.9",
     "jszip": "^3.10.2",
     "lucide-react": "^0.546.0",
+    "pdfjs-dist": "^5.7.284",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "recharts": "^3.10.1",

@@ -7,6 +7,7 @@ import autoTable from 'jspdf-autotable';
 import type { EmpresaInfo, Venta } from '../types';
 import { formatCOP, formatFecha, getCategoriaVentaInfo, getMedioPagoVentaInfo, numeroALetras } from '../utils/formatters';
 import { itemsDeVenta, pagosDeVenta, saldoDeVenta, cambioEfectivo } from '../utils/ventas';
+import { MARCA, logoDe } from '../data/marca';
 
 export type FormatoRecibo = 'carta' | 'tirilla';
 
@@ -38,16 +39,17 @@ export function generarReciboPdf(venta: Venta, empresa: EmpresaInfo, formato: Fo
 // ------------------------------------------------------------------ carta
 function reciboCarta(venta: Venta, empresa: EmpresaInfo): Blob {
   const doc = new jsPDF({ unit: 'mm', format: 'letter' });
-  const color = hexARgb(empresa.colorPrimario, [5, 150, 105]);
+  const color = hexARgb(empresa.colorPrimario || MARCA.colorPrimario, [147, 48, 179]);
   const ancho = doc.internal.pageSize.getWidth();
   const margen = 15;
   let y = margen;
 
   // Encabezado: logo y datos de la veterinaria
   let xTexto = margen;
-  if (empresa.logoUrl && formatoImagen(empresa.logoUrl)) {
+  const logo = logoDe(empresa);
+  if (formatoImagen(logo)) {
     try {
-      doc.addImage(empresa.logoUrl, formatoImagen(empresa.logoUrl)!, margen, y, 22, 22);
+      doc.addImage(logo, formatoImagen(logo)!, margen, y, 22, 22);
       xTexto = margen + 26;
     } catch {
       // Logo con formato no soportado: se omite

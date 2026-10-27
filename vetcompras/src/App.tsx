@@ -16,6 +16,7 @@ import { CompraDocumento, Categoria, CentroCosto, Proveedor, Venta } from './typ
 import { dataService, EVENTO_SESION, EstadoSesion, UsuarioActual } from './services/dataService';
 import { PantallaAcceso } from './components/seguridad/PantallaAcceso';
 import { PantallaInicio } from './components/seguridad/PantallaInicio';
+import { MARCA } from './data/marca';
 import { SeguridadView } from './components/seguridad/SeguridadView';
 import { BotonObservacion } from './components/prueba/ObservacionPrueba';
 import { CuentasPorPagarView } from './components/cartera/CuentasPorPagarView';
@@ -385,7 +386,7 @@ type EstadoAcceso =
   | { tipo: 'listo'; usuario: UsuarioActual };
 
 /** Controla el acceso: primer uso, ingreso, cambio obligatorio de contraseña y sesión vencida. */
-const MARCA_DEFECTO: NonNullable<EstadoSesion['marca']> = { nombre: 'Mi Veterinaria', slogan: '', logoUrl: '', colorPrimario: '' };
+const MARCA_DEFECTO: NonNullable<EstadoSesion['marca']> = { nombre: MARCA.nombre, slogan: MARCA.slogan, logoUrl: '', colorPrimario: MARCA.colorPrimario };
 
 function PuertaDeAcceso() {
   const [estado, setEstado] = useState<EstadoAcceso>({ tipo: 'cargando' });

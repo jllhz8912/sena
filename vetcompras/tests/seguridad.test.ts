@@ -260,7 +260,7 @@ describe('ingreso sin contraseña (pantalla de inicio)', () => {
     const r0 = await c('/sesion');
     expect(r0.cuerpo.modoAcceso).toBe('libre');
     expect(r0.cuerpo.requiereConfiguracion).toBe(false);
-    expect(r0.cuerpo.marca.nombre).toBe('Mi Veterinaria');
+    expect(r0.cuerpo.marca.nombre).toBe('Los Criollos Vet');
     expect((await c('/documentos')).status).toBe(401);
 
     const r = await c('/sesion/ingresar-libre', { method: 'POST' });

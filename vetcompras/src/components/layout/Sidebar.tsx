@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { dataService } from '../../services/dataService';
 import { EmpresaInfo } from '../../types';
+import { logoDe } from '../../data/marca';
 
 export type NavItem =
   | 'dashboard'
@@ -174,11 +175,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Brand Header */}
         <div className="flex items-center justify-between h-16 px-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-3 overflow-hidden">
-            {empresa.logoUrl ? (
+            {logoDe(empresa) ? (
               <img
-                src={empresa.logoUrl}
+                src={logoDe(empresa)}
                 alt="Logo"
-                className="w-10 h-10 rounded-xl object-contain bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-0.5 shadow-sm shrink-0"
+                className="w-11 h-11 rounded-full object-contain bg-white border border-slate-200 dark:border-slate-700 shadow-sm shrink-0"
               />
             ) : (
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20 shrink-0">
@@ -281,11 +282,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Header móvil */}
             <div className="flex items-center justify-between h-16 px-4 border-b border-slate-200 dark:border-slate-800">
               <div className="flex items-center gap-3">
-                {empresa.logoUrl ? (
+                {logoDe(empresa) ? (
                   <img
-                    src={empresa.logoUrl}
+                    src={logoDe(empresa)}
                     alt="Logo"
-                    className="w-10 h-10 rounded-xl object-contain bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-0.5 shadow-sm shrink-0"
+                    className="w-11 h-11 rounded-full object-contain bg-white border border-slate-200 dark:border-slate-700 shadow-sm shrink-0"
                   />
                 ) : (
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20 shrink-0">

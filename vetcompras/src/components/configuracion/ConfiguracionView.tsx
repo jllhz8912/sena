@@ -22,12 +22,15 @@ import {
 import { EmpresaInfo } from '../../types';
 import { dataService } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
+import { MARCA, logoDe } from '../../data/marca';
 
 interface ConfiguracionViewProps {
   onDatosActualizados?: () => void;
 }
 
 const PRESET_COLORES = [
+  { nombre: 'Morado Los Criollos', hex: '#9330b3', desc: 'Color del logo' },
+  { nombre: 'Azul Los Criollos', hex: '#244568', desc: 'Borde del logo' },
   { nombre: 'Esmeralda Clínico', hex: '#059669', desc: 'Verde fresco y médico' },
   { nombre: 'Azul Veterinario', hex: '#2563eb', desc: 'Profesional y confiable' },
   { nombre: 'Turquesa Salud', hex: '#0d9488', desc: 'Cuidado animal e higiene' },
@@ -121,7 +124,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
     }
   };
 
-  const colorActivo = empresa.colorPrimario || '#059669';
+  const colorActivo = empresa.colorPrimario || MARCA.colorPrimario;
 
   return (
     <div className="space-y-6 animate-in fade-in pb-16">
@@ -400,9 +403,9 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
               <div className="flex flex-col sm:flex-row items-center gap-5">
                 {/* Previsualizador */}
                 <div className="w-28 h-28 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 flex items-center justify-center p-2 overflow-hidden shadow-inner shrink-0">
-                  {empresa.logoUrl ? (
+                  {logoDe(empresa) ? (
                     <img
-                      src={empresa.logoUrl}
+                      src={logoDe(empresa)}
                       alt="Logo de la clínica"
                       className="w-full h-full object-contain"
                     />
@@ -440,7 +443,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
                         className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 font-semibold text-xs border border-rose-200 dark:border-rose-800 hover:bg-rose-100"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        <span>Eliminar Logo</span>
+                        <span>Volver al logo de {MARCA.nombre}</span>
                       </button>
                     )}
                   </div>
@@ -494,7 +497,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
               <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 flex items-center gap-3">
                 <input
                   type="color"
-                  value={empresa.colorPrimario || '#059669'}
+                  value={empresa.colorPrimario || MARCA.colorPrimario}
                   onChange={(e) => handleChange('colorPrimario', e.target.value)}
                   className="w-10 h-10 rounded-xl cursor-pointer border border-slate-300 dark:border-slate-600 bg-transparent"
                 />
@@ -502,7 +505,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
                   <span className="font-bold text-slate-700 dark:text-slate-300 block">
                     O elija un tono personalizado:
                   </span>
-                  <span className="font-mono text-slate-500 font-semibold">{empresa.colorPrimario || '#059669'}</span>
+                  <span className="font-mono text-slate-500 font-semibold">{empresa.colorPrimario || MARCA.colorPrimario}</span>
                 </div>
               </div>
             </div>

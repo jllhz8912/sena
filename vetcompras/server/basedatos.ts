@@ -181,6 +181,25 @@ const MIGRACIONES: Migracion[] = [
       db.prepare("UPDATE configuracion SET valor = ? WHERE clave = 'empresa'").run(JSON.stringify(neutra));
     },
   },
+  {
+    version: 5,
+    descripcion: 'Marca: nombre y colores de Los Criollos Vet (el logo viene con el programa)',
+    aplicar: (db) => {
+      const fila = db.prepare("SELECT valor FROM configuracion WHERE clave = 'empresa'").get() as { valor: string } | undefined;
+      if (!fila) return;
+      const empresa = JSON.parse(fila.valor);
+      // Valores fijos (no constantes que cambien después): una migración publicada no se modifica
+      if (!empresa.razonSocial || empresa.razonSocial === 'Mi Veterinaria') {
+        empresa.razonSocial = 'LOS CRIOLLOS VET';
+        empresa.nombreComercial = 'Los Criollos Vet';
+        if (!empresa.slogan) empresa.slogan = 'Clínica veterinaria · Med. Rojas';
+      }
+      // Solo cambia los colores si seguían los verdes de fábrica
+      if (!empresa.colorPrimario || empresa.colorPrimario.toLowerCase() === '#059669') empresa.colorPrimario = '#9330b3';
+      if (!empresa.colorSecundario || empresa.colorSecundario.toLowerCase() === '#0f766e') empresa.colorSecundario = '#244568';
+      db.prepare("UPDATE configuracion SET valor = ? WHERE clave = 'empresa'").run(JSON.stringify(empresa));
+    },
+  },
 ];
 
 export const VERSION_ESQUEMA = MIGRACIONES[MIGRACIONES.length - 1].version;

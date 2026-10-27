@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Loader2, Stethoscope } from 'lucide-react';
 import { dataService, EstadoSesion, UsuarioActual } from '../../services/dataService';
+import { MARCA } from '../../data/marca';
 
 interface PantallaInicioProps {
   marca: NonNullable<EstadoSesion['marca']>;
@@ -38,7 +39,8 @@ export const PantallaInicio: React.FC<PantallaInicioProps> = ({ marca, mensaje, 
     return () => window.removeEventListener('keydown', alPresionar);
   });
 
-  const color = marca.colorPrimario || '#059669';
+  const color = marca.colorPrimario || MARCA.colorPrimario;
+  const logo = marca.logoUrl || MARCA.logo;
 
   return (
     <div
@@ -46,11 +48,11 @@ export const PantallaInicio: React.FC<PantallaInicioProps> = ({ marca, mensaje, 
       style={{ background: `radial-gradient(circle at 50% 35%, ${color}22 0%, transparent 60%), linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%)` }}
     >
       <div className="flex flex-col items-center gap-6 max-w-lg w-full">
-        {marca.logoUrl ? (
+        {logo ? (
           <img
-            src={marca.logoUrl}
+            src={logo}
             alt={`Logo de ${marca.nombre}`}
-            className="w-44 h-44 sm:w-56 sm:h-56 object-contain rounded-3xl bg-white shadow-xl p-4"
+            className="w-56 h-56 sm:w-72 sm:h-72 object-contain rounded-full bg-white shadow-2xl"
           />
         ) : (
           <div className="w-40 h-40 sm:w-48 sm:h-48 rounded-[2.5rem] flex items-center justify-center text-white shadow-xl" style={{ backgroundColor: color }}>

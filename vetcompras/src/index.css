@@ -2,3 +2,35 @@
 
 /* El modo oscuro lo controla el botón de tema (clase .dark en <html>), no solo Windows */
 @custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Colores de Los Criollos Vet, tomados del logo. Toda la interfaz usa las clases
+ * "emerald" y "teal"; aquí se redefinen para que tomen el morado y el verde azulado
+ * del logo sin tocar cada pantalla.
+ *   morado del aro #ad3dcf · morado de las letras #671066 · verde azulado de "VET" #498e91
+ */
+@theme {
+  --color-emerald-50: #faf5fc;
+  --color-emerald-100: #f3e6f8;
+  --color-emerald-200: #e7ccf1;
+  --color-emerald-300: #d6a5e6;
+  --color-emerald-400: #c172d9;
+  --color-emerald-500: #ad3dcf;
+  --color-emerald-600: #9330b3;
+  --color-emerald-700: #7a2793;
+  --color-emerald-800: #671066;
+  --color-emerald-900: #4f0d4e;
+  --color-emerald-950: #330833;
+
+  --color-teal-50: #f1f8f8;
+  --color-teal-100: #dceeee;
+  --color-teal-200: #bcdfe0;
+  --color-teal-300: #8ec6c8;
+  --color-teal-400: #63a9ac;
+  --color-teal-500: #498e91;
+  --color-teal-600: #3c7679;
+  --color-teal-700: #335f62;
+  --color-teal-800: #2c4e50;
+  --color-teal-900: #264244;
+  --color-teal-950: #142a2b;
+}

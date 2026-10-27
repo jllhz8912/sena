@@ -111,12 +111,21 @@ describe('BaseDatosLocal', () => {
     bd.db.exec('PRAGMA user_version = 3');
     bd.cerrar();
     bd = new BaseDatosLocal(carpeta);
-    expect(bd.obtenerConfig<any>('empresa')).toMatchObject({ razonSocial: 'Mi Veterinaria', nit: '' });
+    // v4 la deja neutra y v5 le pone la marca de Los Criollos Vet
+    expect(bd.obtenerConfig<any>('empresa')).toMatchObject({ razonSocial: 'LOS CRIOLLOS VET', nombreComercial: 'Los Criollos Vet', nit: '', colorPrimario: '#9330b3' });
 
     bd.guardarConfig('empresa', { razonSocial: 'Clínica Real SAS', nit: '900123456' });
     bd.db.exec('PRAGMA user_version = 3');
     bd.cerrar();
     bd = new BaseDatosLocal(carpeta);
     expect(bd.obtenerConfig<any>('empresa')).toMatchObject({ razonSocial: 'Clínica Real SAS', nit: '900123456' });
+  });
+
+  it('migración v5: respeta un nombre real y un color elegido, y cambia el verde de fábrica', () => {
+    bd.guardarConfig('empresa', { razonSocial: 'Clínica Real SAS', colorPrimario: '#2563eb', colorSecundario: '#0f766e' });
+    bd.db.exec('PRAGMA user_version = 4');
+    bd.cerrar();
+    bd = new BaseDatosLocal(carpeta);
+    expect(bd.obtenerConfig<any>('empresa')).toMatchObject({ razonSocial: 'Clínica Real SAS', colorPrimario: '#2563eb', colorSecundario: '#244568' });
   });
 });

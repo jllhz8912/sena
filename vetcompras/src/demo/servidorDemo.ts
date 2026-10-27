@@ -80,7 +80,8 @@ function datosIniciales(): Datos {
       categorias: clonar(CATEGORIAS_DEFECTO),
       centrosCosto: clonar(CENTROS_COSTO_DEFECTO),
     },
-    empresa: clonar(EMPRESA_DEFECTO),
+    // La demostración muestra la marca de Los Criollos Vet con datos de contacto de ejemplo
+    empresa: { ...clonar(EMPRESA_DEFECTO), razonSocial: 'LOS CRIOLLOS VET', nombreComercial: 'Los Criollos Vet', slogan: 'Clínica veterinaria · Med. Rojas', colorPrimario: '#9330b3', colorSecundario: '#244568', nit: '', dv: '', direccion: '', ciudad: '', departamento: '', telefono: '', whatsapp: '', email: '', sitioWeb: '', matriculaMercantil: '' },
   };
 }
 
@@ -90,7 +91,7 @@ function estadoInicial(conUsuarios = true, modoAcceso: Estado['modoAcceso'] = 'l
     // Arranque en limpio: como una instalación nueva
     datos.colecciones.documentos = [];
     datos.colecciones.ventas = [];
-    datos.empresa = { ...datos.empresa, razonSocial: 'Mi Veterinaria', nombreComercial: 'Mi Veterinaria', nit: '', dv: '', slogan: '', logoUrl: '' };
+    datos.empresa = { ...datos.empresa, nit: '', dv: '', logoUrl: '' };
   }
   const hace = (h: number) => new Date(Date.now() - h * 3600000).toISOString();
   const usuarios: UsuarioDemo[] = conUsuarios
@@ -227,10 +228,10 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
     return {
       usuario: u ? usuarioPublico(u) : null,
       modoAcceso,
-      marca: { nombre: e.nombreComercial || e.razonSocial || 'Mi Veterinaria', slogan: e.slogan || '', logoUrl: e.logoUrl || '', colorPrimario: e.colorPrimario || '' },
+      marca: { nombre: e.nombreComercial || e.razonSocial || 'Los Criollos Vet', slogan: e.slogan || '', logoUrl: e.logoUrl || '', colorPrimario: e.colorPrimario || '' },
       requiereConfiguracion: modoAcceso === 'usuarios' && estado.usuarios.length === 0,
       minutosInactividad: MINUTOS_INACTIVIDAD,
-      version: '2.3.0-demo',
+      version: '2.4.0-demo',
     };
   }
   if (metodo === 'POST' && ruta === '/sesion/ingresar-libre') {

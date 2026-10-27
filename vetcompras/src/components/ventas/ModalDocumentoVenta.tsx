@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { X, Download, Share2, Mail, MessageCircle, Copy, Check, Receipt } from 'lucide-react';
+import { X, Download, Share2, Mail, MessageCircle, Copy, Check, Receipt, Loader2, ExternalLink } from 'lucide-react';
+import { pdfAImagenes } from '../../services/vistaPdf';
 import { Venta, EmpresaInfo } from '../../types';
 import { formatCOP } from '../../utils/formatters';
 import { useToast } from '../../context/ToastContext';
@@ -27,6 +28,21 @@ export const ModalDocumentoVenta: React.FC<ModalDocumentoVentaProps> = ({ venta,
   const pdf = useMemo(() => generarReciboPdf(venta, empresa, formato), [venta, empresa, formato]);
   const urlVistaPrevia = useMemo(() => URL.createObjectURL(pdf), [pdf]);
   useEffect(() => () => URL.revokeObjectURL(urlVistaPrevia), [urlVistaPrevia]);
+
+  // Vista previa como imágenes del PDF real (funciona en celulares y en la demostración)
+  const [paginas, setPaginas] = useState<string[] | null>(null);
+  const [errorVista, setErrorVista] = useState(false);
+  useEffect(() => {
+    let vigente = true;
+    setPaginas(null);
+    setErrorVista(false);
+    pdfAImagenes(pdf, formato === 'tirilla' ? 600 : 1100)
+      .then((imgs) => vigente && setPaginas(imgs))
+      .catch(() => vigente && setErrorVista(true));
+    return () => {
+      vigente = false;
+    };
+  }, [pdf, formato]);
 
   const nombre = nombreArchivoRecibo(venta);
   const mensaje = mensajeRecibo(venta, empresa);
@@ -110,8 +126,26 @@ export const ModalDocumentoVenta: React.FC<ModalDocumentoVentaProps> = ({ venta,
         </div>
 
         <div className="flex-1 min-h-0 flex flex-col md:flex-row">
-          <div className="flex-1 min-h-[300px] bg-slate-200 dark:bg-slate-950">
-            <iframe title="Vista previa del recibo" src={urlVistaPrevia} className="w-full h-full border-0" />
+          <div className="flex-1 min-h-[300px] bg-slate-200 dark:bg-slate-950 overflow-y-auto p-3 sm:p-5">
+            {paginas ? (
+              <div className="space-y-4 flex flex-col items-center">
+                {paginas.map((src, i) => (
+                  <img
+                    key={i}
+                    src={src}
+                    alt={`Recibo ${venta.consecutivo}, página ${i + 1}`}
+                    className={`w-full ${formato === 'tirilla' ? 'max-w-[340px]' : 'max-w-[820px]'} bg-white shadow-lg rounded-sm`}
+                  />
+                ))}
+              </div>
+            ) : errorVista ? (
+              // Respaldo: visor de PDF del navegador
+              <iframe title="Vista previa del recibo" src={urlVistaPrevia} className="w-full h-full min-h-[400px] border-0" />
+            ) : (
+              <div className="h-full min-h-[300px] flex items-center justify-center gap-2 text-sm text-slate-500">
+                <Loader2 className="w-5 h-5 animate-spin" /> Preparando vista previa…
+              </div>
+            )}
           </div>
 
           <aside className="md:w-72 shrink-0 p-4 space-y-2.5 border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800">
@@ -130,6 +164,14 @@ export const ModalDocumentoVenta: React.FC<ModalDocumentoVentaProps> = ({ venta,
             <button onClick={enviarCorreo} className={`${boton} w-full border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800`}>
               <Mail className="w-4 h-4 text-sky-600" /> Correo {venta.clienteEmail ? '' : '(sin correo)'}
             </button>
+            <a
+              href={urlVistaPrevia}
+              target="_blank"
+              rel="noopener"
+              className={`${boton} w-full border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800`}
+            >
+              <ExternalLink className="w-4 h-4" /> Abrir PDF / imprimir
+            </a>
             <button onClick={copiarTexto} className={`${boton} w-full border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800`}>
               {copiado ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />} Copiar resumen
             </button>

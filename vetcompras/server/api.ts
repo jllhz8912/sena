@@ -110,10 +110,10 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
         modoAcceso,
         // Datos de marca para la pantalla de inicio (información pública del negocio)
         marca: {
-          nombre: empresa.nombreComercial || empresa.razonSocial || 'Mi Veterinaria',
+          nombre: empresa.nombreComercial || empresa.razonSocial || 'Los Criollos Vet',
           slogan: empresa.slogan || '',
           logoUrl: empresa.logoUrl || '',
-          colorPrimario: empresa.colorPrimario || '#059669',
+          colorPrimario: empresa.colorPrimario || '#9330b3',
         },
         requiereConfiguracion: modoAcceso === 'usuarios' && !seg.hayUsuarios(),
         minutosInactividad: MINUTOS_INACTIVIDAD,

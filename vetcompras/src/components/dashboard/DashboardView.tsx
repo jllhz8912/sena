@@ -51,16 +51,17 @@ interface DashboardViewProps {
 }
 
 const PALETA_COLORES = [
-  '#0d9488', // teal-600
-  '#16a34a', // green-600
-  '#0284c7', // sky-600
-  '#6366f1', // indigo-500
-  '#eab308', // yellow-500
-  '#ec4899', // pink-500
-  '#f97316', // orange-500
-  '#8b5cf6', // violet-500
-  '#14b8a6', // teal-500
-  '#64748b', // slate-500
+  // Colores del logo de Los Criollos Vet y complementos
+  '#9330b3', // morado
+  '#498e91', // verde azulado
+  '#244568', // azul marino
+  '#db6e77', // rosado
+  '#af701e', // ocre (Garfield)
+  '#c172d9', // lila
+  '#63a9ac', // turquesa claro
+  '#671066', // morado oscuro
+  '#eab308', // amarillo
+  '#64748b', // gris
 ];
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -616,7 +617,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     fontSize: '12px',
                   }}
                 />
-                <Bar dataKey="ventas" name="Ventas" fill="#10b981" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="ventas" name="Ventas" fill="#9330b3" radius={[6, 6, 0, 0]} />
                 <Bar dataKey="compras" name="Compras (Mercancía/Insumos)" fill="#0284c7" radius={[6, 6, 0, 0]} />
                 <Bar dataKey="gastos" name="Gastos Operativos" fill="#f97316" radius={[6, 6, 0, 0]} />
               </BarChart>
@@ -719,7 +720,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     fontSize: '12px',
                   }}
                 />
-                <Bar dataKey="total" fill="#0d9488" radius={[0, 6, 6, 0]} />
+                <Bar dataKey="total" fill="#498e91" radius={[0, 6, 6, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -3,6 +3,18 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.4.0
+- **Marca Los Criollos Vet**: el logo viene incluido con el programa y aparece en la
+  pantalla de inicio, el menú, la barra superior y los recibos (no hay que cargarlo).
+  En Configuración se puede poner otro y volver al de Los Criollos con un clic.
+- **Colores del logo** en todo el sistema: morado (botones, menú, encabezados), verde
+  azulado y azul marino; también en las gráficas y en los recibos PDF.
+- **Vista previa del recibo corregida**: antes dependía del visor de PDF del navegador
+  (no existe en celulares Android y se bloquea en la demostración en línea). Ahora el
+  recibo se dibuja como imagen y se ve siempre. Nuevo botón "Abrir PDF / imprimir".
+- Al actualizar, si la veterinaria seguía como "Mi Veterinaria" toma el nombre Los
+  Criollos Vet; un nombre o un color ya elegidos no se cambian.
+
 ## 2.3.0
 - **Borrar todo**: botón en *Datos y Respaldo* y en *Copias de Seguridad* para empezar
   de cero. Borra compras, ventas, proveedores y catálogos; conserva los datos y el logo

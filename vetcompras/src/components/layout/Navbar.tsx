@@ -29,6 +29,7 @@ import { ModalCambiarClave } from '../seguridad/ModalCambiarClave';
 import { CompraDocumento, EmpresaInfo } from '../../types';
 import { AlertasVencimiento } from '../cartera/AlertasVencimiento';
 import { fechaLocal } from '../../utils/formatters';
+import { logoDe } from '../../data/marca';
 
 interface NavbarProps {
   onAbrirCargaFactura: () => void;
@@ -231,11 +232,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700"
           title="Ver o editar datos tributarios y marca de la veterinaria"
         >
-          {empresa.logoUrl ? (
+          {logoDe(empresa) ? (
             <img
-              src={empresa.logoUrl}
+              src={logoDe(empresa)}
               alt="Logo"
-              className="w-5 h-5 rounded-md object-contain bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"
+              className="w-6 h-6 rounded-full object-contain bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"
             />
           ) : (
             <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
