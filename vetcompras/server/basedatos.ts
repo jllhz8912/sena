@@ -32,7 +32,7 @@ import {
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite');
 type DatabaseSync = TipoDatabaseSync;
 
-export const COLECCIONES = ['documentos', 'ventas', 'proveedores', 'categorias', 'centrosCosto'] as const;
+export const COLECCIONES = ['documentos', 'ventas', 'proveedores', 'categorias', 'centrosCosto', 'observaciones'] as const;
 export type Coleccion = (typeof COLECCIONES)[number];
 
 export function esColeccion(valor: string): valor is Coleccion {
@@ -298,6 +298,59 @@ export class BaseDatosLocal {
     return previo;
   }
 
+  // ------------------------------------------------- recordatorio de copias
+  /**
+   * Una "copia de seguridad" para el recordatorio es la que hace el usuario
+   * (manual, descargada o copiada a otra carpeta). Los respaldos automáticos
+   * diarios quedan en el mismo disco y no protegen ante daño o robo del PC.
+   */
+  registrarCopiaSeguridad(medio: string): void {
+    this.guardarConfig('ultimaCopiaSeguridad', { fecha: new Date().toISOString(), medio });
+  }
+
+  estadoCopias(): { ultima: { fecha: string; medio: string } | null; diasSinCopia: number | null; diasRecordatorio: number } {
+    const ultima = this.obtenerConfig<{ fecha: string; medio: string }>('ultimaCopiaSeguridad') || null;
+    const diasRecordatorio = this.obtenerConfig<{ diasRecordatorio: number }>('politicaRespaldo')?.diasRecordatorio || 7;
+    const diasSinCopia = ultima ? Math.floor((Date.now() - new Date(ultima.fecha).getTime()) / 86400000) : null;
+    return { ultima, diasSinCopia, diasRecordatorio };
+  }
+
+  configurarRecordatorio(dias: number): void {
+    if (!Number.isInteger(dias) || dias < 1 || dias > 90) {
+      throw Object.assign(new Error('El recordatorio debe estar entre 1 y 90 días.'), { status: 400 });
+    }
+    this.guardarConfig('politicaRespaldo', { diasRecordatorio: dias });
+  }
+
+  /**
+   * Guarda en la carpeta de respaldos un archivo .db traído de otro lugar
+   * (USB, correo, otro PC) después de comprobar que es una copia válida de VetCompras.
+   * Luego se restaura desde la lista como cualquier otro respaldo.
+   */
+  cargarRespaldo(contenido: Buffer): string {
+    if (contenido.length < 100 || contenido.subarray(0, 16).toString('latin1') !== 'SQLite format 3\u0000') {
+      throw Object.assign(new Error('El archivo no es una copia de seguridad de VetCompras (.db).'), { status: 400 });
+    }
+    const nombre = `vetcompras-${marcaDeTiempo()}-cargado.db`;
+    const destino = path.join(this.carpetaRespaldos, nombre);
+    fs.writeFileSync(destino, contenido);
+    try {
+      const prueba = new DatabaseSync(destino, { readOnly: true });
+      try {
+        const tabla = prueba.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'registros'").get();
+        const { user_version } = prueba.prepare('PRAGMA user_version').get() as { user_version: number };
+        if (!tabla) throw new Error('El archivo no contiene datos de VetCompras.');
+        if (user_version > VERSION_ESQUEMA) throw new Error('La copia es de una versión más nueva del programa. Actualice VetCompras primero.');
+      } finally {
+        prueba.close();
+      }
+    } catch (err: any) {
+      fs.rmSync(destino, { force: true });
+      throw Object.assign(new Error(err?.message || 'El archivo está dañado o no es una copia válida.'), { status: 400 });
+    }
+    return nombre;
+  }
+
   // ------------------------------------------------------- respaldo externo
   /** Segunda carpeta (otro disco, USB u OneDrive) donde se copia cada respaldo. */
   carpetaRespaldoExterno(): string | undefined {
@@ -336,6 +389,7 @@ export class BaseDatosLocal {
         .reverse();
       for (const f of rotativos.slice(RESPALDOS_A_CONSERVAR)) fs.rmSync(path.join(carpeta, f), { force: true });
       this.ultimoRespaldoExterno = { fecha, ok: true, mensaje: `Copiado a ${carpeta}` };
+      this.registrarCopiaSeguridad('copia automática en carpeta externa');
     } catch (err: any) {
       this.ultimoRespaldoExterno = { fecha, ok: false, mensaje: `No se pudo copiar a ${carpeta}: ${err?.message}` };
       console.warn('[VetCompras]', this.ultimoRespaldoExterno.mensaje);

@@ -17,6 +17,7 @@ import {
   Settings,
   ShieldCheck,
   HandCoins,
+  DatabaseBackup,
 } from 'lucide-react';
 import { dataService } from '../../services/dataService';
 import { EmpresaInfo } from '../../types';
@@ -32,7 +33,8 @@ export type NavItem =
   | 'reportes'
   | 'catalogos'
   | 'configuracion'
-  | 'seguridad';
+  | 'seguridad'
+  | 'copias';
 
 interface SidebarProps {
   currentTab: NavItem;
@@ -42,6 +44,8 @@ interface SidebarProps {
   totalPendientes: number;
   /** Facturas vencidas, que vencen hoy o mañana */
   alertasPago?: number;
+  /** Hace falta una copia de seguridad según el recordatorio */
+  copiaPendiente?: boolean;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
 }
@@ -53,6 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setCollapsed,
   totalPendientes,
   alertasPago = 0,
+  copiaPendiente = false,
   mobileOpen,
   setMobileOpen,
 }) => {
@@ -134,8 +139,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badgeColor: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300',
     },
     {
+      id: 'copias' as NavItem,
+      label: 'Copias de Seguridad',
+      icon: DatabaseBackup,
+      badge: copiaPendiente ? 'Hacer copia' : null,
+      badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+    },
+    {
       id: 'seguridad' as NavItem,
-      label: 'Seguridad y Respaldos',
+      label: 'Usuarios y Seguridad',
       icon: ShieldCheck,
       badge: 'Admin',
       badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',

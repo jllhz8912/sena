@@ -16,7 +16,10 @@ import { CompraDocumento, Categoria, CentroCosto, Proveedor, Venta } from './typ
 import { dataService, EVENTO_SESION, UsuarioActual } from './services/dataService';
 import { PantallaAcceso } from './components/seguridad/PantallaAcceso';
 import { SeguridadView } from './components/seguridad/SeguridadView';
+import { BotonObservacion } from './components/prueba/ObservacionPrueba';
 import { CuentasPorPagarView } from './components/cartera/CuentasPorPagarView';
+import { CopiasSeguridadView, estadoRecordatorio } from './components/respaldos/CopiasSeguridadView';
+import type { EstadoCopias } from './services/dataService';
 import { resumenAlertas, sumaSaldos } from './utils/cartera';
 import { formatCOP } from './utils/formatters';
 import { ToastProvider, useToast } from './context/ToastContext';
@@ -35,6 +38,8 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [centrosCosto, setCentrosCosto] = useState<CentroCosto[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [estadoCopias, setEstadoCopias] = useState<EstadoCopias | null>(null);
+  const [copiasConsultadas, setCopiasConsultadas] = useState(false);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
 
   // Modales
@@ -60,6 +65,11 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
       setCentrosCosto(ccs);
       setVentas(vts);
       setErrorCarga(null);
+      dataService
+        .obtenerEstadoCopias()
+        .then(setEstadoCopias)
+        .catch(() => undefined)
+        .finally(() => setCopiasConsultadas(true));
     } catch (error: any) {
       console.error('Error cargando datos de VetCompras:', error);
       setErrorCarga(error?.message || 'No fue posible leer la base de datos local.');
@@ -98,8 +108,12 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
   const { mostrarToast } = useToast();
   const avisoMostrado = React.useRef(false);
   useEffect(() => {
-    if (cargando || avisoMostrado.current) return;
+    if (cargando || !copiasConsultadas || avisoMostrado.current) return;
     avisoMostrado.current = true;
+    const copia = estadoRecordatorio(estadoCopias);
+    if (copia.vencido) {
+      mostrarToast('warning', 'Copia de seguridad pendiente', `${copia.texto} Vaya a "Copias de Seguridad".`, 12000);
+    }
     const r = resumenAlertas(documentos);
     if (r.urgentes === 0) return;
     const partes = [
@@ -116,7 +130,7 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
     } catch {
       // Avisos de Windows no disponibles
     }
-  }, [cargando, documentos, mostrarToast]);
+  }, [cargando, copiasConsultadas, documentos, estadoCopias, mostrarToast]);
 
   const totalPendientes = documentos.filter((d) => d.saldoPendiente > 0).length;
   const alertasPago = resumenAlertas(documentos);
@@ -132,7 +146,8 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
     reportes: 'Reportería e Informes Tributarios (DIAN)',
     catalogos: 'Catálogos de Proveedores y Centros de Costo',
     configuracion: 'Configuración de la Veterinaria y Marca',
-    seguridad: 'Seguridad, Usuarios y Respaldos',
+    seguridad: 'Usuarios, Permisos y Bitácora',
+    copias: 'Copias de Seguridad',
   };
 
   return (
@@ -145,6 +160,7 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
         setCollapsed={setSidebarCollapsed}
         totalPendientes={totalPendientes}
         alertasPago={alertasPago.urgentes}
+        copiaPendiente={estadoRecordatorio(estadoCopias).vencido}
         mobileOpen={mobileMenuAbierto}
         setMobileOpen={setMobileMenuAbierto}
       />
@@ -165,7 +181,18 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
           onSalir={onSalir}
           documentos={documentos}
           onVerCartera={() => setCurrentTab('cuentas_pagar')}
+          estadoCopias={estadoCopias}
+          onVerCopias={() => setCurrentTab('copias')}
         />
+
+        {dataService.etapa() === 'prueba' && (
+          <div className="shrink-0 px-4 py-1.5 bg-amber-400 text-amber-950 text-xs font-semibold flex items-center justify-between gap-3">
+            <span>
+              VERSIÓN DE PRUEBA {dataService.version()} · Use datos de ensayo. Si algo falla o tiene una idea, presione "Observación".
+            </span>
+            <BotonObservacion modulo={titulos[currentTab]} />
+          </div>
+        )}
 
         {/* Área de Contenido con Scroll */}
         <main className="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8 pb-20 md:pb-8">
@@ -230,6 +257,10 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
                     setModalManualAbierto(true);
                   }}
                 />
+              )}
+
+              {currentTab === 'copias' && (
+                <CopiasSeguridadView onSesionTerminada={onSalir} onDatosActualizados={recargarDatos} />
               )}
 
               {currentTab === 'cuentas_pagar' && (

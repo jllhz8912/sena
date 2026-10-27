@@ -188,3 +188,64 @@ describe('actualización del programa', () => {
     expect(bd.listarRespaldos().some((r) => r.nombre.includes('antes-de-actualizar-v1-a-v'))).toBe(true);
   });
 });
+
+describe('copias de seguridad y observaciones', () => {
+  it('registra la última copia y permite configurar el recordatorio', async () => {
+    const admin = await configurarAdmin();
+    let estado = (await admin('/respaldos/estado')).cuerpo;
+    expect(estado.ultima).toBeNull();
+    expect(estado.diasRecordatorio).toBe(7);
+
+    await admin('/respaldos', { method: 'POST' });
+    estado = (await admin('/respaldos/estado')).cuerpo;
+    expect(estado.ultima.medio).toBe('copia manual');
+    expect(estado.diasSinCopia).toBe(0);
+
+    expect((await admin('/respaldos/politica', { method: 'PUT', body: { diasRecordatorio: 3 } })).cuerpo.diasRecordatorio).toBe(3);
+    expect((await admin('/respaldos/politica', { method: 'PUT', body: { diasRecordatorio: 0 } })).status).toBe(400);
+  });
+
+  it('carga un archivo .db válido y rechaza archivos que no son copias', async () => {
+    const admin = await configurarAdmin();
+    const { cuerpo } = await admin('/respaldos', { method: 'POST' });
+    const contenido = fs.readFileSync(cuerpo.ruta);
+    const subir = async (datos: Buffer) => {
+      // Inicia sesión con fetch directo para enviar binario
+      const ingreso = await fetch(base + '/api/sesion/ingresar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-VetCompras': '1' },
+        body: JSON.stringify({ usuario: 'admin', clave: 'Clinica2026' }),
+      });
+      const galleta = ingreso.headers.get('set-cookie')!.split(';')[0];
+      const r = await fetch(base + '/api/respaldos/cargar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream', 'X-VetCompras': '1', Cookie: galleta },
+        body: new Uint8Array(datos),
+      });
+      return { status: r.status, cuerpo: await r.json() };
+    };
+
+    const valido = await subir(contenido);
+    expect(valido.status).toBe(200);
+    expect(valido.cuerpo.nombre).toMatch(/cargado\.db$/);
+    expect(bd.listarRespaldos().some((r) => r.nombre === valido.cuerpo.nombre)).toBe(true);
+
+    const invalido = await subir(Buffer.from('esto no es una base de datos de VetCompras'.repeat(10)));
+    expect(invalido.status).toBe(400);
+    expect(bd.listarRespaldos().filter((r) => r.nombre.includes('cargado'))).toHaveLength(1);
+  });
+
+  it('el auxiliar deja observaciones pero no las borra', async () => {
+    const admin = await configurarAdmin();
+    await admin('/usuarios', { method: 'POST', body: { usuario: 'aux', nombre: 'Aux', rol: 'auxiliar', clave: 'Temporal123' } });
+    const aux = cliente();
+    await aux('/sesion/ingresar', { method: 'POST', body: { usuario: 'aux', clave: 'Temporal123' } });
+    await aux('/sesion/cambiar-clave', { method: 'POST', body: { claveActual: 'Temporal123', claveNueva: 'MiClave456' } });
+
+    const obs = { id: 'o1', fecha: new Date().toISOString(), usuario: 'Aux', modulo: 'Ventas', tipo: 'error', descripcion: 'Falla X', estado: 'nueva' };
+    expect((await aux('/observaciones/o1', { method: 'PUT', body: obs })).status).toBe(200);
+    expect((await admin('/observaciones')).cuerpo).toHaveLength(1);
+    expect((await aux('/observaciones/o1', { method: 'DELETE' })).status).toBe(403);
+  });
+});
+

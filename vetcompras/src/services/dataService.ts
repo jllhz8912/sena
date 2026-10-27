@@ -12,7 +12,7 @@ import { fechaLocal } from '../utils/formatters';
  * detectan consultando la revisión cada pocos segundos.
  */
 
-type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centrosCosto';
+type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centrosCosto' | 'observaciones';
 
 const CLAVE_CACHE_EMPRESA = 'vetcompras_empresa';
 const INTERVALO_SONDEO_MS = 4000;
@@ -32,12 +32,33 @@ export interface EstadoSesion {
   requiereConfiguracion: boolean;
   minutosInactividad: number;
   version: string;
+  etapa?: 'prueba' | 'produccion';
+}
+
+export interface EstadoCopias {
+  ultima: { fecha: string; medio: string } | null;
+  diasSinCopia: number | null;
+  diasRecordatorio: number;
+}
+
+/** Observación que deja un probador durante la etapa de prueba. */
+export interface Observacion {
+  id: string;
+  fecha: string;
+  usuario: string;
+  modulo: string;
+  tipo: 'error' | 'mejora' | 'duda';
+  descripcion: string;
+  estado: 'nueva' | 'revisada' | 'resuelta';
+  respuesta?: string;
 }
 
 /** Evento global que la App escucha para volver a la pantalla de ingreso. */
 export const EVENTO_SESION = 'vetcompras:sesion';
 
 let usuarioActual: UsuarioActual | null = null;
+let etapaActual: 'prueba' | 'produccion' = 'produccion';
+let versionActual = '';
 
 async function api<T = any>(ruta: string, opciones: RequestInit & { sondeo?: boolean } = {}): Promise<T> {
   const { sondeo, ...init } = opciones;
@@ -118,6 +139,8 @@ export interface EstadoServidor {
   revision: string;
   carpetaDatos: string;
   geminiConfigurado: boolean;
+  etapa?: 'prueba' | 'produccion';
+  copias?: EstadoCopias;
 }
 
 export const dataService = {
@@ -127,6 +150,15 @@ export const dataService = {
     return usuarioActual;
   },
 
+  /** 'prueba' cuando el paquete se entregó a probadores (ETAPA=prueba en .env). */
+  etapa(): 'prueba' | 'produccion' {
+    return etapaActual;
+  },
+
+  version(): string {
+    return versionActual;
+  },
+
   esAdministrador(): boolean {
     return usuarioActual?.rol === 'administrador';
   },
@@ -134,6 +166,8 @@ export const dataService = {
   async obtenerSesion(): Promise<EstadoSesion> {
     const estado = await api<EstadoSesion>('/sesion');
     usuarioActual = estado.usuario;
+    etapaActual = estado.etapa === 'prueba' ? 'prueba' : 'produccion';
+    versionActual = estado.version;
     return estado;
   },
 
@@ -575,6 +609,51 @@ export const dataService = {
     const r = await api<{ respaldoPrevio: string }>(`/respaldos/${encodeURIComponent(nombre)}/restaurar`, { method: 'POST' });
     usuarioActual = null;
     return r.respaldoPrevio;
+  },
+
+  obtenerEstadoCopias(): Promise<EstadoCopias> {
+    return api('/respaldos/estado');
+  },
+
+  configurarRecordatorioCopias(diasRecordatorio: number): Promise<EstadoCopias> {
+    return api('/respaldos/politica', { method: 'PUT', body: JSON.stringify({ diasRecordatorio }) });
+  },
+
+  /** Sube un archivo .db (copia de seguridad) a la carpeta de respaldos para luego restaurarlo. */
+  async cargarArchivoRespaldo(archivo: File): Promise<string> {
+    let respuesta: Response;
+    try {
+      respuesta = await fetch('/api/respaldos/cargar', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'X-VetCompras': '1',
+          'X-Nombre-Archivo': encodeURIComponent(archivo.name),
+        },
+        body: archivo,
+      });
+    } catch {
+      throw new Error('No hay conexión con el servidor local de VetCompras.');
+    }
+    const cuerpo = await respuesta.json().catch(() => ({}));
+    if (!respuesta.ok) throw new Error(cuerpo?.error || 'No se pudo cargar el archivo.');
+    return cuerpo.nombre;
+  },
+
+  abrirCarpetaRespaldos(): Promise<{ abierta: boolean; carpeta: string }> {
+    return api('/respaldos/abrir-carpeta', { method: 'POST' });
+  },
+
+  // ================= OBSERVACIONES (ETAPA DE PRUEBA) =================
+
+  async obtenerObservaciones(): Promise<Observacion[]> {
+    const lista = await listar<Observacion>('observaciones');
+    return lista.sort((a, b) => b.fecha.localeCompare(a.fecha));
+  },
+
+  guardarObservacion(o: Observacion): Promise<unknown> {
+    return guardar('observaciones', o);
   },
 
   async apagarServidor(): Promise<void> {

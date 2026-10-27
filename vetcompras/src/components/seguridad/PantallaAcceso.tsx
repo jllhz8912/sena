@@ -249,6 +249,11 @@ export const PantallaAcceso: React.FC<PantallaAccesoProps> = ({ modo, mensaje, u
           </button>
         </div>
 
+        <p className="text-[11px] text-center text-slate-400">
+          VetCompras {dataService.version()}
+          {dataService.etapa() === 'prueba' && <strong className="text-amber-600"> · versión de prueba: use datos de ensayo</strong>}
+        </p>
+
         {modo === 'ingreso' && (
           <p className="text-[11px] text-center text-slate-400">
             ¿Olvidó su contraseña? Un administrador puede asignarle una temporal en “Seguridad y Respaldos”.

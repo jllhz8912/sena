@@ -9,6 +9,7 @@
  */
 
 import express, { type Request, type Response, type NextFunction } from 'express';
+import { spawn } from 'node:child_process';
 import { BaseDatosLocal, esColeccion, VERSION_ESQUEMA, type Coleccion } from './basedatos';
 import { extraerFacturaPdf, geminiConfigurado } from './gemini';
 import {
@@ -69,6 +70,8 @@ function describir(coleccion: Coleccion, r: any): string {
       return `${r.consecutivo || ''} · ${r.concepto || ''} · ${pesos(r.monto)}`;
     case 'proveedores':
       return `${r.nit || ''} · ${r.razonSocial || ''}`;
+    case 'observaciones':
+      return `${r.tipo || ''} · ${r.modulo || ''} · ${String(r.descripcion || '').slice(0, 80)}`;
     default:
       return r.nombre || '';
   }
@@ -80,6 +83,7 @@ const NOMBRES_COLECCION: Record<Coleccion, string> = {
   proveedores: 'proveedor',
   categorias: 'categoría',
   centrosCosto: 'centro de costo',
+  observaciones: 'observación de prueba',
 };
 
 export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void } = {}) {
@@ -104,6 +108,7 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
         requiereConfiguracion: !seg.hayUsuarios(),
         minutosInactividad: MINUTOS_INACTIVIDAD,
         version: pkg.version,
+        etapa: process.env.ETAPA === 'prueba' ? 'prueba' : 'produccion',
       });
     })
   );
@@ -186,6 +191,8 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
         revision: bd.obtenerRevision(),
         carpetaDatos: req.usuario?.rol === 'administrador' ? bd.carpetaDatos : '',
         geminiConfigurado: geminiConfigurado(),
+        etapa: process.env.ETAPA === 'prueba' ? 'prueba' : 'produccion',
+        copias: bd.estadoCopias(),
       });
     })
   );
@@ -258,10 +265,53 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
   );
 
   // -------------------------------------------------------------- respaldos
+  api.get(
+    '/respaldos/estado',
+    seguro((_req, res) => {
+      res.json(bd.estadoCopias());
+    })
+  );
+
+  api.put(
+    '/respaldos/politica',
+    soloAdministrador,
+    seguro((req, res) => {
+      bd.configurarRecordatorio(Number(req.body?.diasRecordatorio));
+      auditar(req, 'Recordatorio de copias configurado', { detalle: `cada ${req.body?.diasRecordatorio} días` });
+      res.json({ ok: true, ...bd.estadoCopias() });
+    })
+  );
+
+  api.post(
+    '/respaldos/cargar',
+    soloAdministrador,
+    express.raw({ type: 'application/octet-stream', limit: '1gb' }),
+    seguro((req, res) => {
+      const nombre = bd.cargarRespaldo(req.body as Buffer);
+      auditar(req, 'Copia de seguridad cargada desde archivo', { detalle: `${req.get('X-Nombre-Archivo') || ''} → ${nombre}` });
+      res.json({ ok: true, nombre });
+    })
+  );
+
+  /** Abre la carpeta de respaldos en el Explorador de Windows (solo desde el propio PC). */
+  api.post(
+    '/respaldos/abrir-carpeta',
+    soloAdministrador,
+    seguro((req, res) => {
+      const local = ['127.0.0.1', '::1'].includes(ipDe(req));
+      if (process.platform === 'win32' && local) {
+        spawn('explorer.exe', [bd.carpetaRespaldos], { detached: true, stdio: 'ignore' }).unref();
+        return res.json({ ok: true, abierta: true, carpeta: bd.carpetaRespaldos });
+      }
+      res.json({ ok: true, abierta: false, carpeta: bd.carpetaRespaldos });
+    })
+  );
+
   api.post(
     '/respaldos',
     seguro((req, res) => {
       const ruta = bd.crearRespaldo('manual');
+      bd.registrarCopiaSeguridad('copia manual');
       auditar(req, 'Respaldo manual creado', { detalle: ruta });
       res.json({ ok: true, ruta, externo: bd.ultimoRespaldoExterno });
     })
@@ -299,6 +349,7 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
     seguro((req, res) => {
       const ruta = bd.rutaRespaldo(req.params.nombre);
       auditar(req, 'Respaldo descargado', { detalle: req.params.nombre });
+      bd.registrarCopiaSeguridad('descarga del respaldo');
       res.download(ruta, req.params.nombre);
     })
   );

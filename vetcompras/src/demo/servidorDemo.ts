@@ -50,6 +50,8 @@ interface Estado extends Datos {
   auditoria: { fecha: string; usuario: string; accion: string; detalle?: string; registroId?: string }[];
   respaldos: { nombre: string; fecha: string; tamano: number; datos: Datos }[];
   carpetaExterna: string;
+  ultimaCopia?: { fecha: string; medio: string } | null;
+  diasRecordatorio?: number;
   sesion: { usuarioId: string; ultimoUso: number } | null;
   revision: number;
 }
@@ -59,7 +61,7 @@ export const CREDENCIALES_DEMO = [
   { rol: 'Auxiliar', usuario: 'auxiliar', clave: 'Auxiliar2026' },
 ];
 
-const CLAVE_ALMACEN = 'vetcompras_demo_v3';
+const CLAVE_ALMACEN = 'vetcompras_demo_v4';
 const MINUTOS_INACTIVIDAD = 60;
 const clonar = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 const ahoraIso = () => new Date().toISOString();
@@ -105,6 +107,9 @@ function estadoInicial(conUsuarios = true): Estado {
       : [],
     respaldos: conUsuarios ? [{ nombre: marca('diario'), fecha: hace(6), tamano: 2_400_000, datos: clonar(datos) }] : [],
     carpetaExterna: '',
+    // Hace 9 días sin copia: así se ve el recordatorio en la demostración
+    ultimaCopia: conUsuarios ? { fecha: hace(24 * 9), medio: 'copia manual' } : null,
+    diasRecordatorio: 7,
     sesion: null,
     revision: 1,
   };
@@ -205,7 +210,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
   // ---- públicas
   if (metodo === 'GET' && ruta === '/sesion') {
     const u = usuarioSesion(false);
-    return { usuario: u ? usuarioPublico(u) : null, requiereConfiguracion: estado.usuarios.length === 0, minutosInactividad: MINUTOS_INACTIVIDAD, version: '2.0.0-demo' };
+    return { usuario: u ? usuarioPublico(u) : null, requiereConfiguracion: estado.usuarios.length === 0, minutosInactividad: MINUTOS_INACTIVIDAD, version: '2.1.0-demo' };
   }
   if (metodo === 'POST' && ruta === '/sesion/configuracion-inicial') {
     if (estado.usuarios.length) throw new ErrorHttp(409, 'El sistema ya fue configurado. Ingrese con su usuario.');
@@ -264,7 +269,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
     return { ok: true };
   }
   if (metodo === 'GET' && ruta === '/estado') {
-    return { aplicacion: 'VetCompras', version: '2.0.0-demo', versionEsquema: 3, revision: String(estado.revision), carpetaDatos: yo.rol === 'administrador' ? 'C:\\Users\\Veterinaria\\VetCompras\\datos (demostración)' : '', geminiConfigurado: false };
+    return { aplicacion: 'VetCompras', version: '2.1.0-demo', versionEsquema: 3, revision: String(estado.revision), carpetaDatos: yo.rol === 'administrador' ? 'C:\\Users\\Veterinaria\\VetCompras\\datos (demostración)' : '', geminiConfigurado: false };
   }
 
   // usuarios
@@ -325,7 +330,28 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
   }
 
   // respaldos
+  if (ruta === '/respaldos/estado' && metodo === 'GET') {
+    const ultima = estado.ultimaCopia || null;
+    return {
+      ultima,
+      diasSinCopia: ultima ? Math.floor((Date.now() - new Date(ultima.fecha).getTime()) / 86400000) : null,
+      diasRecordatorio: estado.diasRecordatorio || 7,
+    };
+  }
+  if (ruta === '/respaldos/politica' && metodo === 'PUT') {
+    admin();
+    estado.diasRecordatorio = Number(cuerpo.diasRecordatorio) || 7;
+    auditar(yo.usuario, 'Recordatorio de copias configurado', `cada ${estado.diasRecordatorio} días`);
+    return atender('GET', '/respaldos/estado', {}, cabeceras, query);
+  }
+  if (ruta === '/respaldos/cargar') {
+    throw new ErrorHttp(400, 'En la demostración no se cargan archivos. En la instalación real se elige el archivo .db o .json y queda listo para restaurar.');
+  }
+  if (ruta === '/respaldos/abrir-carpeta') {
+    return { abierta: false, carpeta: 'C:\\Users\\Veterinaria\\VetCompras\\datos\\respaldos (en la instalación real se abre el Explorador)' };
+  }
   if (ruta === '/respaldos' && metodo === 'POST') {
+    estado.ultimaCopia = { fecha: ahoraIso(), medio: 'copia manual' };
     const nombre = crearRespaldo('manual');
     auditar(yo.usuario, 'Respaldo manual creado', nombre);
     const externo = estado.carpetaExterna ? { fecha: ahoraIso(), ok: true, mensaje: `Copiado a ${estado.carpetaExterna} (simulado)` } : null;

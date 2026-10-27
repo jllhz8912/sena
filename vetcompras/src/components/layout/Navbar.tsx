@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
-import { dataService } from '../../services/dataService';
+import { dataService, EstadoCopias } from '../../services/dataService';
 import { ModalDatosEmpresa } from '../catalogos/ModalDatosEmpresa';
 import { ModalConfirmacion } from '../common/ModalConfirmacion';
 import { ModalCambiarClave } from '../seguridad/ModalCambiarClave';
@@ -40,6 +40,8 @@ interface NavbarProps {
   onSalir: () => void;
   documentos: CompraDocumento[];
   onVerCartera: () => void;
+  estadoCopias: EstadoCopias | null;
+  onVerCopias: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -52,6 +54,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSalir,
   documentos,
   onVerCartera,
+  estadoCopias,
+  onVerCopias,
 }) => {
   const usuario = dataService.usuarioActual();
   const esAdmin = dataService.esAdministrador();
@@ -346,7 +350,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Alertas de vencimiento de facturas */}
-        <AlertasVencimiento documentos={documentos} onVerCartera={onVerCartera} />
+        <AlertasVencimiento documentos={documentos} onVerCartera={onVerCartera} estadoCopias={estadoCopias} onVerCopias={onVerCopias} />
 
         {/* Usuario y sesión */}
         <div className="relative">
@@ -365,6 +369,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <p className="text-sm font-semibold text-slate-900 dark:text-white">{usuario?.nombre}</p>
                 <p className="text-[11px] text-slate-500">
                   {usuario?.usuario} · {usuario?.rol === 'administrador' ? 'Administrador' : 'Auxiliar'}
+                </p>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  VetCompras {dataService.version()}
+                  {dataService.etapa() === 'prueba' ? ' (prueba)' : ''}
                 </p>
               </div>
               <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />

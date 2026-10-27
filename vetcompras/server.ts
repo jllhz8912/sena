@@ -17,6 +17,7 @@ import './server/silenciarAvisos';
 import express from 'express';
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { BaseDatosLocal } from './server/basedatos';
@@ -25,6 +26,13 @@ import { crearApi } from './server/api';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '.env'), quiet: true });
 dotenv.config({ path: path.join(__dirname, '.env.local'), quiet: true });
+
+// Paquete de prueba (archivo ETAPA_PRUEBA junto al programa): aviso visible y datos
+// en una carpeta aparte, para que lo ensayado no se mezcle con la versión final.
+if (fs.existsSync(path.join(__dirname, 'ETAPA_PRUEBA'))) process.env.ETAPA = 'prueba';
+if (process.env.ETAPA === 'prueba' && !process.env.VETCOMPRAS_DATOS) {
+  process.env.VETCOMPRAS_DATOS = path.join(os.homedir(), 'VetCompras', 'datos-prueba');
+}
 
 const PUERTO = Number(process.env.PUERTO || process.env.PORT) || 3000;
 const HOST = process.env.HOST || '127.0.0.1';

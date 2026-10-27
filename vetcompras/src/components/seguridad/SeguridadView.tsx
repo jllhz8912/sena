@@ -17,14 +17,15 @@ import {
   AlertTriangle,
   Power,
   Loader2,
+  MessageSquare,
 } from 'lucide-react';
 import { dataService, Rol, UsuarioActual } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
 import { ModalConfirmacion } from '../common/ModalConfirmacion';
 import { problemaClave } from './PantallaAcceso';
+import { PanelObservaciones } from '../prueba/PanelObservaciones';
 
 type UsuarioFila = UsuarioActual & { activo: boolean; creadoEn: string; ultimoAcceso: string | null };
-type Respaldos = Awaited<ReturnType<typeof dataService.listarRespaldos>>;
 type Evento = Awaited<ReturnType<typeof dataService.listarAuditoria>>[number];
 
 const claseInput =
@@ -33,20 +34,7 @@ const claseTarjeta = 'bg-white dark:bg-slate-900 rounded-2xl border border-slate
 
 const fechaHora = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
-const megas = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
-/** Explica en palabras simples de dónde salió cada respaldo. */
-function motivoRespaldo(nombre: string): string {
-  if (nombre.includes('diario')) return 'Automático diario';
-  if (nombre.includes('manual')) return 'Creado manualmente';
-  if (nombre.includes('antes-de-actualizar')) return 'Antes de actualizar el programa';
-  if (nombre.includes('antes-de-restaurar')) return 'Antes de restaurar otro respaldo';
-  if (nombre.includes('antes-de-importar')) return 'Antes de importar un archivo';
-  if (nombre.includes('antes-de-limpiar')) return 'Antes de borrar registros';
-  if (nombre.includes('antes-de-cargar-demo')) return 'Antes de cargar datos de demostración';
-  if (nombre.includes('antes-de-restablecer')) return 'Antes de restablecer el sistema';
-  return 'Respaldo';
-}
 
 // ============================================================== USUARIOS
 const PanelUsuarios: React.FC = () => {
@@ -210,219 +198,6 @@ const PanelUsuarios: React.FC = () => {
   );
 };
 
-// ============================================================== RESPALDOS
-const PanelRespaldos: React.FC<{ onRestaurado: () => void }> = ({ onRestaurado }) => {
-  const { mostrarToast } = useToast();
-  const [datos, setDatos] = useState<Respaldos | null>(null);
-  const [carpetaExterna, setCarpetaExterna] = useState('');
-  const [trabajando, setTrabajando] = useState(false);
-  const [aRestaurar, setARestaurar] = useState<string | null>(null);
-  const [confirmarApagado, setConfirmarApagado] = useState(false);
-
-  const cargar = useCallback(() => {
-    dataService
-      .listarRespaldos()
-      .then((d) => {
-        setDatos(d);
-        setCarpetaExterna(d.carpetaExterna);
-      })
-      .catch((e) => mostrarToast('error', 'Respaldos', e.message));
-  }, [mostrarToast]);
-
-  useEffect(cargar, [cargar]);
-
-  const crearAhora = async () => {
-    setTrabajando(true);
-    try {
-      await dataService.crearRespaldoEnDisco();
-      mostrarToast('success', 'Respaldo creado', 'Se guardó una copia completa de la información.');
-      cargar();
-    } catch (e: any) {
-      mostrarToast('error', 'No se creó el respaldo', e.message);
-    } finally {
-      setTrabajando(false);
-    }
-  };
-
-  const guardarExterna = async () => {
-    setTrabajando(true);
-    try {
-      const r = await dataService.configurarRespaldoExterno(carpetaExterna);
-      if (!carpetaExterna) mostrarToast('info', 'Copia externa desactivada', 'Los respaldos quedan solo en este PC.');
-      else if (r.ultimoRespaldoExterno?.ok) mostrarToast('success', 'Copia externa activada', r.ultimoRespaldoExterno.mensaje);
-      else mostrarToast('error', 'Revise la carpeta', r.ultimoRespaldoExterno?.mensaje || 'No se pudo copiar.');
-      cargar();
-    } catch (e: any) {
-      mostrarToast('error', 'Carpeta no válida', e.message);
-    } finally {
-      setTrabajando(false);
-    }
-  };
-
-  const restaurar = async () => {
-    if (!aRestaurar) return;
-    setTrabajando(true);
-    try {
-      await dataService.restaurarRespaldo(aRestaurar);
-      mostrarToast('success', 'Información restaurada', 'Ingrese de nuevo para continuar.');
-      setARestaurar(null);
-      onRestaurado();
-    } catch (e: any) {
-      mostrarToast('error', 'No se restauró', e.message);
-    } finally {
-      setTrabajando(false);
-    }
-  };
-
-  if (!datos) return <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />;
-  const ext = datos.ultimoRespaldoExterno;
-
-  return (
-    <div className="space-y-5">
-      <div className="grid md:grid-cols-2 gap-5">
-        <div className={claseTarjeta}>
-          <h3 className="font-bold text-sm flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" /> Cómo se protege la información
-          </h3>
-          <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-1.5 list-disc pl-4">
-            <li>Un respaldo automático cada día (se guardan los últimos 30).</li>
-            <li>Un respaldo antes de actualizar el programa, borrar, importar o restaurar.</li>
-            <li>
-              Carpeta de datos: <code className="break-all">{datos.carpeta.replace(/[\\/]respaldos$/, '')}</code>
-            </li>
-          </ul>
-          <button
-            onClick={crearAhora}
-            disabled={trabajando}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold disabled:opacity-60"
-          >
-            <Save className="w-4 h-4" /> Crear respaldo ahora
-          </button>
-        </div>
-
-        <div className={claseTarjeta}>
-          <h3 className="font-bold text-sm flex items-center gap-2">
-            <HardDrive className="w-4 h-4 text-emerald-600" /> Copia en otro lugar (recomendado)
-          </h3>
-          <p className="text-xs text-slate-600 dark:text-slate-300">
-            Si el PC se daña o se pierde, los respaldos de este equipo se pierden con él. Indique una carpeta en otro disco, una
-            memoria USB o una carpeta sincronizada (OneDrive, Google Drive) y cada respaldo se copiará también allí.
-          </p>
-          <input
-            value={carpetaExterna}
-            onChange={(e) => setCarpetaExterna(e.target.value)}
-            placeholder="Ej. D:\Respaldos VetCompras  o  C:\Users\...\OneDrive\VetCompras"
-            className={claseInput}
-          />
-          <div className="flex items-center gap-3 flex-wrap">
-            <button
-              onClick={guardarExterna}
-              disabled={trabajando}
-              className="px-4 py-2 rounded-xl border border-emerald-600 text-emerald-700 dark:text-emerald-300 text-sm font-semibold disabled:opacity-60"
-            >
-              Guardar y probar
-            </button>
-            {ext && (
-              <span className={`text-xs flex items-center gap-1 ${ext.ok ? 'text-emerald-700' : 'text-rose-700'}`}>
-                {ext.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
-                {fechaHora(ext.fecha)}: {ext.mensaje}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className={claseTarjeta}>
-        <h3 className="font-bold text-sm flex items-center gap-2">
-          <DatabaseBackup className="w-4 h-4 text-emerald-600" /> Respaldos guardados en este PC
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead className="text-left text-slate-500">
-              <tr>
-                <th className="py-2">Fecha</th>
-                <th>Origen</th>
-                <th>Tamaño</th>
-                <th className="text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {datos.respaldos.map((r) => (
-                <tr key={r.nombre}>
-                  <td className="py-2">{fechaHora(r.fecha)}</td>
-                  <td>{motivoRespaldo(r.nombre)}</td>
-                  <td>{megas(r.tamano)}</td>
-                  <td className="text-right space-x-2 whitespace-nowrap">
-                    <a
-                      href={dataService.urlDescargaRespaldo(r.nombre)}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
-                      title="Guardar una copia (por ejemplo en una USB)"
-                    >
-                      <Download className="w-3.5 h-3.5" /> Descargar
-                    </a>
-                    <button
-                      onClick={() => setARestaurar(r.nombre)}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-amber-400 text-amber-800 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" /> Restaurar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {datos.respaldos.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="py-4 text-center text-slate-400">
-                    Aún no hay respaldos. Use “Crear respaldo ahora”.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className={claseTarjeta}>
-        <h3 className="font-bold text-sm flex items-center gap-2">
-          <Power className="w-4 h-4 text-rose-600" /> Apagar VetCompras en este PC
-        </h3>
-        <p className="text-xs text-slate-600 dark:text-slate-300">
-          Detiene el programa (por ejemplo antes de copiar la carpeta de datos o de actualizar). Para volver a usarlo, abra el
-          icono VetCompras del escritorio.
-        </p>
-        <button onClick={() => setConfirmarApagado(true)} className="px-4 py-2 rounded-xl border border-rose-400 text-rose-700 text-sm font-semibold">
-          Apagar
-        </button>
-      </div>
-
-      <ModalConfirmacion
-        abierto={!!aRestaurar}
-        titulo="¿Restaurar este respaldo?"
-        mensaje={`La información volverá a como estaba el ${fechaHora(
-          datos.respaldos.find((r) => r.nombre === aRestaurar)?.fecha
-        )}. Lo registrado después NO se pierde del todo: antes se guarda un respaldo del estado actual, que podrá restaurar si se arrepiente. Todos deberán ingresar de nuevo.`}
-        textoConfirmar="Sí, restaurar"
-        tipo="advertencia"
-        cargando={trabajando}
-        enConfirmar={restaurar}
-        enCancelar={() => setARestaurar(null)}
-      />
-      <ModalConfirmacion
-        abierto={confirmarApagado}
-        titulo="¿Apagar VetCompras?"
-        mensaje="Nadie podrá usar el sistema (tampoco desde otros equipos de la red) hasta que se vuelva a abrir."
-        textoConfirmar="Sí, apagar"
-        tipo="advertencia"
-        enConfirmar={async () => {
-          await dataService.apagarServidor().catch(() => undefined);
-          document.body.innerHTML =
-            '<div style="font-family:sans-serif;padding:48px;text-align:center"><h2>VetCompras se apagó.</h2><p>Puede cerrar esta pestaña.</p></div>';
-        }}
-        enCancelar={() => setConfirmarApagado(false)}
-      />
-    </div>
-  );
-};
-
 // ============================================================== BITÁCORA
 const PanelActividad: React.FC = () => {
   const { mostrarToast } = useToast();
@@ -478,9 +253,11 @@ const PanelActividad: React.FC = () => {
 
 // ============================================================== VISTA
 export const SeguridadView: React.FC<{ onSesionTerminada: () => void }> = ({ onSesionTerminada }) => {
-  const [pestana, setPestana] = useState<'usuarios' | 'respaldos' | 'actividad'>('respaldos');
+  const [pestana, setPestana] = useState<'usuarios' | 'actividad' | 'observaciones'>(
+    dataService.etapa() === 'prueba' ? 'observaciones' : 'usuarios'
+  );
   const pestanas = [
-    { id: 'respaldos' as const, label: 'Respaldos', icon: DatabaseBackup },
+    ...(dataService.etapa() === 'prueba' ? [{ id: 'observaciones' as const, label: 'Observaciones de prueba', icon: MessageSquare }] : []),
     { id: 'usuarios' as const, label: 'Usuarios y permisos', icon: Users },
     { id: 'actividad' as const, label: 'Bitácora de actividad', icon: History },
   ];
@@ -503,8 +280,8 @@ export const SeguridadView: React.FC<{ onSesionTerminada: () => void }> = ({ onS
         ))}
       </div>
       {pestana === 'usuarios' && <PanelUsuarios />}
-      {pestana === 'respaldos' && <PanelRespaldos onRestaurado={onSesionTerminada} />}
       {pestana === 'actividad' && <PanelActividad />}
+      {pestana === 'observaciones' && <PanelObservaciones />}
     </div>
   );
 };

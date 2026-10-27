@@ -100,6 +100,27 @@ Al abrir el programa actualizado, la base de datos se adapta sola a la nueva ver
 (con respaldo previo). Si alguien abre una base de datos con un programa **más antiguo**
 que ella, el programa se detiene sin modificar nada y pide instalar la versión reciente.
 
+## Cómo se hacen cambios en el futuro
+
+El código fuente vive en GitHub (`jllhz8912/sena`, carpeta `vetcompras`). La USB o el PC solo
+tienen el programa compilado; **nunca se edita el programa instalado**. El ciclo es:
+
+1. **Pedir el cambio**: describirlo (por ejemplo, a Claude Code sobre este repositorio o a un
+   desarrollador). Las observaciones exportadas desde la versión de prueba sirven de insumo.
+2. **Desarrollar y probar**: se modifica el código, se ejecutan `npm test` y `npm run lint`, y
+   si el cambio toca la estructura de datos se agrega una migración (ver abajo).
+3. **Subir la versión**: aumentar `version` en `package.json` (2.1.0 → 2.1.1 para arreglos,
+   2.2.0 para funciones nuevas) y anotar el cambio en `CHANGELOG.md`.
+4. **Empaquetar**:
+   - Para probadores: `npm run build && node scripts/empaquetarPortable.mjs <node.exe> --prueba`
+   - Versión final: `npm run build:portable -- <node.exe>`
+5. **Instalar**: en el PC, "Instalar en este PC.bat" del zip nuevo; en la USB, descomprimir
+   encima. Los datos no se tocan; al abrir se hace una copia y la base se migra sola.
+
+Si algo sale mal tras actualizar: en **Copias de Seguridad** se restaura la copia
+"Antes de actualizar el programa", o se reinstala el zip de la versión anterior (el sistema
+no abre una base de una versión más nueva, para no dañarla).
+
 ## Para quien desarrolle mejoras
 
 ```bash
