@@ -540,12 +540,23 @@ function upsert(c: Coleccion, r: any) {
   else lista.push(clonar(r));
 }
 
+/**
+ * Reconoce una llamada a /api sin depender de la dirección de la página. Abierto con
+ * doble clic en Windows, "/api/x" se vuelve "file:///C:/api/x" (la letra de la unidad
+ * queda en la ruta); también cubre http(s) y vistas previas sin dirección propia.
+ */
+export function rutaApi(texto: string): { ruta: string; query: URLSearchParams } | null {
+  const m = /^(?:[a-z][a-z0-9+.-]*:\/\/[^/]*)?(?:\/[A-Za-z]:)?\/api(\/[^?#]*)(?:\?([^#]*))?/i.exec(texto);
+  return m ? { ruta: m[1], query: new URLSearchParams(m[2] || '') } : null;
+}
+
 /** Reemplaza fetch para que las llamadas a /api las responda la demostración. */
 export function instalarServidorDemo() {
   const fetchOriginal = window.fetch.bind(window);
   window.fetch = async (entrada: RequestInfo | URL, init?: RequestInit) => {
-    const url = new URL(typeof entrada === 'string' ? entrada : entrada instanceof URL ? entrada.href : entrada.url, location.href);
-    if (!url.pathname.startsWith('/api/')) return fetchOriginal(entrada, init);
+    const texto = typeof entrada === 'string' ? entrada : entrada instanceof URL ? entrada.href : entrada.url;
+    const llamada = rutaApi(texto);
+    if (!llamada) return fetchOriginal(entrada, init);
 
     const metodo = (init?.method || 'GET').toUpperCase();
     const cabeceras = new Headers(init?.headers);
@@ -558,8 +569,8 @@ export function instalarServidorDemo() {
     // Pequeña espera para que la interfaz se comporte como con un servidor real
     await new Promise((r) => setTimeout(r, 60));
     try {
-      const datos = atender(metodo, url.pathname.slice(4), cuerpo, cabeceras, url.searchParams);
-      if (metodo !== 'GET' || url.pathname === '/api/sesion') guardar();
+      const datos = atender(metodo, llamada.ruta, cuerpo, cabeceras, llamada.query);
+      if (metodo !== 'GET' || llamada.ruta === '/sesion') guardar();
       return new Response(JSON.stringify(datos ?? null), { status: 200, headers: { 'Content-Type': 'application/json' } });
     } catch (err: any) {
       const status = err instanceof ErrorHttp ? err.status : 500;

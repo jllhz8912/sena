@@ -14,6 +14,8 @@ hace una copia de seguridad y adapta la base de datos al abrir.
   recibo se dibuja como imagen y se ve siempre. Nuevo botón "Abrir PDF / imprimir".
 - Al actualizar, si la veterinaria seguía como "Mi Veterinaria" toma el nombre Los
   Criollos Vet; un nombre o un color ya elegidos no se cambian.
+- Archivo de prueba (.html): corregido el error "VetCompras no está abierto en este PC"
+  al abrirlo con doble clic en Windows.
 
 ## 2.3.0
 - **Borrar todo**: botón en *Datos y Respaldo* y en *Copias de Seguridad* para empezar
