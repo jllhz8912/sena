@@ -1,3 +1,4 @@
+import { EMPRESA_DEFECTO } from '../src/data/defaults';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -104,5 +105,18 @@ describe('BaseDatosLocal', () => {
     expect(bd.obtener('documentos', 'manual')).toMatchObject({ total: 119000, saldoPendiente: 66500, estadoPago: 'parcial' });
     expect(bd.obtener('documentos', 'xml')).toMatchObject({ total: 119000, saldoPendiente: 116500 });
     expect(bd.listarRespaldos().some((r) => r.nombre.includes('antes-de-actualizar-v2'))).toBe(true);
+  });
+  it('migración v4: cambia la empresa de ejemplo por "Mi Veterinaria" y respeta datos reales', () => {
+    bd.guardarConfig('empresa', { ...EMPRESA_DEFECTO });
+    bd.db.exec('PRAGMA user_version = 3');
+    bd.cerrar();
+    bd = new BaseDatosLocal(carpeta);
+    expect(bd.obtenerConfig<any>('empresa')).toMatchObject({ razonSocial: 'Mi Veterinaria', nit: '' });
+
+    bd.guardarConfig('empresa', { razonSocial: 'Clínica Real SAS', nit: '900123456' });
+    bd.db.exec('PRAGMA user_version = 3');
+    bd.cerrar();
+    bd = new BaseDatosLocal(carpeta);
+    expect(bd.obtenerConfig<any>('empresa')).toMatchObject({ razonSocial: 'Clínica Real SAS', nit: '900123456' });
   });
 });

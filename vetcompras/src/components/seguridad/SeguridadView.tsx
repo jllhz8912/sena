@@ -18,6 +18,8 @@ import {
   Power,
   Loader2,
   MessageSquare,
+  DoorOpen,
+  Lock,
 } from 'lucide-react';
 import { dataService, Rol, UsuarioActual } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
@@ -251,14 +253,133 @@ const PanelActividad: React.FC = () => {
   );
 };
 
+// ============================================================== FORMA DE INGRESO
+const PanelFormaIngreso: React.FC<{ onCambio: () => void }> = ({ onCambio }) => {
+  const { mostrarToast } = useToast();
+  const libre = dataService.modoAcceso() === 'libre';
+  const [datos, setDatos] = useState({ usuario: '', clave: '', confirmacion: '' });
+  const [abierto, setAbierto] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [confirmarLibre, setConfirmarLibre] = useState(false);
+
+  const activarUsuarios = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!datos.usuario.trim()) return mostrarToast('error', 'Usuario', 'Escriba el usuario con el que ingresará.');
+    const problema = problemaClave(datos.clave, datos.confirmacion);
+    if (problema) return mostrarToast('error', 'Contraseña', problema);
+    setGuardando(true);
+    try {
+      await dataService.cambiarModoAcceso({ modo: 'usuarios', usuario: datos.usuario, clave: datos.clave });
+      mostrarToast('success', 'Contraseña activada', 'Desde ahora se pedirá usuario y contraseña para ingresar.');
+      setDatos({ usuario: '', clave: '', confirmacion: '' });
+      setAbierto(false);
+      onCambio();
+    } catch (err: any) {
+      mostrarToast('error', 'No se activó', err.message);
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const volverALibre = async () => {
+    setConfirmarLibre(false);
+    try {
+      await dataService.cambiarModoAcceso({ modo: 'libre' });
+      mostrarToast('success', 'Ingreso sin contraseña', 'La pantalla de inicio solo mostrará el logo y el botón Ingresar.');
+      onCambio();
+    } catch (err: any) {
+      mostrarToast('error', 'No se cambió', err.message);
+    }
+  };
+
+  return (
+    <div className={claseTarjeta}>
+      <div className="flex flex-wrap items-start gap-4">
+        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${libre ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700'}`}>
+          {libre ? <DoorOpen className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+        </div>
+        <div className="flex-1 min-w-[220px] space-y-1">
+          <h3 className="font-bold text-sm">Forma de ingreso: {libre ? 'sin contraseña' : 'con usuario y contraseña'}</h3>
+          <p className="text-xs text-slate-500">
+            {libre
+              ? 'Al abrir VetCompras se ve el logo de la veterinaria y un botón grande “Ingresar”. Cualquiera que use este PC entra con todos los permisos.'
+              : 'Cada persona ingresa con su usuario y contraseña y queda registrada en la bitácora.'}
+          </p>
+        </div>
+        {libre ? (
+          <button
+            onClick={() => setAbierto(!abierto)}
+            className="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+          >
+            Pedir usuario y contraseña
+          </button>
+        ) : (
+          <button
+            onClick={() => setConfirmarLibre(true)}
+            className="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+          >
+            Ingresar sin contraseña
+          </button>
+        )}
+      </div>
+
+      {libre && abierto && (
+        <form onSubmit={activarUsuarios} className="grid sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <label className="space-y-1 text-xs font-semibold">
+            Usuario
+            <input
+              value={datos.usuario}
+              onChange={(e) => setDatos({ ...datos, usuario: e.target.value.replace(/\s/g, '').toLowerCase() })}
+              autoComplete="username"
+              className={claseInput}
+            />
+          </label>
+          <label className="space-y-1 text-xs font-semibold">
+            Contraseña
+            <input type="password" value={datos.clave} onChange={(e) => setDatos({ ...datos, clave: e.target.value })} autoComplete="new-password" className={claseInput} />
+          </label>
+          <label className="space-y-1 text-xs font-semibold">
+            Repita la contraseña
+            <input type="password" value={datos.confirmacion} onChange={(e) => setDatos({ ...datos, confirmacion: e.target.value })} autoComplete="new-password" className={claseInput} />
+          </label>
+          <p className="sm:col-span-2 text-[11px] text-slate-500 self-center">
+            Mínimo 8 caracteres con letras y números. Guárdela bien: será la del administrador.
+          </p>
+          <button
+            type="submit"
+            disabled={guardando}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-bold"
+          >
+            {guardando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />} Activar contraseña
+          </button>
+        </form>
+      )}
+
+      {confirmarLibre && (
+        <ModalConfirmacion
+          abierto
+          titulo="¿Quitar la contraseña?"
+          mensaje="La pantalla de inicio mostrará solo el logo y el botón Ingresar, y quien abra el programa en este PC entrará con todos los permisos. Los usuarios creados se conservan por si vuelve a activar la contraseña."
+          textoConfirmar="Sí, ingresar sin contraseña"
+          tipo="advertencia"
+          enConfirmar={volverALibre}
+          enCancelar={() => setConfirmarLibre(false)}
+        />
+      )}
+    </div>
+  );
+};
+
 // ============================================================== VISTA
 export const SeguridadView: React.FC<{ onSesionTerminada: () => void }> = ({ onSesionTerminada }) => {
   const [pestana, setPestana] = useState<'usuarios' | 'actividad' | 'observaciones'>(
     dataService.etapa() === 'prueba' ? 'observaciones' : 'usuarios'
   );
+  const [, refrescar] = useState(0);
+  const libre = dataService.modoAcceso() === 'libre';
   const pestanas = [
     ...(dataService.etapa() === 'prueba' ? [{ id: 'observaciones' as const, label: 'Observaciones de prueba', icon: MessageSquare }] : []),
-    { id: 'usuarios' as const, label: 'Usuarios y permisos', icon: Users },
+    { id: 'usuarios' as const, label: libre ? 'Forma de ingreso' : 'Usuarios y permisos', icon: libre ? DoorOpen : Users },
     { id: 'actividad' as const, label: 'Bitácora de actividad', icon: History },
   ];
 
@@ -279,7 +400,12 @@ export const SeguridadView: React.FC<{ onSesionTerminada: () => void }> = ({ onS
           </button>
         ))}
       </div>
-      {pestana === 'usuarios' && <PanelUsuarios />}
+      {pestana === 'usuarios' && (
+        <div className="space-y-5">
+          <PanelFormaIngreso onCambio={() => refrescar((n) => n + 1)} />
+          {!libre && <PanelUsuarios />}
+        </div>
+      )}
       {pestana === 'actividad' && <PanelActividad />}
       {pestana === 'observaciones' && <PanelObservaciones />}
     </div>

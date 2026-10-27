@@ -46,8 +46,9 @@ El node.exe debe ser el oficial de nodejs.org (win-x64, 22.13 o superior); verif
    encender el PC.
 4. Doble clic en el icono **VetCompras**: abre el navegador en `http://localhost:3000`
    sin ventanas técnicas. Si el programa ya estaba abierto, solo abre el navegador.
-5. La primera vez, un asistente pide el nombre de la veterinaria y crea el usuario
-   **administrador**.
+5. Aparece la **pantalla de inicio** con el logo y el nombre de la veterinaria y un botón
+   grande **Ingresar**: no se pide usuario ni contraseña. El logo y los datos se cambian en
+   *Configuración*.
 
 | Archivo | Para qué |
 |---|---|
@@ -72,7 +73,8 @@ de datos y la pantalla se refresca sola cuando otro equipo registra algo.
 
 | Medida | Detalle |
 |---|---|
-| Usuarios y contraseñas | Todos ingresan con usuario propio. Contraseñas de mínimo 8 caracteres con letras y números, guardadas cifradas (scrypt); nadie puede verlas, ni el administrador. |
+| Forma de ingreso | Por defecto, **sin contraseña**: pantalla de inicio con el logo y el botón *Ingresar* (quien abre el programa en el PC entra con todos los permisos). Se puede activar el ingreso con contraseña en *Ingreso y Bitácora → Forma de ingreso*; si el programa se comparte en red (`HOST=0.0.0.0`) se recomienda activarla. |
+| Usuarios y contraseñas (opcional) | Con la contraseña activada, todos ingresan con usuario propio. Contraseñas de mínimo 8 caracteres con letras y números, guardadas cifradas (scrypt); nadie puede verlas, ni el administrador. |
 | Roles | **Administrador**: todo. **Auxiliar**: registra y edita compras, facturas y ventas y consulta reportes; no puede borrar, restaurar, importar/exportar la base completa, ni cambiar configuración, catálogos o usuarios. El servidor hace cumplir los permisos aunque alguien manipule la pantalla. |
 | Contraseña temporal | Los usuarios nuevos o con contraseña restablecida deben cambiarla al primer ingreso. |
 | Cierre por inactividad | La sesión se cierra tras 60 minutos sin uso (`MINUTOS_INACTIVIDAD` en `.env`). |

@@ -16,6 +16,15 @@ export const BotonObservacion: React.FC<{ modulo: string }> = ({ modulo }) => {
   const [tipo, setTipo] = useState<Observacion['tipo']>('error');
   const [descripcion, setDescripcion] = useState('');
   const [guardando, setGuardando] = useState(false);
+  // Sin usuarios no se sabe quién prueba: se pide el nombre y se recuerda en este equipo
+  const accesoLibre = dataService.modoAcceso() === 'libre';
+  const [nombre, setNombre] = useState(() => {
+    try {
+      return localStorage.getItem('vetcompras_probador') || '';
+    } catch {
+      return '';
+    }
+  });
 
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,12 +37,17 @@ export const BotonObservacion: React.FC<{ modulo: string }> = ({ modulo }) => {
       await dataService.guardarObservacion({
         id: `obs-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         fecha: new Date().toISOString(),
-        usuario: dataService.usuarioActual()?.nombre || 'Probador',
+        usuario: (accesoLibre ? nombre.trim() : dataService.usuarioActual()?.nombre) || 'Probador',
         modulo,
         tipo,
         descripcion: descripcion.trim(),
         estado: 'nueva',
       });
+      try {
+        if (accesoLibre) localStorage.setItem('vetcompras_probador', nombre.trim());
+      } catch {
+        /* sin almacenamiento local: se vuelve a pedir */
+      }
       mostrarToast('success', '¡Gracias!', 'Su observación quedó registrada.');
       setDescripcion('');
       setAbierto(false);
@@ -65,6 +79,14 @@ export const BotonObservacion: React.FC<{ modulo: string }> = ({ modulo }) => {
             <p className="text-xs text-slate-500">
               Pantalla: <strong>{modulo}</strong>
             </p>
+            {accesoLibre && (
+              <input
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                placeholder="Su nombre (opcional)"
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+              />
+            )}
             <div className="grid grid-cols-3 gap-2">
               {TIPOS.map(({ id, label, icono: Icono }) => (
                 <button

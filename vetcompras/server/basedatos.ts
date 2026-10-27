@@ -163,6 +163,24 @@ const MIGRACIONES: Migracion[] = [
       }
     },
   },
+  {
+    version: 4,
+    descripcion: 'Empresa: reemplaza los datos de ejemplo por "Mi Veterinaria" (pantalla de inicio)',
+    aplicar: (db) => {
+      const fila = db.prepare("SELECT valor FROM configuracion WHERE clave = 'empresa'").get() as { valor: string } | undefined;
+      if (!fila) return;
+      const empresa = JSON.parse(fila.valor);
+      // Solo si nadie la ha cambiado: conserva cualquier dato real ya configurado
+      if (empresa.razonSocial !== EMPRESA_DEFECTO.razonSocial || empresa.nit !== EMPRESA_DEFECTO.nit) return;
+      const neutra = {
+        ...empresa,
+        razonSocial: 'Mi Veterinaria', nombreComercial: 'Mi Veterinaria', nit: '', dv: '', direccion: '', ciudad: '',
+        departamento: '', telefono: '', email: '', whatsapp: '', sitioWeb: '', slogan: '', logoUrl: '',
+        matriculaMercantil: '', regimenTributario: '', resolucionLegal: '',
+      };
+      db.prepare("UPDATE configuracion SET valor = ? WHERE clave = 'empresa'").run(JSON.stringify(neutra));
+    },
+  },
 ];
 
 export const VERSION_ESQUEMA = MIGRACIONES[MIGRACIONES.length - 1].version;

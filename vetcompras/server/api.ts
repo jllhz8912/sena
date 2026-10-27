@@ -103,9 +103,19 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
     '/sesion',
     seguro((req, res) => {
       const usuario = seg.validarSesion(leerCookie(req, NOMBRE_COOKIE), false);
+      const modoAcceso = seg.modoAcceso();
+      const empresa = bd.obtenerConfig<Record<string, any>>('empresa') || {};
       res.json({
         usuario,
-        requiereConfiguracion: !seg.hayUsuarios(),
+        modoAcceso,
+        // Datos de marca para la pantalla de inicio (información pública del negocio)
+        marca: {
+          nombre: empresa.nombreComercial || empresa.razonSocial || 'Mi Veterinaria',
+          slogan: empresa.slogan || '',
+          logoUrl: empresa.logoUrl || '',
+          colorPrimario: empresa.colorPrimario || '#059669',
+        },
+        requiereConfiguracion: modoAcceso === 'usuarios' && !seg.hayUsuarios(),
         minutosInactividad: MINUTOS_INACTIVIDAD,
         version: pkg.version,
         etapa: process.env.ETAPA === 'prueba' ? 'prueba' : 'produccion',
@@ -147,6 +157,16 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
   );
 
   api.post(
+    '/sesion/ingresar-libre',
+    exigirCabecera,
+    seguro((req, res) => {
+      const sesion = seg.ingresarSinClave(ipDe(req));
+      fijarCookieSesion(res, sesion.token);
+      res.json({ usuario: sesion.usuario });
+    })
+  );
+
+  api.post(
     '/sesion/ingresar',
     exigirCabecera,
     seguro((req, res) => {
@@ -171,6 +191,21 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
 
   // ======================================== desde aquí: requiere sesión válida
   api.use(requiereSesion(seg));
+
+  api.put(
+    '/configuracion/acceso',
+    soloAdministrador,
+    seguro((req, res) => {
+      if (req.body?.modo === 'usuarios') {
+        seg.activarUsuarios(req.usuario!, req.body?.usuario, req.body?.clave);
+        auditar(req, 'Ingreso con usuario y contraseña ACTIVADO');
+      } else {
+        seg.activarAccesoLibre();
+        auditar(req, 'Ingreso sin contraseña (pantalla de inicio) ACTIVADO');
+      }
+      res.json({ ok: true, modoAcceso: seg.modoAcceso() });
+    })
+  );
 
   api.post(
     '/sesion/cambiar-clave',

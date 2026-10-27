@@ -33,6 +33,8 @@ export interface EstadoSesion {
   minutosInactividad: number;
   version: string;
   etapa?: 'prueba' | 'produccion';
+  modoAcceso?: 'libre' | 'usuarios';
+  marca?: { nombre: string; slogan: string; logoUrl: string; colorPrimario: string };
 }
 
 export interface EstadoCopias {
@@ -59,6 +61,7 @@ export const EVENTO_SESION = 'vetcompras:sesion';
 let usuarioActual: UsuarioActual | null = null;
 let etapaActual: 'prueba' | 'produccion' = 'produccion';
 let versionActual = '';
+let modoAccesoActual: 'libre' | 'usuarios' = 'libre';
 
 async function api<T = any>(ruta: string, opciones: RequestInit & { sondeo?: boolean } = {}): Promise<T> {
   const { sondeo, ...init } = opciones;
@@ -159,6 +162,23 @@ export const dataService = {
     return versionActual;
   },
 
+  /** 'libre' = pantalla de inicio con botón Ingresar, sin usuario ni contraseña. */
+  modoAcceso(): 'libre' | 'usuarios' {
+    return modoAccesoActual;
+  },
+
+  async ingresarLibre(): Promise<UsuarioActual> {
+    const r = await api<{ usuario: UsuarioActual }>('/sesion/ingresar-libre', { method: 'POST' });
+    usuarioActual = r.usuario;
+    inicializacion = null;
+    return r.usuario;
+  },
+
+  async cambiarModoAcceso(datos: { modo: 'libre' } | { modo: 'usuarios'; usuario: string; clave: string }): Promise<void> {
+    const r = await api<{ modoAcceso: 'libre' | 'usuarios' }>('/configuracion/acceso', { method: 'PUT', body: JSON.stringify(datos) });
+    modoAccesoActual = r.modoAcceso;
+  },
+
   esAdministrador(): boolean {
     return usuarioActual?.rol === 'administrador';
   },
@@ -168,6 +188,7 @@ export const dataService = {
     usuarioActual = estado.usuario;
     etapaActual = estado.etapa === 'prueba' ? 'prueba' : 'produccion';
     versionActual = estado.version;
+    modoAccesoActual = estado.modoAcceso === 'usuarios' ? 'usuarios' : 'libre';
     return estado;
   },
 

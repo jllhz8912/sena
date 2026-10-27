@@ -13,8 +13,9 @@ import { RegistroManualModal } from './components/registro/RegistroManualModal';
 import { ModalRegistroVenta } from './components/ventas/ModalRegistroVenta';
 import { BotonFlotanteNuevo } from './components/common/BotonFlotanteNuevo';
 import { CompraDocumento, Categoria, CentroCosto, Proveedor, Venta } from './types';
-import { dataService, EVENTO_SESION, UsuarioActual } from './services/dataService';
+import { dataService, EVENTO_SESION, EstadoSesion, UsuarioActual } from './services/dataService';
 import { PantallaAcceso } from './components/seguridad/PantallaAcceso';
+import { PantallaInicio } from './components/seguridad/PantallaInicio';
 import { SeguridadView } from './components/seguridad/SeguridadView';
 import { BotonObservacion } from './components/prueba/ObservacionPrueba';
 import { CuentasPorPagarView } from './components/cartera/CuentasPorPagarView';
@@ -146,7 +147,7 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
     reportes: 'Reportería e Informes Tributarios (DIAN)',
     catalogos: 'Catálogos de Proveedores y Centros de Costo',
     configuracion: 'Configuración de la Veterinaria y Marca',
-    seguridad: 'Usuarios, Permisos y Bitácora',
+    seguridad: dataService.modoAcceso() === 'libre' ? 'Forma de Ingreso y Bitácora' : 'Usuarios, Permisos y Bitácora',
     copias: 'Copias de Seguridad',
   };
 
@@ -378,19 +379,24 @@ type EstadoAcceso =
   | { tipo: 'cargando' }
   | { tipo: 'sin_servidor'; error: string }
   | { tipo: 'configuracion' }
+  | { tipo: 'inicio'; marca: NonNullable<EstadoSesion['marca']>; mensaje?: string }
   | { tipo: 'ingreso'; mensaje?: string }
   | { tipo: 'cambio_clave'; usuario: UsuarioActual }
   | { tipo: 'listo'; usuario: UsuarioActual };
 
 /** Controla el acceso: primer uso, ingreso, cambio obligatorio de contraseña y sesión vencida. */
+const MARCA_DEFECTO: NonNullable<EstadoSesion['marca']> = { nombre: 'Mi Veterinaria', slogan: '', logoUrl: '', colorPrimario: '' };
+
 function PuertaDeAcceso() {
   const [estado, setEstado] = useState<EstadoAcceso>({ tipo: 'cargando' });
 
-  const consultar = useCallback(async () => {
+  const consultar = useCallback(async (mensaje?: string) => {
     try {
       const sesion = await dataService.obtenerSesion();
       if (sesion.requiereConfiguracion) setEstado({ tipo: 'configuracion' });
-      else if (!sesion.usuario) setEstado({ tipo: 'ingreso' });
+      else if (!sesion.usuario && sesion.modoAcceso === 'libre') {
+        setEstado({ tipo: 'inicio', marca: sesion.marca || MARCA_DEFECTO, mensaje });
+      } else if (!sesion.usuario) setEstado({ tipo: 'ingreso', mensaje });
       else if (sesion.usuario.debeCambiarClave) setEstado({ tipo: 'cambio_clave', usuario: sesion.usuario });
       else {
         await dataService.init();
@@ -406,7 +412,11 @@ function PuertaDeAcceso() {
     const alCambiarSesion = (e: Event) => {
       const detalle = (e as CustomEvent).detail || {};
       if (detalle.sesionVencida) {
-        setEstado({ tipo: 'ingreso', mensaje: 'Su sesión se cerró por inactividad o desde otro equipo. Ingrese de nuevo.' });
+        consultar(
+          dataService.modoAcceso() === 'libre'
+            ? 'Se volvió a la pantalla de inicio por inactividad.'
+            : 'Su sesión se cerró por inactividad o desde otro equipo. Ingrese de nuevo.'
+        );
       } else if (detalle.debeCambiarClave) {
         consultar();
       }
@@ -436,7 +446,7 @@ function PuertaDeAcceso() {
             <p className="font-bold">VetCompras no está abierto en este PC</p>
             <p className="text-sm">{estado.error}</p>
             <p className="text-xs">Abra el icono “VetCompras” del escritorio y vuelva a intentar.</p>
-            <button onClick={consultar} className="px-4 py-2 rounded-xl bg-rose-600 text-white text-sm font-semibold">
+            <button onClick={() => consultar()} className="px-4 py-2 rounded-xl bg-rose-600 text-white text-sm font-semibold">
               Reintentar
             </button>
           </div>
@@ -444,6 +454,8 @@ function PuertaDeAcceso() {
       );
     case 'configuracion':
       return <PantallaAcceso key="configuracion" modo="configuracion" onListo={alIngresar} />;
+    case 'inicio':
+      return <PantallaInicio key="inicio" marca={estado.marca} mensaje={estado.mensaje} onListo={alIngresar} />;
     case 'ingreso':
       return <PantallaAcceso key="ingreso" modo="ingreso" mensaje={estado.mensaje} onListo={alIngresar} />;
     case 'cambio_clave':

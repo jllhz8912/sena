@@ -3,6 +3,17 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.2.0
+- **Pantalla de inicio sin usuario ni contraseña**: muestra el logo y el nombre de la
+  veterinaria y un botón grande "Ingresar" (también con la tecla Enter).
+- La contraseña queda como opción: *Ingreso y Bitácora → Forma de ingreso* permite
+  activarla (y volver a quitarla). Los usuarios ya creados se conservan.
+- Al instalar sobre una versión anterior, la empresa de ejemplo se reemplaza por
+  "Mi Veterinaria" para que la pantalla de inicio no muestre datos ajenos; los datos
+  reales ya configurados no se tocan.
+- La bitácora sigue registrando cada ingreso, y en la versión de prueba la observación
+  pide el nombre de quien prueba.
+
 ## 2.1.0
 - **Copias de Seguridad**: módulo propio para hacer copias, descargarlas, cargarlas
   desde un archivo (.db o .json), restaurarlas y abrir la carpeta donde se guardan.

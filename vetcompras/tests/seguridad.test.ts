@@ -36,6 +36,8 @@ function cliente() {
 beforeEach(async () => {
   carpeta = fs.mkdtempSync(path.join(os.tmpdir(), 'vetcompras-seg-'));
   bd = new BaseDatosLocal(carpeta);
+  // Las pruebas de contraseñas usan el modo con usuarios; el modo libre se prueba aparte
+  bd.guardarConfig('modoAcceso', { modo: 'usuarios' });
   const app = express();
   app.use(express.json());
   app.use('/api', crearApi(bd));
@@ -249,3 +251,62 @@ describe('copias de seguridad y observaciones', () => {
   });
 });
 
+
+describe('ingreso sin contraseña (pantalla de inicio)', () => {
+  beforeEach(() => bd.guardarConfig('modoAcceso', { modo: 'libre' }));
+
+  it('el botón Ingresar abre una sesión de administrador sin pedir datos', async () => {
+    const c = cliente();
+    const r0 = await c('/sesion');
+    expect(r0.cuerpo.modoAcceso).toBe('libre');
+    expect(r0.cuerpo.requiereConfiguracion).toBe(false);
+    expect(r0.cuerpo.marca.nombre).toBe('Mi Veterinaria');
+    expect((await c('/documentos')).status).toBe(401);
+
+    const r = await c('/sesion/ingresar-libre', { method: 'POST' });
+    expect(r.status).toBe(200);
+    expect(r.cuerpo.usuario.rol).toBe('administrador');
+    expect((await c('/documentos')).status).toBe(200);
+    // Queda en la bitácora
+    const bitacora = await c('/auditoria');
+    expect(JSON.stringify(bitacora.cuerpo)).toContain('sin contraseña');
+  });
+
+  it('exige la cabecera anti-CSRF', async () => {
+    const r = await cliente()('/sesion/ingresar-libre', { method: 'POST', sinCabecera: true });
+    expect(r.status).toBe(403);
+  });
+
+  it('la marca de la pantalla de inicio usa los datos de la veterinaria', async () => {
+    bd.guardarConfig('empresa', { razonSocial: 'Clínica Patitas SAS', nombreComercial: 'Patitas', slogan: 'Amor animal', logoUrl: 'data:image/png;base64,AAA' });
+    const r = await cliente()('/sesion');
+    expect(r.cuerpo.marca).toMatchObject({ nombre: 'Patitas', slogan: 'Amor animal', logoUrl: 'data:image/png;base64,AAA' });
+  });
+
+  it('se puede activar la contraseña y volver al ingreso libre', async () => {
+    const c = cliente();
+    await c('/sesion/ingresar-libre', { method: 'POST' });
+    const debil = await c('/configuracion/acceso', { method: 'PUT', body: { modo: 'usuarios', usuario: 'dueno', clave: 'corta' } });
+    expect(debil.status).toBe(400);
+    const r = await c('/configuracion/acceso', { method: 'PUT', body: { modo: 'usuarios', usuario: 'dueno', clave: 'Patitas2026' } });
+    expect(r.cuerpo.modoAcceso).toBe('usuarios');
+
+    // Con contraseña activada el botón ya no sirve, pero el usuario y clave sí
+    const otro = cliente();
+    expect((await otro('/sesion/ingresar-libre', { method: 'POST' })).status).toBe(403);
+    expect((await otro('/sesion/ingresar', { method: 'POST', body: { usuario: 'dueno', clave: 'Patitas2026' } })).status).toBe(200);
+
+    expect((await otro('/configuracion/acceso', { method: 'PUT', body: { modo: 'libre' } })).cuerpo.modoAcceso).toBe('libre');
+    expect((await cliente()('/sesion/ingresar-libre', { method: 'POST' })).status).toBe(200);
+  });
+
+  it('un auxiliar no puede quitar la contraseña', async () => {
+    bd.guardarConfig('modoAcceso', { modo: 'usuarios' });
+    const admin = await configurarAdmin();
+    await admin('/usuarios', { method: 'POST', body: { usuario: 'aux', nombre: 'Aux', rol: 'auxiliar', clave: 'Temporal2026' } });
+    const aux = cliente();
+    await aux('/sesion/ingresar', { method: 'POST', body: { usuario: 'aux', clave: 'Temporal2026' } });
+    await aux('/sesion/cambiar-clave', { method: 'POST', body: { claveActual: 'Temporal2026', claveNueva: 'Propia2026x' } });
+    expect((await aux('/configuracion/acceso', { method: 'PUT', body: { modo: 'libre' } })).status).toBe(403);
+  });
+});

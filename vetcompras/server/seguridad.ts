@@ -227,6 +227,11 @@ export class Seguridad {
     }
 
     this.intentos.delete(claveBloqueo);
+    this.bd.auditar({ usuario, accion: 'Inicio de sesión', ip });
+    return this.crearSesion(fila, ip);
+  }
+
+  private crearSesion(fila: FilaUsuario, ip: string): { token: string; usuario: UsuarioSesion } {
     const token = crypto.randomBytes(32).toString('base64url');
     const ahora = new Date().toISOString();
     this.purgarSesionesVencidas();
@@ -234,8 +239,59 @@ export class Seguridad {
       .prepare('INSERT INTO sesiones (token_hash, usuario_id, creada_en, ultimo_uso, ip) VALUES (?, ?, ?, ?, ?)')
       .run(hashToken(token), fila.id, ahora, ahora, ip);
     this.db.prepare('UPDATE usuarios SET ultimo_acceso = ? WHERE id = ?').run(ahora, fila.id);
-    this.bd.auditar({ usuario, accion: 'Inicio de sesión', ip });
     return { token, usuario: aSesion(fila) };
+  }
+
+  // ------------------------------------------------------------ modo de acceso
+  /**
+   * 'libre' (por defecto): pantalla de inicio con botón "Ingresar", sin usuario ni
+   * contraseña; todo queda a nombre de la veterinaria (administrador).
+   * 'usuarios': cada persona ingresa con usuario y contraseña, con roles.
+   */
+  modoAcceso(): 'libre' | 'usuarios' {
+    return this.bd.obtenerConfig<{ modo: string }>('modoAcceso')?.modo === 'usuarios' ? 'usuarios' : 'libre';
+  }
+
+  /** Ingreso con el botón de la pantalla de inicio (solo en modo libre). */
+  ingresarSinClave(ip: string): { token: string; usuario: UsuarioSesion } {
+    if (this.modoAcceso() !== 'libre') {
+      throw error(403, 'Este equipo pide usuario y contraseña para ingresar.');
+    }
+    let fila = this.db
+      .prepare("SELECT * FROM usuarios WHERE rol = 'administrador' AND activo = 1 ORDER BY creado_en LIMIT 1")
+      .get() as unknown as FilaUsuario | undefined;
+    if (!fila) {
+      // Usuario interno: la contraseña es aleatoria y nadie la conoce
+      const clave = 'A1' + crypto.randomBytes(18).toString('base64url');
+      const id = this.crearUsuario({ usuario: 'veterinaria', nombre: 'Veterinaria', rol: 'administrador', clave });
+      fila = this.db.prepare('SELECT * FROM usuarios WHERE id = ?').get(id) as unknown as FilaUsuario;
+    }
+    this.db.prepare('UPDATE usuarios SET debe_cambiar_clave = 0 WHERE id = ?').run(fila.id);
+    fila.debe_cambiar_clave = 0;
+    this.bd.auditar({ usuario: fila.usuario, accion: 'Ingreso (pantalla de inicio, sin contraseña)', ip });
+    return this.crearSesion(fila, ip);
+  }
+
+  /**
+   * Activa el ingreso con usuario y contraseña. La persona que lo activa queda
+   * como administrador con las credenciales que escribe, para no quedar por fuera.
+   */
+  activarUsuarios(quien: UsuarioSesion, usuarioTexto: unknown, claveTexto: unknown): void {
+    const usuario = String(usuarioTexto || '').trim().toLowerCase();
+    if (!/^[a-z0-9._-]{3,30}$/.test(usuario)) {
+      throw error(400, 'El usuario debe tener entre 3 y 30 letras, números, punto o guion (sin espacios).');
+    }
+    const clave = validarClave(claveTexto);
+    const otro = this.db.prepare('SELECT id FROM usuarios WHERE usuario = ? AND id <> ?').get(usuario, quien.id);
+    if (otro) throw error(409, `Ya existe el usuario "${usuario}".`);
+    this.db
+      .prepare('UPDATE usuarios SET usuario = ?, clave_hash = ?, debe_cambiar_clave = 0 WHERE id = ?')
+      .run(usuario, cifrarClave(clave), quien.id);
+    this.bd.guardarConfig('modoAcceso', { modo: 'usuarios' });
+  }
+
+  activarAccesoLibre(): void {
+    this.bd.guardarConfig('modoAcceso', { modo: 'libre' });
   }
 
   cerrarSesion(token: string): void {

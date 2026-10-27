@@ -28,6 +28,11 @@ if (!fs.existsSync('dist/index.html')) {
 }
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const salida = salidaArg || path.join('dist-portable', esPrueba ? 'VetCompras-PRUEBA' : 'VetCompras');
+// Solo se reemplaza una carpeta vacía o un paquete anterior: nunca otra carpeta con archivos
+if (fs.existsSync(salida) && fs.readdirSync(salida).length && !fs.existsSync(path.join(salida, 'servidor.mjs'))) {
+  console.error(`La carpeta "${salida}" tiene otros archivos. Indique una carpeta nueva o vacía para el paquete.`);
+  process.exit(1);
+}
 fs.rmSync(salida, { recursive: true, force: true });
 fs.mkdirSync(path.join(salida, 'node'), { recursive: true });
 
@@ -227,9 +232,13 @@ OPCION B - USAR DESDE LA USB (llevar el sistema y los datos a cualquier PC)
   2. Doble clic en "Usar desde la USB.bat".
   Los datos quedan en la carpeta "${esPrueba ? 'datos-prueba' : 'datos'}" de la USB.
   IMPORTANTE: si la USB se pierde o se daña, se pierden los datos. Configure en
-  "Seguridad y Respaldos" una copia en otra carpeta (disco del PC u OneDrive).
+  "Copias de Seguridad" una copia en otra carpeta (disco del PC u OneDrive).
 
-La primera vez el sistema pide crear el usuario administrador.
+INGRESO: al abrir se ve el logo de la veterinaria y un boton grande "Ingresar".
+  No pide usuario ni contrasena. Si algun dia quiere pedirla: menu "Ingreso y
+  Bitacora" > "Forma de ingreso" > "Pedir usuario y contrasena".
+  El logo y el nombre se cambian en Configuracion (datos de la veterinaria).
+
 ACTUALIZAR A UNA VERSION NUEVA (sin perder datos)
   - Instalado en el PC: descomprima el zip nuevo y ejecute otra vez "Instalar en este PC.bat".
   - En la USB: descomprima el zip nuevo ENCIMA de la carpeta de la USB y acepte reemplazar
@@ -239,7 +248,7 @@ ${esPrueba ? `
 VERSION DE PRUEBA
   - Los datos de ensayo quedan en "datos-prueba", separados de los reales.
   - Use el botón amarillo "Observación" para reportar errores, sugerencias o dudas.
-  - El administrador las revisa en Usuarios y Seguridad > Observaciones de prueba
+  - Se revisan en el menu Ingreso y Bitacora > Observaciones de prueba
     y las puede exportar a Excel.
   - Al instalar la versión final se empieza con datos limpios.
 ` : ''}

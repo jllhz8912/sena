@@ -59,6 +59,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const usuario = dataService.usuarioActual();
   const esAdmin = dataService.esAdministrador();
+  const accesoLibre = dataService.modoAcceso() === 'libre';
   const [menuUsuarioAbierto, setMenuUsuarioAbierto] = useState(false);
   const [modalClaveAbierto, setModalClaveAbierto] = useState(false);
   const { theme, toggleTheme } = useTheme();
@@ -368,7 +369,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="px-4 py-2">
                 <p className="text-sm font-semibold text-slate-900 dark:text-white">{usuario?.nombre}</p>
                 <p className="text-[11px] text-slate-500">
-                  {usuario?.usuario} · {usuario?.rol === 'administrador' ? 'Administrador' : 'Auxiliar'}
+                  {accesoLibre ? 'Ingreso sin contraseña' : `${usuario?.usuario} · ${usuario?.rol === 'administrador' ? 'Administrador' : 'Auxiliar'}`}
                 </p>
                 <p className="text-[11px] text-slate-400 mt-1">
                   VetCompras {dataService.version()}
@@ -376,20 +377,22 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </p>
               </div>
               <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
-              <button
-                onClick={() => {
-                  setMenuUsuarioAbierto(false);
-                  setModalClaveAbierto(true);
-                }}
-                className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-left"
-              >
-                <KeyRound className="w-4 h-4 text-emerald-600" /> Cambiar mi contraseña
-              </button>
+              {!accesoLibre && (
+                <button
+                  onClick={() => {
+                    setMenuUsuarioAbierto(false);
+                    setModalClaveAbierto(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-left"
+                >
+                  <KeyRound className="w-4 h-4 text-emerald-600" /> Cambiar mi contraseña
+                </button>
+              )}
               <button
                 onClick={onSalir}
                 className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-left"
               >
-                <LogOut className="w-4 h-4" /> Cerrar sesión
+                <LogOut className="w-4 h-4" /> {accesoLibre ? 'Volver a la pantalla de inicio' : 'Cerrar sesión'}
               </button>
             </div>
           )}

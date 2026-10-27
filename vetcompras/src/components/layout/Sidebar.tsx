@@ -147,9 +147,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'seguridad' as NavItem,
-      label: 'Usuarios y Seguridad',
+      label: dataService.modoAcceso() === 'libre' ? 'Ingreso y Bitácora' : 'Usuarios y Seguridad',
       icon: ShieldCheck,
-      badge: 'Admin',
+      badge: dataService.modoAcceso() === 'libre' ? null : 'Admin',
       badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
     },
   ].filter((item) => {

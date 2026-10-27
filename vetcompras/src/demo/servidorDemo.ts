@@ -53,6 +53,7 @@ interface Estado extends Datos {
   ultimaCopia?: { fecha: string; medio: string } | null;
   diasRecordatorio?: number;
   sesion: { usuarioId: string; ultimoUso: number } | null;
+  modoAcceso: 'libre' | 'usuarios';
   revision: number;
 }
 
@@ -61,7 +62,7 @@ export const CREDENCIALES_DEMO = [
   { rol: 'Auxiliar', usuario: 'auxiliar', clave: 'Auxiliar2026' },
 ];
 
-const CLAVE_ALMACEN = 'vetcompras_demo_v4';
+const CLAVE_ALMACEN = 'vetcompras_demo_v5';
 const MINUTOS_INACTIVIDAD = 60;
 const clonar = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 const ahoraIso = () => new Date().toISOString();
@@ -83,8 +84,14 @@ function datosIniciales(): Datos {
   };
 }
 
-function estadoInicial(conUsuarios = true): Estado {
+function estadoInicial(conUsuarios = true, modoAcceso: Estado['modoAcceso'] = 'libre'): Estado {
   const datos = datosIniciales();
+  if (!conUsuarios) {
+    // Arranque en limpio: como una instalación nueva
+    datos.colecciones.documentos = [];
+    datos.colecciones.ventas = [];
+    datos.empresa = { ...datos.empresa, razonSocial: 'Mi Veterinaria', nombreComercial: 'Mi Veterinaria', nit: '', dv: '', slogan: '', logoUrl: '' };
+  }
   const hace = (h: number) => new Date(Date.now() - h * 3600000).toISOString();
   const usuarios: UsuarioDemo[] = conUsuarios
     ? [
@@ -111,6 +118,7 @@ function estadoInicial(conUsuarios = true): Estado {
     ultimaCopia: conUsuarios ? { fecha: hace(24 * 9), medio: 'copia manual' } : null,
     diasRecordatorio: 7,
     sesion: null,
+    modoAcceso,
     revision: 1,
   };
 }
@@ -137,9 +145,13 @@ function guardar() {
 }
 
 /** Reinicia la demostración. Sin usuarios = muestra el asistente de primer uso. */
-export function reiniciarDemo(conUsuarios = true) {
-  estado = estadoInicial(conUsuarios);
+export function reiniciarDemo(conUsuarios = true, modoAcceso: Estado['modoAcceso'] = 'libre') {
+  estado = estadoInicial(conUsuarios, modoAcceso);
   guardar();
+}
+
+export function modoAccesoDemo(): Estado['modoAcceso'] {
+  return estado.modoAcceso || 'libre';
 }
 
 export function contenidoRespaldo(nombre: string): string {
@@ -210,7 +222,29 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
   // ---- públicas
   if (metodo === 'GET' && ruta === '/sesion') {
     const u = usuarioSesion(false);
-    return { usuario: u ? usuarioPublico(u) : null, requiereConfiguracion: estado.usuarios.length === 0, minutosInactividad: MINUTOS_INACTIVIDAD, version: '2.1.0-demo' };
+    const modoAcceso = modoAccesoDemo();
+    const e = estado.empresa || {};
+    return {
+      usuario: u ? usuarioPublico(u) : null,
+      modoAcceso,
+      marca: { nombre: e.nombreComercial || e.razonSocial || 'Mi Veterinaria', slogan: e.slogan || '', logoUrl: e.logoUrl || '', colorPrimario: e.colorPrimario || '' },
+      requiereConfiguracion: modoAcceso === 'usuarios' && estado.usuarios.length === 0,
+      minutosInactividad: MINUTOS_INACTIVIDAD,
+      version: '2.2.0-demo',
+    };
+  }
+  if (metodo === 'POST' && ruta === '/sesion/ingresar-libre') {
+    if (modoAccesoDemo() !== 'libre') throw new ErrorHttp(403, 'Este equipo pide usuario y contraseña para ingresar.');
+    let u = estado.usuarios.find((x) => x.rol === 'administrador' && x.activo);
+    if (!u) {
+      u = { id: 'usr-' + Date.now(), usuario: 'veterinaria', nombre: 'Veterinaria', rol: 'administrador', clave: '', activo: true, debeCambiarClave: false, creadoEn: ahoraIso(), ultimoAcceso: null };
+      estado.usuarios.push(u);
+    }
+    u.debeCambiarClave = false;
+    u.ultimoAcceso = ahoraIso();
+    estado.sesion = { usuarioId: u.id, ultimoUso: Date.now() };
+    auditar(u.usuario, 'Ingreso (pantalla de inicio, sin contraseña)');
+    return { usuario: usuarioPublico(u) };
   }
   if (metodo === 'POST' && ruta === '/sesion/configuracion-inicial') {
     if (estado.usuarios.length) throw new ErrorHttp(409, 'El sistema ya fue configurado. Ingrese con su usuario.');
@@ -321,6 +355,24 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
   }
 
   // configuración
+  if (ruta === '/configuracion/acceso' && metodo === 'PUT') {
+    admin();
+    if (cuerpo?.modo === 'usuarios') {
+      const usuario = String(cuerpo.usuario || '').trim().toLowerCase();
+      if (!/^[a-z0-9._-]{3,30}$/.test(usuario)) throw new ErrorHttp(400, 'El usuario debe tener entre 3 y 30 letras, números, punto o guion (sin espacios).');
+      validarClave(cuerpo.clave);
+      if (estado.usuarios.some((x) => x.usuario === usuario && x.id !== yo.id)) throw new ErrorHttp(409, `Ya existe el usuario "${usuario}".`);
+      yo.usuario = usuario;
+      yo.clave = cuerpo.clave;
+      yo.debeCambiarClave = false;
+      estado.modoAcceso = 'usuarios';
+      auditar(usuario, 'Ingreso con usuario y contraseña ACTIVADO');
+    } else {
+      estado.modoAcceso = 'libre';
+      auditar(yo.usuario, 'Ingreso sin contraseña (pantalla de inicio) ACTIVADO');
+    }
+    return { ok: true, modoAcceso: estado.modoAcceso };
+  }
   if (ruta === '/configuracion/empresa') {
     if (metodo === 'GET') return estado.empresa;
     admin();
