@@ -25,6 +25,7 @@ import { useToast } from '../../context/ToastContext';
 import { dataService, EstadoCopias } from '../../services/dataService';
 import { ModalDatosEmpresa } from '../catalogos/ModalDatosEmpresa';
 import { ModalBorradoSeguro } from '../respaldos/ModalBorradoSeguro';
+import { descargarBlob } from '../../services/reciboPdf';
 import { ModalCambiarClave } from '../seguridad/ModalCambiarClave';
 import { CompraDocumento, EmpresaInfo } from '../../types';
 import { AlertasVencimiento } from '../cartera/AlertasVencimiento';
@@ -150,13 +151,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const handleExportarRespaldo = async () => {
     try {
       const json = await dataService.exportarRespaldoJSON();
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `VetCompras_Respaldo_${fechaLocal()}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      await descargarBlob(new Blob([json], { type: 'application/json' }), `VetCompras_Respaldo_${fechaLocal()}.json`);
       mostrarToast('success', 'Copia de seguridad descargada', 'Archivo JSON generado exitosamente.');
       setMenuDatosAbierto(false);
     } catch (err: any) {

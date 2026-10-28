@@ -3,6 +3,21 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.7.0
+- **Buscador rápido en la venta** (F2): busca productos y servicios por palabras sueltas en
+  cualquier orden y sin tildes (nombre, código, otros nombres, grupo, categoría), con filtros
+  por categoría, Productos / Servicios y Más vendidos. Muestra precio, existencia y veces
+  vendido; ↑ ↓ y Enter agregan; "3*nombre" agrega 3 unidades; repetir un ítem suma cantidad.
+- **Plantilla de compras con productos**: una fila por producto (código, cantidad, costo
+  unitario, tarifa de IVA y precio de venta sugerido). Las filas de una misma factura forman
+  una compra; los productos entran al inventario con su precio de venta y aparecen en
+  Precios de Venta con su margen. El precio se puede editar después y no se pisa al
+  recalcular. Bases e IVA por tarifa (5 % / 19 %) correctos para el Formulario 300.
+- Corrección tributaria: una fila con solo "Valor facturado" ya no supone un IVA del 19 %
+  (inflaba el IVA descontable); se toma sin IVA salvo que se indique.
+- Las importaciones de Excel sin productos ya no crean productos en el inventario.
+- Descargas de Excel (plantillas, exportaciones) y anexos funcionan también en la demo en línea.
+
 ## 2.6.0
 - **Precios de Venta** (nuevo módulo): ficha por producto o servicio con sus costos
   (compra traída del inventario, insumos, mano de obra por minutos, desechables, flete…),

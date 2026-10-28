@@ -63,3 +63,18 @@ describe('inventario informativo', () => {
     expect(calcularSaldos([p], [...movs, ajuste])[0]).toMatchObject({ entradas: 10, bajas: 1, ajustes: -2, saldo: 7 });
   });
 });
+
+describe('precio de venta sugerido desde la plantilla', () => {
+  it('se toma al crear el producto y no pisa un precio editado después', () => {
+    const doc = { id: 'x', tipoDocumento: 'factura_electronica', fechaEmision: '2026-10-01', esGasto: false, lineas: [{ id: 'l', descripcion: 'Nexgard', cantidad: 2, valorUnitario: 38000, precioVentaSugerido: 59900 }] } as any;
+    const c1 = movimientosDeCompra(doc, [], []);
+    expect(c1.productosNuevos[0].precioVenta).toBe(59900);
+    const editado = { ...c1.productosNuevos[0], precioVenta: 65000 };
+    const c2 = movimientosDeCompra(doc, [editado], c1.guardar);
+    expect(c2.productosActualizados).toHaveLength(0);
+  });
+  it('la línea resumen de una importación sin productos no crea productos', () => {
+    const doc = { id: 'y', fechaEmision: '2026-10-01', esGasto: false, lineas: [{ id: 'lin-excel-1', descripcion: 'Compra factura 1', cantidad: 1, valorUnitario: 1000, resumen: true }] } as any;
+    expect(movimientosDeCompra(doc, [], []).productosNuevos).toHaveLength(0);
+  });
+});

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
+import { guardarExcel } from '../../services/descargaExcel';
 import { FileSpreadsheet, MessageSquare } from 'lucide-react';
 import { dataService, Observacion } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
@@ -41,7 +42,7 @@ export const PanelObservaciones: React.FC = () => {
     ws['!cols'] = [{ wch: 20 }, { wch: 18 }, { wch: 28 }, { wch: 12 }, { wch: 70 }, { wch: 10 }, { wch: 40 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Observaciones');
-    XLSX.writeFile(wb, `VetCompras_Observaciones_${fechaLocal()}.xlsx`);
+    guardarExcel(wb, `VetCompras_Observaciones_${fechaLocal()}.xlsx`);
   };
 
   const visibles = lista.filter((o) => filtro === 'todas' || o.estado === filtro);

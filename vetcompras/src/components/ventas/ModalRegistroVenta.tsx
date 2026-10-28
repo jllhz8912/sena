@@ -33,6 +33,8 @@ import {
 import { dataService } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
 import { ModalDocumentoVenta } from './ModalDocumentoVenta';
+import { BuscadorVenta } from './BuscadorVenta';
+import { EntradaCatalogo, construirCatalogo } from '../../utils/catalogoVenta';
 
 interface ModalRegistroVentaProps {
   ventaParaEditar?: Venta;
@@ -189,6 +191,38 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
     const conPrecio = [...fichas].sort((a, b) => Number(b.categoriaVenta === nuevo.categoria) - Number(a.categoriaVenta === nuevo.categoria)).map((f) => f.nombre);
     return [...new Set([...conPrecio, ...sub, ...usados, ...productos.map((p) => p.nombre)])];
   }, [nuevo.categoria, preciosConocidos, productos, fichas]);
+
+  // Catálogo del buscador rápido: fichas de precio, inventario, lo vendido antes y servicios predefinidos
+  const catalogo = useMemo(() => construirCatalogo({ fichas, productos, existencias, ventas: ventasPrevias }), [fichas, productos, existencias, ventasPrevias]);
+
+  const agregarDesdeCatalogo = (e: EntradaCatalogo, cantidad: number) => {
+    if (!e.precio) {
+      // Sin precio conocido: se pasa a la fila de abajo para escribir el precio
+      setNuevo((n) => ({ ...n, categoria: e.categoria, concepto: e.nombre, cantidad, precioUnitario: 0, descuento: 0 }));
+      mostrarToast('info', 'Escriba el precio', `“${e.nombre}” no tiene precio guardado: escríbalo y pulse Agregar.`);
+      setTimeout(() => document.getElementById('nuevo-precio')?.focus(), 50);
+      return;
+    }
+    setItems((lista) => {
+      const igual = lista.find((i) => normalizarNombre(i.concepto) === e.clave && i.precioUnitario === e.precio && !i.descuento);
+      if (igual) {
+        return lista.map((i) => (i === igual ? { ...i, cantidad: i.cantidad + cantidad, subtotal: subtotalItem({ ...i, cantidad: i.cantidad + cantidad }) } : i));
+      }
+      return [
+        ...lista,
+        {
+          id: nuevoId('itm'),
+          categoria: e.categoria as CategoriaVenta,
+          subcategoria: e.subcategoria as VentaItem['subcategoria'],
+          concepto: e.nombre,
+          cantidad,
+          precioUnitario: e.precio,
+          subtotal: subtotalItem({ cantidad, precioUnitario: e.precio }),
+          productoId: e.productoId,
+        },
+      ];
+    });
+  };
 
   const productoNuevo = useMemo(() => {
     const ficha = fichas.find((f) => normalizarNombre(f.nombre) === normalizarNombre(nuevo.concepto));
@@ -432,6 +466,9 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
               icono={ShoppingCart}
               extra={<span className="text-xs text-slate-500">{items.length} ítem(s)</span>}
             >
+              {/* Buscador rápido: lo más ágil para facturar */}
+              <BuscadorVenta catalogo={catalogo} onElegir={agregarDesdeCatalogo} />
+              <p className="text-[11px] text-slate-500">¿No aparece? Escríbalo en esta fila como un ítem nuevo:</p>
               {/* Fila para agregar */}
               <div className="grid grid-cols-2 md:grid-cols-12 gap-2 items-end rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 p-3">
                 <div className="col-span-2 md:col-span-3">

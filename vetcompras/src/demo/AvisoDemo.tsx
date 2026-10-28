@@ -86,10 +86,11 @@ export const AvisoDemo: React.FC = () => {
               </div>
             )}
             <p className="text-[11px] opacity-80">
-              Pruebe una venta con varios ítems y formas de pago, y descargue el
-              recibo PDF. En esta vista previa no funcionan la exportación a
-              Excel, la descarga de respaldos ni la lectura de PDF con IA; en la
-              instalación real sí.
+              Pruebe una venta con el buscador (F2), varios ítems y formas de
+              pago, y descargue el recibo PDF. Las plantillas y exportaciones a
+              Excel se descargan normalmente. En esta vista previa no se
+              descargan copias de seguridad ni se leen PDF escaneados o fotos;
+              en la instalación real sí.
             </p>
             <div className="flex flex-wrap gap-2">
               <button

@@ -87,14 +87,17 @@ export function movimientosDeCompra(
           nombre: linea.descripcion.trim(),
           unidad: linea.unidad || 'UND',
           costoUltimo: costo || undefined,
+          precioVenta: linea.precioVentaSugerido || undefined,
           activo: true,
           creadoEn: ahora(),
           actualizadoEn: ahora(),
         };
         catalogo.push(prod);
         r.productosNuevos.push(prod);
-      } else if (costo && !esNota && prod.costoUltimo !== costo) {
-        const act = { ...prod, costoUltimo: costo, actualizadoEn: ahora() };
+      } else if (!esNota && ((costo && prod.costoUltimo !== costo) || (linea.precioVentaSugerido && !prod.precioVenta))) {
+        // La compra trae costo nuevo; el precio sugerido de la plantilla solo se toma si el
+        // producto aún no tiene precio (un precio editado después por la persona no se pisa)
+        const act = { ...prod, costoUltimo: costo || prod.costoUltimo, precioVenta: prod.precioVenta || linea.precioVentaSugerido, actualizadoEn: ahora() };
         r.productosActualizados.push(act);
         catalogo[catalogo.indexOf(prod)] = act;
       }

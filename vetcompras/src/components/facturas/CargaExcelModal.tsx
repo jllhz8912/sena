@@ -157,6 +157,18 @@ export const CargaExcelModal: React.FC<CargaExcelModalProps> = ({
         const ccId = resolverCentroCostoId(f.centroCostoNombre, f.nitProveedor);
         const catObj = categorias.find((c) => c.id === catId);
 
+        // Bases e IVA por tarifa (Formulario 300): con productos se suman por línea
+        const tarifa = (t: number) => (f.productos || []).filter((pr) => pr.ivaPct === t).reduce((a, pr) => a + Math.round(pr.cantidad * pr.costoUnitario), 0);
+        const bases = f.productos?.length
+          ? { b0: tarifa(0), b5: tarifa(5), b19: tarifa(19), i5: Math.round(tarifa(5) * 0.05), i19: Math.round(tarifa(19) * 0.19) }
+          : {
+              b0: f.iva === 0 ? f.subtotal : 0,
+              b5: f.tarifaIva === 5 ? f.subtotal : 0,
+              b19: f.tarifaIva === 19 || (f.tarifaIva === undefined && f.iva > 0) ? f.subtotal : 0,
+              i5: f.tarifaIva === 5 ? f.iva : 0,
+              i19: f.tarifaIva === 19 || (f.tarifaIva === undefined && f.iva > 0) ? f.iva : 0,
+            };
+
         const doc: CompraDocumento = {
           id: 'doc-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
           tipoDocumento: f.tipoDocumento as any,
@@ -182,11 +194,11 @@ export const CargaExcelModal: React.FC<CargaExcelModalProps> = ({
           moneda: 'COP',
           subtotal: f.subtotal,
           descuentos: 0,
-          baseIva0: f.iva === 0 ? f.subtotal : 0,
-          baseIva5: f.tarifaIva === 5 ? f.subtotal : 0,
-          baseIva19: f.tarifaIva === 19 || (f.tarifaIva === undefined && f.iva > 0) ? f.subtotal : 0,
-          iva5: f.tarifaIva === 5 ? f.iva : 0,
-          iva19: f.tarifaIva === 19 || (f.tarifaIva === undefined && f.iva > 0) ? f.iva : 0,
+          baseIva0: bases.b0,
+          baseIva5: bases.b5,
+          baseIva19: bases.b19,
+          iva5: bases.i5,
+          iva19: bases.i19,
           totalIva: f.iva,
           impoconsumo: 0,
           reteFuente: f.reteFuente || 0,
@@ -197,19 +209,39 @@ export const CargaExcelModal: React.FC<CargaExcelModalProps> = ({
           saldoPendiente: f.estadoPago === 'pagada' ? 0 : Math.max(0, f.total - (Number(f.reteFuente || 0) + Number(f.reteIva || 0) + Number(f.reteIca || 0))),
           estadoPago: f.estadoPago,
           fechaPago: f.estadoPago === 'pagada' ? f.fechaEmision : undefined,
-          lineas: [
-            {
-              id: 'lin-excel-1',
-              descripcion: f.observaciones || `Compra factura ${f.folio} (${f.categoriaNombre || 'Insumo'})`,
-              cantidad: 1,
-              unidad: 'UND',
-              valorUnitario: f.subtotal,
-              descuento: 0,
-              porcentajeIva: f.iva > 0 ? (f.tarifaIva || 19) : 0,
-              valorIva: f.iva,
-              totalLinea: f.subtotal + f.iva,
-            },
-          ],
+          lineas: f.productos?.length
+            ? // Plantilla con productos: cada uno entra al inventario con su precio de venta sugerido
+              f.productos.map((pr, k) => {
+                const base = Math.round(pr.cantidad * pr.costoUnitario);
+                const valorIva = Math.round(base * (pr.ivaPct / 100));
+                return {
+                  id: `lin-excel-${k + 1}`,
+                  codigo: pr.codigo,
+                  descripcion: pr.descripcion,
+                  cantidad: pr.cantidad,
+                  unidad: 'UND',
+                  valorUnitario: pr.costoUnitario,
+                  descuento: 0,
+                  porcentajeIva: pr.ivaPct,
+                  valorIva,
+                  totalLinea: base + valorIva,
+                  precioVentaSugerido: pr.precioVenta,
+                };
+              })
+            : [
+                {
+                  id: 'lin-excel-1',
+                  descripcion: f.observaciones || `Compra factura ${f.folio} (${f.categoriaNombre || 'Insumo'})`,
+                  cantidad: 1,
+                  unidad: 'UND',
+                  valorUnitario: f.subtotal,
+                  descuento: 0,
+                  porcentajeIva: f.iva > 0 ? (f.tarifaIva || 19) : 0,
+                  valorIva: f.iva,
+                  totalLinea: f.subtotal + f.iva,
+                  resumen: true, // sin detalle de productos: no mueve inventario
+                },
+              ],
           observaciones: f.observaciones,
           pagos:
             f.estadoPago === 'pagada'
@@ -275,7 +307,7 @@ export const CargaExcelModal: React.FC<CargaExcelModalProps> = ({
                 Importar Facturas desde Excel (.xlsx / .csv)
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Plantilla sencilla de solo 7 datos: Fecha, NIT, Nombre, Factura, Valor, Medio de pago y CUFE.
+                Una fila por producto (cantidad, costo y precio de venta sugerido): entran al inventario y a Precios de Venta. Para gastos, una fila con el valor facturado.
               </p>
             </div>
           </div>
@@ -287,7 +319,7 @@ export const CargaExcelModal: React.FC<CargaExcelModalProps> = ({
               title="Descargar plantilla de Excel sencilla con solo 7 campos"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Descargar Plantilla Sencilla</span>
+              <span>Descargar Plantilla de Compras</span>
             </button>
 
             <button

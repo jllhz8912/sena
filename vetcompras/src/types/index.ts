@@ -54,6 +54,8 @@ export interface LineaFactura {
   resumen?: boolean;
   /** Producto del inventario asociado a la línea */
   productoId?: string;
+  /** Precio de venta sugerido (desde la plantilla de Excel): se lleva al inventario y a Precios de Venta */
+  precioVentaSugerido?: number;
 }
 
 export interface ArchivoAdjunto {

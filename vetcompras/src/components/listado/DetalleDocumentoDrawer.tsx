@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { CompraDocumento, Categoria, CentroCosto } from '../../types';
 import { dataService } from '../../services/dataService';
+import { descargarBlob } from '../../services/reciboPdf';
 import { formatCOP, formatFecha, getTipoDocumentoLabel, getEstadoPagoLabel } from '../../utils/formatters';
 import { RegistrarAbonoModal } from './RegistrarAbonoModal';
 
@@ -56,18 +57,9 @@ export const DetalleDocumentoDrawer: React.FC<DetalleDocumentoDrawerProps> = ({
     }
 
     if (adjunto.dataUrl) {
-      const a = document.createElement('a');
-      a.href = adjunto.dataUrl;
-      a.download = adjunto.nombre;
-      a.click();
+      await descargarBlob(await (await fetch(adjunto.dataUrl)).blob(), adjunto.nombre);
     } else if (adjunto.contenidoXml) {
-      const blob = new Blob([adjunto.contenidoXml], { type: 'application/xml' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = adjunto.nombre || 'factura.xml';
-      a.click();
-      URL.revokeObjectURL(url);
+      await descargarBlob(new Blob([adjunto.contenidoXml], { type: 'application/xml' }), adjunto.nombre || 'factura.xml');
     }
   };
 

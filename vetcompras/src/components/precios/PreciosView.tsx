@@ -19,6 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { guardarExcel } from '../../services/descargaExcel';
 import { CategoriaVenta, FichaPrecio, MovimientoInventario, Producto, VentaItem } from '../../types';
 import { dataService } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
@@ -482,9 +483,39 @@ export const PreciosView: React.FC<{ onFacturar: (items: VentaItem[]) => void }>
     [productos, movimientos]
   );
 
+  // Productos del inventario con precio de venta (de la plantilla de compras o editado allí) que
+  // aún no tienen ficha: se muestran con su margen sobre el costo de compra; al editarlos se guarda la ficha
+  const fichasInventario = useMemo(() => {
+    const ahora = new Date().toISOString();
+    return productos
+      .filter((p) => p.activo !== false && (p.precioVenta || 0) > 0 && !fichas.some((f) => f.productoId === p.id))
+      .map<FichaPrecio>((p) => ({
+        id: `ficha-${p.id}`,
+        tipo: 'producto',
+        nombre: p.nombre,
+        categoriaVenta: 'vitrina' as CategoriaVenta,
+        productoId: p.id,
+        unidad: p.unidad || 'UND',
+        costos: [{ id: 'cst-compra', concepto: 'Costo de compra (sin IVA)', cantidad: 1, valorUnitario: costosInventario.get(p.id) || p.costoUltimo || 0 }],
+        gastosGeneralesPct: 0,
+        metodo: 'margen',
+        porcentajeObjetivo: 30,
+        comisionPct: 0,
+        ivaPct: ivaPorDefecto,
+        redondeo: 100,
+        precioVenta: p.precioVenta || 0,
+        historial: [],
+        activo: true,
+        creadoEn: ahora,
+        actualizadoEn: ahora,
+      }));
+  }, [productos, fichas, costosInventario, ivaPorDefecto]);
+  const idsInventario = useMemo(() => new Set(fichasInventario.map((f) => f.id)), [fichasInventario]);
+
   const filas = useMemo(
     () =>
-      fichas
+      [...fichas, ...fichasInventario]
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
         .filter((f) => !tipo || f.tipo === tipo)
         .filter((f) => !texto.trim() || `${f.nombre} ${nombreCategoria(f.categoriaVenta)}`.toLowerCase().includes(texto.trim().toLowerCase()))
         .map((f) => {
@@ -495,11 +526,11 @@ export const PreciosView: React.FC<{ onFacturar: (items: VentaItem[]) => void }>
           const costoDesactualizado = !!(costoInv && linea && Math.abs(costoInv - linea.valorUnitario) >= 1);
           return { f, calc, rent, costoDesactualizado, costoInv };
         }),
-    [fichas, tipo, texto, costosInventario]
+    [fichas, fichasInventario, tipo, texto, costosInventario]
   );
 
   const crearDesdeInventario = () => {
-    const sinFicha = productos.filter((p) => !fichas.some((f) => f.productoId === p.id));
+    const sinFicha = productos.filter((p) => !fichas.some((f) => f.productoId === p.id) && !p.precioVenta);
     if (!sinFicha.length) return mostrarToast('info', 'Inventario', 'Todos los productos del inventario ya tienen ficha de precio.');
     const ficha = fichaNueva('producto', ivaPorDefecto);
     const p = sinFicha[0];
@@ -517,7 +548,7 @@ export const PreciosView: React.FC<{ onFacturar: (items: VentaItem[]) => void }>
   };
 
   const facturarSeleccion = () => {
-    const items = fichas.filter((f) => seleccion.includes(f.id) && f.precioVenta > 0).map(itemDeFicha);
+    const items = [...fichas, ...fichasInventario].filter((f) => seleccion.includes(f.id) && f.precioVenta > 0).map(itemDeFicha);
     if (!items.length) return mostrarToast('warning', 'Seleccione', 'Marque los productos o servicios a facturar.');
     onFacturar(items);
     setSeleccion([]);
@@ -535,7 +566,7 @@ export const PreciosView: React.FC<{ onFacturar: (items: VentaItem[]) => void }>
     const ws = XLSX.utils.aoa_to_sheet(datos);
     ws['!cols'] = datos[0].map((_, i) => ({ wch: i === 1 ? 34 : 13 }));
     XLSX.utils.book_append_sheet(wb, ws, 'Precios de venta');
-    XLSX.writeFile(wb, `VetCompras_Precios_${fechaLocal()}.xlsx`);
+    guardarExcel(wb, `VetCompras_Precios_${fechaLocal()}.xlsx`);
   };
 
   if (cargando) {
@@ -577,7 +608,7 @@ export const PreciosView: React.FC<{ onFacturar: (items: VentaItem[]) => void }>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { t: 'Fichas de precio', v: String(fichas.length), c: 'text-slate-900 dark:text-white' },
+            { t: 'Productos y servicios con precio', v: String(fichas.length + fichasInventario.length), c: 'text-slate-900 dark:text-white' },
             { t: 'Margen promedio', v: pct(margenPromedio), c: 'text-emerald-700 dark:text-emerald-400' },
             { t: 'Precios con pérdida', v: String(conPerdida), c: conPerdida ? 'text-rose-600' : 'text-slate-400' },
             { t: 'Costo cambió en inventario', v: String(desactualizados), c: desactualizados ? 'text-amber-600' : 'text-slate-400' },
@@ -651,6 +682,9 @@ export const PreciosView: React.FC<{ onFacturar: (items: VentaItem[]) => void }>
                         {f.tipo === 'servicio' ? 'Servicio' : 'Producto'} · {nombreCategoria(f.categoriaVenta)}
                         {f.historial.length > 1 ? ` · ${f.historial.length} cambios de precio` : ''}
                       </p>
+                      {idsInventario.has(f.id) && (
+                        <p className="text-[11px] text-teal-700 dark:text-teal-400">Precio tomado del inventario · margen sobre el costo de compra. Ábralo para agregar costos o cambiar el precio.</p>
+                      )}
                       {costoDesactualizado && (
                         <p className="text-[11px] text-amber-700 dark:text-amber-400 flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3" /> El costo en inventario ahora es {formatCOP(costoInv!)}: revise el precio
@@ -673,7 +707,7 @@ export const PreciosView: React.FC<{ onFacturar: (items: VentaItem[]) => void }>
                         <button onClick={() => duplicar(f)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500" title="Duplicar (por ejemplo, para otra presentación)">
                           <Copy className="w-4 h-4" />
                         </button>
-                        <button onClick={() => setAEliminar(f)} className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-400 hover:text-rose-600" title="Eliminar ficha">
+                        <button onClick={() => setAEliminar(f)} disabled={idsInventario.has(f.id)} className="disabled:opacity-30 p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-400 hover:text-rose-600" title="Eliminar ficha">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>

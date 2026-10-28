@@ -5,6 +5,7 @@
  */
 
 import * as XLSX from 'xlsx';
+import { guardarExcel } from './descargaExcel';
 import { itemsDeVenta, pagosDeVenta, saldoDeVenta } from '../utils/ventas';
 import { CompraDocumento, Proveedor, Categoria, CentroCosto, Venta } from '../types';
 import {
@@ -177,7 +178,7 @@ export function exportarDocumentosAExcel(
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Compras y Gastos');
-  XLSX.writeFile(wb, nombreArchivo);
+  guardarExcel(wb, nombreArchivo);
 }
 
 /**
@@ -267,7 +268,7 @@ export function exportarReporteIvaExcel(
   }
 
   XLSX.utils.book_append_sheet(wb, wsDetalle, 'Detalle Facturas');
-  XLSX.writeFile(wb, nombreArchivo);
+  guardarExcel(wb, nombreArchivo);
 }
 
 /**
@@ -348,7 +349,7 @@ export function exportarReporteRetencionesExcel(
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Retenciones DIAN 350');
-  XLSX.writeFile(wb, nombreArchivo);
+  guardarExcel(wb, nombreArchivo);
 }
 
 /**
@@ -480,7 +481,7 @@ export function exportarReporteMediosPagoExcel(
   wsDetalle['!cols'] = autoAjustarColumnas(detalleRows);
   XLSX.utils.book_append_sheet(wb, wsDetalle, 'Detalle por Factura');
 
-  XLSX.writeFile(wb, nombreArchivo);
+  guardarExcel(wb, nombreArchivo);
 }
 
 /**
@@ -554,7 +555,7 @@ export function exportarReporteProductosExcel(
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Histórico de Productos');
-  XLSX.writeFile(wb, nombreArchivo);
+  guardarExcel(wb, nombreArchivo);
 }
 
 /**
@@ -737,7 +738,7 @@ export function exportarTodaLaBaseAExcel(
   wsProvs['!cols'] = autoAjustarColumnas(provRows);
   XLSX.utils.book_append_sheet(wb, wsProvs, 'Proveedores');
 
-  XLSX.writeFile(wb, nombreArchivo);
+  guardarExcel(wb, nombreArchivo);
 }
 
 /**
@@ -773,8 +774,19 @@ export interface FilaFacturaExcel {
   total: number;
   estadoPago: 'pagada' | 'pendiente' | 'parcial';
   observaciones?: string;
+  /** Detalle de productos (plantilla con una fila por producto) */
+  productos?: ProductoExcel[];
   esValida: boolean;
   errores: string[];
+}
+
+export interface ProductoExcel {
+  codigo?: string;
+  descripcion: string;
+  cantidad: number;
+  costoUnitario: number;
+  ivaPct: number;
+  precioVenta?: number;
 }
 
 /**
@@ -967,18 +979,41 @@ export async function procesarExcelFacturas(file: File): Promise<{
     const reteIca = getNum('reteica', 'retencion_ica');
     const totalRetenciones = reteFuente + reteIva + reteIca;
 
-    // Si viene la plantilla simplificada (solo valor facturado)
-    if (total > 0 && subtotal === 0 && iva === 0) {
-      subtotal = Math.round(total / 1.19);
-      iva = total - subtotal;
+    // Fila con producto: la columna de IVA es una tarifa (0, 5 o 19), no un valor en pesos
+    const tieneProducto = !!String(getVal('producto', 'nombre_producto', 'articulo', 'item', 'descripcion_producto')).trim();
+    if (tieneProducto) iva = 0;
+
+    // Solo "Valor facturado": no se supone IVA (inflaría el IVA descontable del Formulario 300);
+    // si la factura tiene IVA, se indica en la columna IVA o se corrige al revisar la compra.
+    // El total es el valor de la factura: las retenciones no lo modifican.
+    if (total > 0 && subtotal === 0) {
+      subtotal = Math.max(0, total - iva);
     } else if (total === 0 && subtotal > 0) {
-      total = subtotal + iva - totalRetenciones;
-    } else if (subtotal === 0 && total > 0) {
-      if (iva > 0) {
-        subtotal = total - iva + totalRetenciones;
-      } else {
-        subtotal = Math.round(total / 1.19);
-        iva = total - subtotal;
+      total = subtotal + iva;
+    }
+
+    // Detalle de producto en la fila (opcional): Producto, Cantidad, Costo unitario, % IVA, Precio venta sugerido
+    const productoStr = String(getVal('producto', 'nombre_producto', 'articulo', 'item', 'descripcion_producto')).trim();
+    let productoFila: ProductoExcel | undefined;
+    if (productoStr) {
+      const cantidad = getNum('cantidad', 'cant', 'unidades') || 1;
+      const costoUnitario = getNum('costo_unitario_sin_iva', 'costo_unitario', 'costo', 'valor_unitario', 'precio_compra', 'precio_unitario');
+      const ivaPct = getNum('tarifa_iva', 'iva_producto', 'iva_pct', 'porcentaje_iva', 'iva_porcentaje', 'iva_tarifa', 'iva');
+      const precioVenta = getNum('precio_venta_sugerido', 'precio_de_venta_sugerido', 'precio_venta', 'precio_de_venta', 'pvp');
+      productoFila = {
+        codigo: String(getVal('codigo', 'codigo_producto', 'referencia', 'sku')).trim() || undefined,
+        descripcion: productoStr,
+        cantidad,
+        costoUnitario: Math.round(costoUnitario),
+        ivaPct: [0, 5, 19].includes(ivaPct) ? ivaPct : 0,
+        precioVenta: precioVenta ? Math.round(precioVenta) : undefined,
+      };
+      if (!costoUnitario) errores.push(`Falta el costo unitario de "${productoStr}".`);
+      // Sin "Valor facturado": el valor de la fila sale del producto
+      if (total <= 0 && costoUnitario) {
+        subtotal = Math.round(cantidad * costoUnitario);
+        iva = Math.round(subtotal * (productoFila.ivaPct / 100));
+        total = subtotal + iva;
       }
     }
 
@@ -1048,10 +1083,43 @@ export async function procesarExcelFacturas(file: File): Promise<{
       total: Math.round(total),
       estadoPago,
       observaciones: String(getVal('observaciones', 'notas', 'descripcion', 'concepto')).trim() || undefined,
+      productos: productoFila ? [productoFila] : undefined,
       esValida: errores.length === 0,
       errores,
     });
   });
+
+  // Varias filas con el mismo proveedor y número de factura = una compra con varios productos
+  const agrupadas: FilaFacturaExcel[] = [];
+  const porFactura = new Map<string, FilaFacturaExcel>();
+  for (const f of filas) {
+    if (!f.productos || !f.folio || !f.nitProveedor) {
+      agrupadas.push(f);
+      continue;
+    }
+    const clave = `${f.nitProveedor}|${f.prefijo || ''}|${f.folio}`;
+    const primera = porFactura.get(clave);
+    if (!primera) {
+      porFactura.set(clave, f);
+      agrupadas.push(f);
+      continue;
+    }
+    primera.productos!.push(...f.productos);
+    primera.errores.push(...f.errores);
+    primera.esValida = primera.errores.length === 0;
+  }
+  for (const f of porFactura.values()) {
+    const lineas = f.productos!;
+    const sub = lineas.reduce((a, l) => a + l.cantidad * l.costoUnitario, 0);
+    const iva = lineas.reduce((a, l) => a + l.cantidad * l.costoUnitario * (l.ivaPct / 100), 0);
+    f.subtotal = Math.round(sub);
+    f.iva = Math.round(iva);
+    f.total = Math.round(sub + iva);
+    const tarifas = new Set(lineas.filter((l) => l.ivaPct).map((l) => l.ivaPct));
+    f.tarifaIva = tarifas.size === 1 ? [...tarifas][0] : undefined;
+  }
+  filas.length = 0;
+  filas.push(...agrupadas);
 
   const totalValidas = filas.filter((f) => f.esValida).length;
   const totalConError = filas.filter((f) => !f.esValida).length;
@@ -1066,94 +1134,54 @@ export async function procesarExcelFacturas(file: File): Promise<{
 export function descargarPlantillaExcel(): void {
   const wb = XLSX.utils.book_new();
 
-  // Encabezados sencillos solicitados
+  // Una fila por producto. Las filas con el mismo NIT y número de factura forman una sola compra.
+  // Para gastos sin productos (arriendo, servicios) basta una fila con "Valor Facturado".
   const headers = [
-    'Fecha',
-    'NIT',
-    'Nombre',
-    'Número de Factura',
-    'Valor Facturado',
-    'Medio de Pago',
-    'CUFE',
+    'Fecha', 'NIT', 'Nombre', 'Número de Factura', 'Medio de Pago', 'CUFE',
+    'Producto', 'Código', 'Cantidad', 'Costo unitario sin IVA', 'Tarifa IVA', 'Precio venta sugerido', 'Valor Facturado',
   ];
-
   const filasEjemplo = [
-    [
-      '2026-03-10',
-      '900593450',
-      'ZOETIS COLOMBIA S.A.S.',
-      'FE-10948',
-      2500000,
-      'Transferencia',
-      'a1b2c3d4e5f678901234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-    ],
-    [
-      '2026-03-12',
-      '900223847',
-      'ROYAL CANIN COLOMBIA S.A.S.',
-      'RC-884321',
-      3800000,
-      'Transferencia',
-      '',
-    ],
-    [
-      '2026-03-15',
-      '860002130',
-      'MSD SALUD ANIMAL COLOMBIA S.A.S.',
-      'MSD-54210',
-      1450000,
-      'Crédito',
-      '',
-    ],
-    [
-      '2026-03-18',
-      '900889123',
-      'DISTRIBUIDORA MEDICO QUIRURGICA VET S.A.S.',
-      'VQ-3321',
-      890000,
-      'Efectivo',
-      '',
-    ],
-    [
-      '2026-03-20',
-      '800123987',
-      'INMOBILIARIA DEL NORTE S.A.S.',
-      'AR-2026-03',
-      3500000,
-      'Transferencia',
-      '',
-    ],
+    ['2026-03-10', '900593450', 'ZOETIS COLOMBIA S.A.S.', 'FE-10948', 'Crédito', '', 'Nexgard 10-25 kg', '7702001', 12, 38000, 19, 59900, ''],
+    ['2026-03-10', '900593450', 'ZOETIS COLOMBIA S.A.S.', 'FE-10948', 'Crédito', '', 'Simparica Trio 10-20 kg x 3', '', 6, 96000, 19, 149900, ''],
+    ['2026-03-12', '900223847', 'ROYAL CANIN COLOMBIA S.A.S.', 'RC-884321', 'Transferencia', '', 'Royal Canin Gastrointestinal 7.5 kg', '', 4, 285000, 5, 399000, ''],
+    ['2026-03-20', '800123987', 'INMOBILIARIA DEL NORTE S.A.S.', 'AR-2026-03', 'Transferencia', '', '', '', '', '', '', '', 3500000],
   ];
 
   const dataRows: any[][] = [headers, ...filasEjemplo];
   const ws = XLSX.utils.aoa_to_sheet(dataRows);
-
-  // Formato en columna E (Valor Facturado en COP)
   for (let r = 2; r <= dataRows.length; r++) {
-    const ref = `E${r}`;
-    if (ws[ref]) ws[ref].z = '"$"#,##0';
+    for (const col of ['J', 'L', 'M']) {
+      const ref = `${col}${r}`;
+      if (ws[ref] && typeof ws[ref].v === 'number') ws[ref].z = '"$"#,##0';
+    }
   }
-
   ws['!cols'] = autoAjustarColumnas(dataRows);
-  XLSX.utils.book_append_sheet(wb, ws, 'Facturas');
+  XLSX.utils.book_append_sheet(wb, ws, 'Compras');
 
-  // Hoja 2: Guía rápida y sencilla
   const wsGuia = XLSX.utils.aoa_to_sheet([
-    ['GUÍA DE CAMPOS PARA LA PLANTILLA SIMPLIFICADA DE VETCOMPRAS'],
+    ['GUÍA DE LA PLANTILLA DE COMPRAS DE VETCOMPRAS'],
+    ['Una fila por producto. Las filas con el mismo NIT y número de factura se guardan como una sola compra.'],
+    ['Los productos entran al inventario y su precio de venta sugerido queda en el inventario y en "Precios de Venta" (se puede editar después).'],
     [],
-    ['Campo', '¿Es Obligatorio?', 'Descripción', 'Ejemplo'],
-    ['Fecha', 'Sí', 'Fecha de emisión de la factura (formato AAAA-MM-DD)', '2026-03-15'],
-    ['NIT', 'Sí', 'NIT o Cédula del proveedor sin puntos ni guión', '900593450'],
-    ['Nombre', 'Sí', 'Nombre o Razón Social del proveedor', 'ZOETIS COLOMBIA S.A.S.'],
-    ['Número de Factura', 'Sí', 'Folio o número oficial de la factura', 'FE-10948'],
-    ['Valor Facturado', 'Sí', 'Valor total facturado en pesos colombianos (sin centavos)', '2500000'],
-    ['Medio de Pago', 'Opcional', 'Transferencia, Efectivo, Tarjeta o Crédito', 'Transferencia'],
-    ['CUFE', 'Opcional', 'Código electrónico de la DIAN (déjalo vacío si no aplica)', 'a1b2c3d...'],
+    ['Campo', '¿Obligatorio?', 'Descripción', 'Ejemplo'],
+    ['Fecha', 'Sí', 'Fecha de la factura (AAAA-MM-DD)', '2026-03-15'],
+    ['NIT', 'Sí', 'NIT o cédula del proveedor, sin puntos ni dígito de verificación', '900593450'],
+    ['Nombre', 'Sí', 'Razón social del proveedor', 'ZOETIS COLOMBIA S.A.S.'],
+    ['Número de Factura', 'Sí', 'Número de la factura (con prefijo si lo tiene)', 'FE-10948'],
+    ['Medio de Pago', 'Opcional', 'Transferencia, Efectivo, Tarjeta o Crédito (a crédito queda en Cuentas por Pagar)', 'Crédito'],
+    ['CUFE', 'Opcional', 'Código de la factura electrónica', ''],
+    ['Producto', 'Para inventario', 'Nombre del producto comprado. Vacío si es un gasto sin productos', 'Nexgard 10-25 kg'],
+    ['Código', 'Opcional', 'Código de barras o del proveedor', '7702001'],
+    ['Cantidad', 'Con producto', 'Unidades compradas', '12'],
+    ['Costo unitario sin IVA', 'Con producto', 'Lo que cuesta cada unidad antes de IVA', '38000'],
+    ['Tarifa IVA', 'Opcional', 'Tarifa de IVA del producto: 0, 5 o 19', '19'],
+    ['Precio venta sugerido', 'Opcional', 'Precio al que piensa venderlo (con IVA si lo cobra). Editable después', '59900'],
+    ['Valor Facturado', 'Sin producto', 'Total de la factura cuando no se detallan productos (gastos). Se toma sin IVA; si tiene IVA, agregue la columna "IVA" con el valor en pesos', '3500000'],
   ]);
-  wsGuia['!cols'] = [{ wch: 18 }, { wch: 16 }, { wch: 55 }, { wch: 25 }];
+  wsGuia['!cols'] = [{ wch: 22 }, { wch: 16 }, { wch: 80 }, { wch: 25 }];
   XLSX.utils.book_append_sheet(wb, wsGuia, 'Instrucciones');
 
-  XLSX.writeFile(wb, 'Plantilla_Facturas_VetCompras.xlsx');
+  guardarExcel(wb, 'Plantilla_Facturas_VetCompras.xlsx');
 }
 
 /**
@@ -1201,7 +1229,7 @@ export function exportarVentasAExcel(
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Ventas');
-  XLSX.writeFile(wb, nombreArchivo);
+  guardarExcel(wb, nombreArchivo);
 }
 
 /**
@@ -1366,7 +1394,7 @@ export function exportarReporteUtilidadYCategoriasExcel(
   wsCDet['!cols'] = autoAjustarColumnas(cDetRows);
   XLSX.utils.book_append_sheet(wb, wsCDet, 'Detalle Compras');
 
-  XLSX.writeFile(wb, nombreArchivo);
+  guardarExcel(wb, nombreArchivo);
 }
 
 
