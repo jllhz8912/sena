@@ -19,11 +19,12 @@ import {
 } from '../data/defaults';
 import { movimientosAlEliminar, movimientosDeCompra, movimientosDeVenta } from '../utils/inventario';
 
-type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centrosCosto' | 'productos' | 'movimientosInventario';
-const COLECCIONES: Coleccion[] = ['documentos', 'ventas', 'proveedores', 'categorias', 'centrosCosto', 'productos', 'movimientosInventario'];
+type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centrosCosto' | 'productos' | 'movimientosInventario' | 'fichasPrecio';
+const COLECCIONES: Coleccion[] = ['documentos', 'ventas', 'proveedores', 'categorias', 'centrosCosto', 'productos', 'movimientosInventario', 'fichasPrecio'];
 const NOMBRES: Record<Coleccion, string> = {
   productos: 'producto de inventario',
   movimientosInventario: 'movimiento de inventario',
+  fichasPrecio: 'ficha de precio',
   documentos: 'compra/gasto',
   ventas: 'venta',
   proveedores: 'proveedor',
@@ -84,6 +85,7 @@ function datosIniciales(): Datos {
       centrosCosto: clonar(CENTROS_COSTO_DEFECTO),
       productos: [],
       movimientosInventario: [],
+      fichasPrecio: [],
     },
     // La demostración muestra la marca de Los Criollos Vet con datos de contacto de ejemplo
     empresa: { ...clonar(EMPRESA_DEFECTO), razonSocial: 'LOS CRIOLLOS VET', nombreComercial: 'Los Criollos Vet', slogan: 'Clínica veterinaria · Med. Rojas', colorPrimario: '#9330b3', colorSecundario: '#244568', nit: '', dv: '', direccion: '', ciudad: '', departamento: '', telefono: '', whatsapp: '', email: '', sitioWeb: '', matriculaMercantil: '' },
@@ -243,7 +245,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
       marca: { nombre: e.nombreComercial || e.razonSocial || 'Los Criollos Vet', slogan: e.slogan || '', logoUrl: e.logoUrl || '', colorPrimario: e.colorPrimario || '' },
       requiereConfiguracion: modoAcceso === 'usuarios' && estado.usuarios.length === 0,
       minutosInactividad: MINUTOS_INACTIVIDAD,
-      version: '2.5.0-demo',
+      version: '2.6.0-demo',
     };
   }
   if (metodo === 'POST' && ruta === '/sesion/ingresar-libre') {
@@ -487,7 +489,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
       auditar(yo.usuario, 'Datos de demostración cargados (reemplazan las compras)');
     } else if (accion === 'borrar-todo') {
       const d = datosIniciales();
-      Object.assign(estado.colecciones, { documentos: [], ventas: [], proveedores: [], observaciones: [], productos: [], movimientosInventario: [], categorias: d.colecciones.categorias, centrosCosto: d.colecciones.centrosCosto });
+      Object.assign(estado.colecciones, { documentos: [], ventas: [], proveedores: [], observaciones: [], productos: [], movimientosInventario: [], fichasPrecio: [], categorias: d.colecciones.categorias, centrosCosto: d.colecciones.centrosCosto });
       auditar(yo.usuario, 'Se borró toda la información (compras, ventas, proveedores y catálogos)');
     } else if (accion === 'restablecer') {
       const d = datosIniciales();

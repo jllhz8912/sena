@@ -3,6 +3,19 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.6.0
+- **Precios de Venta** (nuevo módulo): ficha por producto o servicio con sus costos
+  (compra traída del inventario, insumos, mano de obra por minutos, desechables, flete…),
+  gastos generales en %, ganancia deseada (margen sobre el precio o % sobre el costo),
+  comisión de datáfono o plataforma, IVA y redondeo. Calcula el precio sugerido y la
+  rentabilidad real del precio que usted decida (ganancia, margen, % sobre costo y precio
+  mínimo para no perder), con avisos de pérdida o margen bajo.
+- Todo es editable y cada cambio de precio queda en el historial con su motivo. Avisa cuando
+  el costo del producto en el inventario cambió.
+- **Facturar** desde el módulo (uno o varios seleccionados) abre la venta con los ítems y
+  precios; en la venta, al escribir el concepto se trae el precio calculado. El precio
+  aplicado se actualiza también en el inventario. Exportación a Excel.
+
 ## 2.5.0
 - **Inventario** (nuevo módulo, informativo y no restrictivo): existencias por producto,
   kárdex de movimientos, costo promedio y valor del inventario. Las compras con detalle de

@@ -4,6 +4,7 @@ import {
   ReceiptText,
   UploadCloud,
   Boxes,
+  Calculator,
   FilePenLine,
   BarChart3,
   FolderTree,
@@ -31,6 +32,7 @@ export type NavItem =
   | 'cargar_factura'
   | 'cargar_excel'
   | 'inventario'
+  | 'precios'
   | 'registro_manual'
   | 'reportes'
   | 'catalogos'
@@ -112,6 +114,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'inventario' as NavItem,
       label: 'Inventario',
       icon: Boxes,
+      badge: null,
+    },
+    {
+      id: 'precios' as NavItem,
+      label: 'Precios de Venta',
+      icon: Calculator,
       badge: null,
     },
     {

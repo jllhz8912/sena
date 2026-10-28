@@ -73,6 +73,8 @@ function describir(coleccion: Coleccion, r: any): string {
       return `${r.nit || ''} · ${r.razonSocial || ''}`;
     case 'productos':
       return `${r.codigo ? r.codigo + ' · ' : ''}${r.nombre || ''}`;
+    case 'fichasPrecio':
+      return `${r.nombre || ''} · ${pesos(r.precioVenta)}`;
     case 'movimientosInventario':
       return `${r.tipo || ''} · ${r.cantidad ?? ''} und · ${r.referencia || r.motivo || ''}`;
     case 'observaciones':
@@ -91,6 +93,7 @@ const NOMBRES_COLECCION: Record<Coleccion, string> = {
   observaciones: 'observación de prueba',
   productos: 'producto de inventario',
   movimientosInventario: 'movimiento de inventario',
+  fichasPrecio: 'ficha de precio',
 };
 
 export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void } = {}) {
@@ -464,7 +467,7 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
         return res.status(400).json({ error: 'Para borrar todo escriba la palabra BORRAR.' });
       }
       const respaldo = bd.crearRespaldo('antes-de-borrar-todo');
-      for (const c of ['documentos', 'ventas', 'proveedores', 'categorias', 'centrosCosto', 'observaciones', 'productos', 'movimientosInventario'] as const) {
+      for (const c of ['documentos', 'ventas', 'proveedores', 'categorias', 'centrosCosto', 'observaciones', 'productos', 'movimientosInventario', 'fichasPrecio'] as const) {
         bd.vaciar(c);
       }
       bd.lote('categorias', CATEGORIAS_DEFECTO);

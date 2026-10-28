@@ -378,3 +378,52 @@ export interface MovimientoInventario {
   creadoEn: string;
   actualizadoEn: string;
 }
+
+// ============================================================ PRECIOS DE VENTA
+// Ficha de costos y precio de un producto o servicio. Todo es editable: los
+// costos y precios cambian con el tiempo y cada precio aplicado queda en el historial.
+
+export interface CostoFicha {
+  id: string;
+  concepto: string;
+  /** Unidades, minutos, dosis… */
+  cantidad: number;
+  valorUnitario: number;
+}
+
+export interface CambioPrecio {
+  fecha: string; // ISO
+  precioVenta: number;
+  costoTotal: number;
+  margen: number; // % de ganancia sobre el precio sin IVA
+  nota?: string;
+}
+
+export interface FichaPrecio {
+  id: string;
+  tipo: 'producto' | 'servicio';
+  nombre: string;
+  /** Categoría con que se factura en ventas */
+  categoriaVenta: CategoriaVenta;
+  /** Producto del inventario (para traer su costo y actualizar su precio) */
+  productoId?: string;
+  unidad: string;
+  costos: CostoFicha[];
+  /** Gastos generales (arriendo, servicios, administración) como % del costo directo */
+  gastosGeneralesPct: number;
+  metodo: 'margen' | 'markup';
+  /** % deseado: de ganancia sobre el precio (margen) o sobre el costo (markup) */
+  porcentajeObjetivo: number;
+  /** Comisión sobre lo cobrado: datáfono, plataformas, domicilios (%) */
+  comisionPct: number;
+  ivaPct: number;
+  /** Redondear el precio sugerido hacia arriba al múltiplo indicado (0 = sin redondeo) */
+  redondeo: number;
+  /** Precio con que se vende hoy (con IVA) */
+  precioVenta: number;
+  historial: CambioPrecio[];
+  notas?: string;
+  activo: boolean;
+  creadoEn: string;
+  actualizadoEn: string;
+}

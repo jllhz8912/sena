@@ -32,7 +32,7 @@ import {
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite');
 type DatabaseSync = TipoDatabaseSync;
 
-export const COLECCIONES = ['documentos', 'ventas', 'proveedores', 'categorias', 'centrosCosto', 'observaciones', 'productos', 'movimientosInventario'] as const;
+export const COLECCIONES = ['documentos', 'ventas', 'proveedores', 'categorias', 'centrosCosto', 'observaciones', 'productos', 'movimientosInventario', 'fichasPrecio'] as const;
 export type Coleccion = (typeof COLECCIONES)[number];
 
 export function esColeccion(valor: string): valor is Coleccion {

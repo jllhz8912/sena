@@ -13,8 +13,8 @@ import {
   AlertTriangle,
   Loader2,
 } from 'lucide-react';
-import { Venta, VentaItem, PagoVenta, CategoriaVenta, Producto } from '../../types';
-import { buscarProducto, calcularSaldos } from '../../utils/inventario';
+import { Venta, VentaItem, PagoVenta, CategoriaVenta, Producto, FichaPrecio } from '../../types';
+import { buscarProducto, calcularSaldos, normalizarNombre } from '../../utils/inventario';
 import {
   formatCOP,
   CATEGORIAS_VENTA,
@@ -36,6 +36,8 @@ import { ModalDocumentoVenta } from './ModalDocumentoVenta';
 
 interface ModalRegistroVentaProps {
   ventaParaEditar?: Venta;
+  /** Ítems precargados (por ejemplo, desde "Precios de Venta") */
+  itemsIniciales?: VentaItem[];
   onGuardado: (ventaId: string) => void;
   onCerrar: () => void;
 }
@@ -104,7 +106,7 @@ interface ClienteConocido {
   mascotas: string[];
 }
 
-export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaParaEditar, onGuardado, onCerrar }) => {
+export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaParaEditar, itemsIniciales, onGuardado, onCerrar }) => {
   const { mostrarToast } = useToast();
   const editando = !!ventaParaEditar;
 
@@ -119,7 +121,9 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
   // 3. Mascota
   const [mascotaNombre, setMascotaNombre] = useState(ventaParaEditar?.mascotaNombre || '');
   // 4. Ítems
-  const [items, setItems] = useState<VentaItem[]>(() => (ventaParaEditar ? itemsDeVenta(ventaParaEditar).map((i) => ({ ...i })) : []));
+  const [items, setItems] = useState<VentaItem[]>(() =>
+    ventaParaEditar ? itemsDeVenta(ventaParaEditar).map((i) => ({ ...i })) : (itemsIniciales || []).map((i) => ({ ...i }))
+  );
   const [nuevo, setNuevo] = useState({ categoria: 'consultas_clinica', concepto: '', cantidad: 1, precioUnitario: 0, descuento: 0 });
   // 5. Pagos
   const [pagos, setPagos] = useState<PagoVenta[]>(() => (ventaParaEditar ? pagosDeVenta(ventaParaEditar).map((p) => ({ ...p })) : []));
@@ -132,6 +136,8 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
   // Inventario (solo informativo: nunca impide vender)
   const [productos, setProductos] = useState<Producto[]>([]);
   const [existencias, setExistencias] = useState<Map<string, number>>(new Map());
+  // Precios calculados en "Precios de Venta"
+  const [fichas, setFichas] = useState<FichaPrecio[]>([]);
 
   useEffect(() => {
     Promise.all([dataService.obtenerProductos(), dataService.obtenerMovimientos()])
@@ -139,6 +145,10 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
         setProductos(p.filter((x) => x.activo !== false));
         setExistencias(new Map(calcularSaldos(p, m).map((s) => [s.producto.id, s.saldo])));
       })
+      .catch(() => undefined);
+    dataService
+      .obtenerFichasPrecio()
+      .then((f) => setFichas(f.filter((x) => x.activo !== false && x.precioVenta > 0)))
       .catch(() => undefined);
     dataService
       .obtenerVentas()
@@ -175,10 +185,15 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
   const sugerenciasConcepto = useMemo(() => {
     const sub = (SUBCATEGORIAS_POR_CATEGORIA[nuevo.categoria] || []).map((s) => s.nombreCorto);
     const usados = [...preciosConocidos.entries()].filter(([, v]) => v.categoria === nuevo.categoria).map(([k]) => k);
-    return [...new Set([...sub, ...usados, ...productos.map((p) => p.nombre)])];
-  }, [nuevo.categoria, preciosConocidos, productos]);
+    // Los precios calculados aparecen primero, de cualquier categoría (al elegirlos se ajusta la categoría)
+    const conPrecio = [...fichas].sort((a, b) => Number(b.categoriaVenta === nuevo.categoria) - Number(a.categoriaVenta === nuevo.categoria)).map((f) => f.nombre);
+    return [...new Set([...conPrecio, ...sub, ...usados, ...productos.map((p) => p.nombre)])];
+  }, [nuevo.categoria, preciosConocidos, productos, fichas]);
 
-  const productoNuevo = useMemo(() => buscarProducto(productos, { nombre: nuevo.concepto }), [productos, nuevo.concepto]);
+  const productoNuevo = useMemo(() => {
+    const ficha = fichas.find((f) => normalizarNombre(f.nombre) === normalizarNombre(nuevo.concepto));
+    return buscarProducto(productos, { id: ficha?.productoId, nombre: nuevo.concepto });
+  }, [productos, fichas, nuevo.concepto]);
 
   const alCambiarCliente = (nombre: string) => {
     setClienteNombre(nombre);
@@ -192,9 +207,15 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
   };
 
   const alCambiarConceptoNuevo = (concepto: string) => {
+    // Prioridad del precio: ficha de "Precios de Venta" > inventario > último precio cobrado
+    const ficha = fichas.find((f) => normalizarNombre(f.nombre) === normalizarNombre(concepto));
+    if (ficha) {
+      setNuevo((n) => ({ ...n, concepto, categoria: ficha.categoriaVenta, precioUnitario: ficha.precioVenta }));
+      return;
+    }
     const conocido = preciosConocidos.get(concepto.trim().toLowerCase());
     const producto = buscarProducto(productos, { nombre: concepto });
-    setNuevo((n) => ({ ...n, concepto, precioUnitario: n.precioUnitario || conocido?.precio || producto?.precioVenta || 0 }));
+    setNuevo((n) => ({ ...n, concepto, precioUnitario: n.precioUnitario || producto?.precioVenta || conocido?.precio || 0 }));
   };
 
   // ------------------------------------------------------------ cálculos

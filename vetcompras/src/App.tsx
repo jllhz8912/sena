@@ -12,13 +12,14 @@ import { CargaExcelModal } from './components/facturas/CargaExcelModal';
 import { RegistroManualModal } from './components/registro/RegistroManualModal';
 import { ModalRegistroVenta } from './components/ventas/ModalRegistroVenta';
 import { BotonFlotanteNuevo } from './components/common/BotonFlotanteNuevo';
-import { CompraDocumento, Categoria, CentroCosto, Proveedor, Venta } from './types';
+import { CompraDocumento, Categoria, CentroCosto, Proveedor, Venta, VentaItem } from './types';
 import { dataService, EVENTO_SESION, EstadoSesion, UsuarioActual } from './services/dataService';
 import { PantallaAcceso } from './components/seguridad/PantallaAcceso';
 import { PantallaInicio } from './components/seguridad/PantallaInicio';
 import { MARCA } from './data/marca';
 import { SeguridadView } from './components/seguridad/SeguridadView';
 import { InventarioView } from './components/inventario/InventarioView';
+import { PreciosView } from './components/precios/PreciosView';
 import { BotonObservacion } from './components/prueba/ObservacionPrueba';
 import { CuentasPorPagarView } from './components/cartera/CuentasPorPagarView';
 import { CopiasSeguridadView, estadoRecordatorio } from './components/respaldos/CopiasSeguridadView';
@@ -52,6 +53,8 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
   // Compra manual abierta desde Inventario: por ítems y al guardar vuelve al inventario
   const [manualDetallado, setManualDetallado] = useState(false);
   const [modalVentaAbierto, setModalVentaAbierto] = useState(false);
+  // Ítems que llegan desde "Precios de Venta" para facturarlos
+  const [itemsVentaIniciales, setItemsVentaIniciales] = useState<VentaItem[] | undefined>(undefined);
   const [documentoParaEditar, setDocumentoParaEditar] = useState<CompraDocumento | undefined>(undefined);
 
   // Cargar datos desde el servidor local
@@ -146,6 +149,7 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
     compras: 'Registro de Compras y Gastos',
     cuentas_pagar: 'Cuentas por Pagar a Proveedores',
     inventario: 'Inventario de Productos',
+    precios: 'Cálculo de Precios de Venta',
     cargar_factura: 'Cargar Compras',
     cargar_excel: 'Importar Facturas desde Excel',
     registro_manual: 'Registro Manual de Documento',
@@ -269,6 +273,15 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
                 <CopiasSeguridadView onSesionTerminada={onSalir} onDatosActualizados={recargarDatos} />
               )}
 
+              {currentTab === 'precios' && (
+                <PreciosView
+                  onFacturar={(items) => {
+                    setItemsVentaIniciales(items);
+                    setModalVentaAbierto(true);
+                  }}
+                />
+              )}
+
               {currentTab === 'inventario' && (
                 <InventarioView
                   onCargarCompra={() => setModalCargaAbierto(true)}
@@ -382,12 +395,17 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
       {/* Modal Registro Rápido de Venta */}
       {modalVentaAbierto && (
         <ModalRegistroVenta
+          itemsIniciales={itemsVentaIniciales}
           onGuardado={() => {
+            setItemsVentaIniciales(undefined);
             setModalVentaAbierto(false);
             recargarDatos();
             setCurrentTab('ventas');
           }}
-          onCerrar={() => setModalVentaAbierto(false)}
+          onCerrar={() => {
+            setItemsVentaIniciales(undefined);
+            setModalVentaAbierto(false);
+          }}
         />
       )}
     </div>

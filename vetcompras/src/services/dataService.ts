@@ -1,4 +1,4 @@
-import { CompraDocumento, Proveedor, Categoria, CentroCosto, RegistroPago, EmpresaInfo, Venta, Producto, MovimientoInventario } from '../types';
+import { CompraDocumento, Proveedor, Categoria, CentroCosto, RegistroPago, EmpresaInfo, Venta, Producto, MovimientoInventario, FichaPrecio } from '../types';
 import { EMPRESA_DEFECTO } from '../data/defaults';
 import { fechaLocal } from '../utils/formatters';
 
@@ -12,7 +12,7 @@ import { fechaLocal } from '../utils/formatters';
  * detectan consultando la revisión cada pocos segundos.
  */
 
-type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centrosCosto' | 'observaciones' | 'productos' | 'movimientosInventario';
+type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centrosCosto' | 'observaciones' | 'productos' | 'movimientosInventario' | 'fichasPrecio';
 
 const CLAVE_CACHE_EMPRESA = 'vetcompras_empresa';
 const INTERVALO_SONDEO_MS = 4000;
@@ -761,6 +761,21 @@ export const dataService = {
   },
 
   nuevoId,
+
+  // ================= PRECIOS DE VENTA =================
+
+  async obtenerFichasPrecio(): Promise<FichaPrecio[]> {
+    const lista = await listar<FichaPrecio>('fichasPrecio');
+    return lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  },
+
+  async guardarFichaPrecio(ficha: FichaPrecio): Promise<void> {
+    await guardar('fichasPrecio', { ...ficha, actualizadoEn: new Date().toISOString() });
+  },
+
+  async eliminarFichaPrecio(id: string): Promise<void> {
+    await eliminar('fichasPrecio', id);
+  },
 
   // ================= VENTAS DE LA VETERINARIA =================
 
