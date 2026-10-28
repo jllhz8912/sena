@@ -15,7 +15,8 @@ import {
 /** Aviso flotante de la demostración en línea: credenciales y reinicio. */
 export const AvisoDemo: React.FC = () => {
   // En celular empieza plegado para no tapar el formulario de ingreso
-  const [abierto, setAbierto] = useState(() => window.innerWidth >= 768);
+  // Empieza plegado (una sola línea abajo): así nunca tapa el botón Ingresar ni los formularios
+  const [abierto, setAbierto] = useState(false);
   const contenedor = useRef<HTMLDivElement>(null);
 
   // Se pliega solo al primer clic fuera del aviso, para no tapar los formularios
