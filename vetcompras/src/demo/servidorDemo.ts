@@ -17,10 +17,13 @@ import {
   VENTAS_DEFECTO,
   generarDatosDemostracion,
 } from '../data/defaults';
+import { movimientosAlEliminar, movimientosDeCompra, movimientosDeVenta } from '../utils/inventario';
 
-type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centrosCosto';
-const COLECCIONES: Coleccion[] = ['documentos', 'ventas', 'proveedores', 'categorias', 'centrosCosto'];
+type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centrosCosto' | 'productos' | 'movimientosInventario';
+const COLECCIONES: Coleccion[] = ['documentos', 'ventas', 'proveedores', 'categorias', 'centrosCosto', 'productos', 'movimientosInventario'];
 const NOMBRES: Record<Coleccion, string> = {
+  productos: 'producto de inventario',
+  movimientosInventario: 'movimiento de inventario',
   documentos: 'compra/gasto',
   ventas: 'venta',
   proveedores: 'proveedor',
@@ -62,7 +65,7 @@ export const CREDENCIALES_DEMO = [
   { rol: 'Auxiliar', usuario: 'auxiliar', clave: 'Auxiliar2026' },
 ];
 
-const CLAVE_ALMACEN = 'vetcompras_demo_v5';
+const CLAVE_ALMACEN = 'vetcompras_demo_v6';
 const MINUTOS_INACTIVIDAD = 60;
 const clonar = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 const ahoraIso = () => new Date().toISOString();
@@ -79,6 +82,8 @@ function datosIniciales(): Datos {
       proveedores: clonar(PROVEEDORES_DEFECTO),
       categorias: clonar(CATEGORIAS_DEFECTO),
       centrosCosto: clonar(CENTROS_COSTO_DEFECTO),
+      productos: [],
+      movimientosInventario: [],
     },
     // La demostración muestra la marca de Los Criollos Vet con datos de contacto de ejemplo
     empresa: { ...clonar(EMPRESA_DEFECTO), razonSocial: 'LOS CRIOLLOS VET', nombreComercial: 'Los Criollos Vet', slogan: 'Clínica veterinaria · Med. Rojas', colorPrimario: '#9330b3', colorSecundario: '#244568', nit: '', dv: '', direccion: '', ciudad: '', departamento: '', telefono: '', whatsapp: '', email: '', sitioWeb: '', matriculaMercantil: '' },
@@ -125,11 +130,17 @@ function estadoInicial(conUsuarios = true, modoAcceso: Estado['modoAcceso'] = 'l
 }
 
 let estado: Estado = cargar();
+// Primera vez (o datos de una versión anterior): el inventario se arma con las compras y ventas de ejemplo
+if (!estado.colecciones.movimientosInventario.length) recalcularInventarioDemo();
 
 function cargar(): Estado {
   try {
     const raw = localStorage.getItem(CLAVE_ALMACEN);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const e = JSON.parse(raw) as Estado;
+      for (const c of COLECCIONES) e.colecciones[c] ??= [];
+      return e;
+    }
   } catch {
     // Sin almacenamiento: la demostración funciona en memoria
   }
@@ -148,6 +159,7 @@ function guardar() {
 /** Reinicia la demostración. Sin usuarios = muestra el asistente de primer uso. */
 export function reiniciarDemo(conUsuarios = true, modoAcceso: Estado['modoAcceso'] = 'libre') {
   estado = estadoInicial(conUsuarios, modoAcceso);
+  recalcularInventarioDemo();
   guardar();
 }
 
@@ -231,7 +243,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
       marca: { nombre: e.nombreComercial || e.razonSocial || 'Los Criollos Vet', slogan: e.slogan || '', logoUrl: e.logoUrl || '', colorPrimario: e.colorPrimario || '' },
       requiereConfiguracion: modoAcceso === 'usuarios' && estado.usuarios.length === 0,
       minutosInactividad: MINUTOS_INACTIVIDAD,
-      version: '2.4.1-demo',
+      version: '2.5.0-demo',
     };
   }
   if (metodo === 'POST' && ruta === '/sesion/ingresar-libre') {
@@ -475,14 +487,20 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
       auditar(yo.usuario, 'Datos de demostración cargados (reemplazan las compras)');
     } else if (accion === 'borrar-todo') {
       const d = datosIniciales();
-      Object.assign(estado.colecciones, { documentos: [], ventas: [], proveedores: [], observaciones: [], categorias: d.colecciones.categorias, centrosCosto: d.colecciones.centrosCosto });
+      Object.assign(estado.colecciones, { documentos: [], ventas: [], proveedores: [], observaciones: [], productos: [], movimientosInventario: [], categorias: d.colecciones.categorias, centrosCosto: d.colecciones.centrosCosto });
       auditar(yo.usuario, 'Se borró toda la información (compras, ventas, proveedores y catálogos)');
     } else if (accion === 'restablecer') {
       const d = datosIniciales();
       Object.assign(estado.colecciones, { documentos: [], proveedores: d.colecciones.proveedores, categorias: d.colecciones.categorias, centrosCosto: d.colecciones.centrosCosto });
       auditar(yo.usuario, 'Sistema restablecido a valores por defecto');
     }
+    recalcularInventarioDemo();
     return { ok: true };
+  }
+  if (ruta === '/inventario/recalcular' && metodo === 'POST') {
+    recalcularInventarioDemo();
+    auditar(yo.usuario, 'Inventario recalculado desde compras y ventas');
+    return { ok: true, compras: estado.colecciones.documentos.length, ventas: estado.colecciones.ventas.length };
   }
   if (ruta === '/sistema/apagar' && metodo === 'POST') {
     admin();
@@ -506,6 +524,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
     for (const r of g) upsert(c, r);
     const eliminados = e.map((x: string) => describir(c, lista.find((r) => r.id === x)));
     estado.colecciones[c] = estado.colecciones[c].filter((r) => !e.includes(r.id));
+    sincronizarInventario(c, g, e);
     if (g.length) auditar(yo.usuario, `Guardó ${g.length} registro(s) de ${NOMBRES[c]} en lote`, g.slice(0, 20).map((r: any) => describir(c, r)).join(' | '));
     if (e.length) auditar(yo.usuario, `Eliminó ${e.length} registro(s) de ${NOMBRES[c]} en lote`, eliminados.join(' | '));
     return { ok: true };
@@ -520,6 +539,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
     if (c === 'categorias' || c === 'centrosCosto') admin();
     const existia = lista.some((x) => x.id === id);
     upsert(c, cuerpo);
+    sincronizarInventario(c, [cuerpo]);
     auditar(yo.usuario, `${existia ? 'Modificó' : 'Creó'} ${NOMBRES[c]}`, describir(c, cuerpo), id);
     return { ok: true };
   }
@@ -527,10 +547,35 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
     admin();
     const anterior = lista.find((x) => x.id === id);
     estado.colecciones[c] = lista.filter((x) => x.id !== id);
+    sincronizarInventario(c, [], [id]);
     auditar(yo.usuario, `Eliminó ${NOMBRES[c]}`, describir(c, anterior), id);
     return { ok: true };
   }
   throw new ErrorHttp(404, `Ruta desconocida: ${metodo} ${ruta}`);
+}
+
+/** Igual que el servidor local: compras suman y ventas restan en el inventario. */
+function sincronizarInventario(c: Coleccion, guardados: any[] = [], eliminados: string[] = []) {
+  if (c !== 'documentos' && c !== 'ventas') return;
+  const col = estado.colecciones;
+  if (eliminados.length) {
+    const borrar = new Set(movimientosAlEliminar(eliminados, col.movimientosInventario));
+    col.movimientosInventario = col.movimientosInventario.filter((m) => !borrar.has(m.id));
+  }
+  for (const r of guardados) {
+    const cambios = c === 'documentos' ? movimientosDeCompra(r, col.productos, col.movimientosInventario) : movimientosDeVenta(r, col.productos, col.movimientosInventario);
+    for (const p of [...cambios.productosNuevos, ...cambios.productosActualizados]) upsert('productos', p);
+    col.movimientosInventario = col.movimientosInventario.filter((m) => !cambios.eliminar.includes(m.id));
+    for (const m of cambios.guardar) upsert('movimientosInventario', m);
+  }
+}
+
+function recalcularInventarioDemo() {
+  const col = estado.colecciones;
+  const existentes = new Set([...col.documentos, ...col.ventas].map((r) => r.id));
+  col.movimientosInventario = col.movimientosInventario.filter((m) => !m.origenId || existentes.has(m.origenId) || m.editado);
+  sincronizarInventario('documentos', col.documentos);
+  sincronizarInventario('ventas', col.ventas);
 }
 
 function upsert(c: Coleccion, r: any) {

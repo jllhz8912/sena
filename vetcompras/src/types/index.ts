@@ -295,6 +295,8 @@ export interface VentaItem {
   precioUnitario: number;
   descuento?: number; // Valor en pesos descontado a la línea
   subtotal: number; // cantidad × precio − descuento
+  /** Producto del inventario (si el ítem es un producto y no un servicio) */
+  productoId?: string;
 }
 
 /** Una de las formas de pago con que se pagó la venta (puede haber varias). */
@@ -325,6 +327,54 @@ export interface Venta {
   medioPago: MedioPagoVenta | 'mixto'; // Medio principal ('mixto' si se pagó con varios)
   estado: EstadoVenta;
   observaciones?: string;
+  creadoEn: string;
+  actualizadoEn: string;
+}
+
+// ============================================================ INVENTARIO
+// Control informativo (no restrictivo): el saldo puede quedar negativo y nunca
+// impide vender. Las compras suman, las ventas restan; las bajas y ajustes se
+// registran a mano. Todo movimiento se puede editar.
+
+export interface Producto {
+  id: string;
+  codigo?: string;
+  nombre: string;
+  /** Agrupación libre: Medicamentos, Alimentos, Accesorios, Vacunas… */
+  grupo?: string;
+  unidad: string;
+  precioVenta?: number;
+  /** Último costo unitario de compra (sin IVA) */
+  costoUltimo?: number;
+  stockMinimo?: number;
+  /** Otros nombres con que llega en facturas de proveedores o se vende */
+  alias?: string[];
+  activo: boolean;
+  creadoEn: string;
+  actualizadoEn: string;
+}
+
+export type TipoMovimiento = 'entrada' | 'salida' | 'baja' | 'ajuste';
+export type OrigenMovimiento = 'compra' | 'venta' | 'manual' | 'importacion' | 'inicial';
+
+export interface MovimientoInventario {
+  id: string;
+  fecha: string; // AAAA-MM-DD
+  productoId: string;
+  tipo: TipoMovimiento;
+  /** Unidades: positivas en entradas, salidas y bajas; con signo en los ajustes */
+  cantidad: number;
+  costoUnitario?: number;
+  origen: OrigenMovimiento;
+  /** Compra o venta que lo generó */
+  origenId?: string;
+  origenLineaId?: string;
+  referencia?: string;
+  /** Bajas: daño, pérdida, vencimiento, consumo interno… */
+  motivo?: string;
+  observaciones?: string;
+  /** Lo modificó una persona: al editar la compra o venta de origen no se recalcula */
+  editado?: boolean;
   creadoEn: string;
   actualizadoEn: string;
 }

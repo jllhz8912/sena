@@ -3,7 +3,7 @@ import {
   LayoutDashboard,
   ReceiptText,
   UploadCloud,
-  FileSpreadsheet,
+  Boxes,
   FilePenLine,
   BarChart3,
   FolderTree,
@@ -30,6 +30,7 @@ export type NavItem =
   | 'cuentas_pagar'
   | 'cargar_factura'
   | 'cargar_excel'
+  | 'inventario'
   | 'registro_manual'
   | 'reportes'
   | 'catalogos'
@@ -100,18 +101,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
     },
     {
+      // Un solo lugar para cargar compras: XML/ZIP de la DIAN, PDF, fotos o matriz de Excel
       id: 'cargar_factura' as NavItem,
-      label: 'Subir Facturas (DIAN)',
+      label: 'Cargar Compras',
       icon: UploadCloud,
-      badge: 'XML/PDF',
+      badge: 'XML·PDF·Excel',
       badgeColor: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
     },
     {
-      id: 'cargar_excel' as NavItem,
-      label: 'Importar desde Excel',
-      icon: FileSpreadsheet,
-      badge: '.XLSX',
-      badgeColor: 'bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300',
+      id: 'inventario' as NavItem,
+      label: 'Inventario',
+      icon: Boxes,
+      badge: null,
     },
     {
       id: 'registro_manual' as NavItem,

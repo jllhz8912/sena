@@ -3,6 +3,22 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.5.0
+- **Inventario** (nuevo módulo, informativo y no restrictivo): existencias por producto,
+  kárdex de movimientos, costo promedio y valor del inventario. Las compras con detalle de
+  productos (XML, PDF, foto, registro manual o Excel) suman; las ventas restan; se registran
+  bajas (daño, pérdida, vencimiento) y ajustes por conteo físico. El saldo puede quedar en
+  negativo y nunca impide vender. Todo movimiento se puede editar o eliminar.
+- Importación del inventario inicial o de movimientos desde Excel (con plantilla) y
+  exportación de existencias y kárdex.
+- En la venta, el concepto sugiere los productos del inventario, trae el precio de venta y
+  muestra la existencia como información.
+- **Lectura de PDF y fotos de facturas sin internet**: código QR de la DIAN, texto del PDF y
+  reconocimiento de imagen (OCR) para documentos escaneados. Toma emisor, NIT, número,
+  fechas, forma de pago, valor sin IVA, IVA, retenciones, total y el detalle de productos.
+  Sirve para facturas electrónicas, de papel, cuentas de cobro y cotizaciones.
+- Menú unificado: "Cargar Compras" recibe XML/ZIP, PDF, fotos y matrices de Excel.
+
 ## 2.4.1
 - Reportes F300/F350 en pantalla, corrección de la diferencia falsa con retenciones
   y archivo de prueba que abre con doble clic en Windows.

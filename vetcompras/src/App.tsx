@@ -18,6 +18,7 @@ import { PantallaAcceso } from './components/seguridad/PantallaAcceso';
 import { PantallaInicio } from './components/seguridad/PantallaInicio';
 import { MARCA } from './data/marca';
 import { SeguridadView } from './components/seguridad/SeguridadView';
+import { InventarioView } from './components/inventario/InventarioView';
 import { BotonObservacion } from './components/prueba/ObservacionPrueba';
 import { CuentasPorPagarView } from './components/cartera/CuentasPorPagarView';
 import { CopiasSeguridadView, estadoRecordatorio } from './components/respaldos/CopiasSeguridadView';
@@ -48,6 +49,8 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
   const [modalCargaAbierto, setModalCargaAbierto] = useState(false);
   const [modalExcelAbierto, setModalExcelAbierto] = useState(false);
   const [modalManualAbierto, setModalManualAbierto] = useState(false);
+  // Compra manual abierta desde Inventario: por ítems y al guardar vuelve al inventario
+  const [manualDetallado, setManualDetallado] = useState(false);
   const [modalVentaAbierto, setModalVentaAbierto] = useState(false);
   const [documentoParaEditar, setDocumentoParaEditar] = useState<CompraDocumento | undefined>(undefined);
 
@@ -142,7 +145,8 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
     ventas: 'Módulo de Ventas de la Veterinaria',
     compras: 'Registro de Compras y Gastos',
     cuentas_pagar: 'Cuentas por Pagar a Proveedores',
-    cargar_factura: 'Cargar Factura Electrónica (DIAN)',
+    inventario: 'Inventario de Productos',
+    cargar_factura: 'Cargar Compras',
     cargar_excel: 'Importar Facturas desde Excel',
     registro_manual: 'Registro Manual de Documento',
     reportes: 'Reportería e Informes Tributarios (DIAN)',
@@ -265,6 +269,17 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
                 <CopiasSeguridadView onSesionTerminada={onSalir} onDatosActualizados={recargarDatos} />
               )}
 
+              {currentTab === 'inventario' && (
+                <InventarioView
+                  onCargarCompra={() => setModalCargaAbierto(true)}
+                  onRegistroManual={() => {
+                    setDocumentoParaEditar(undefined);
+                    setManualDetallado(true);
+                    setModalManualAbierto(true);
+                  }}
+                />
+              )}
+
               {currentTab === 'cuentas_pagar' && (
                 <CuentasPorPagarView documentos={documentos} onDatosActualizados={recargarDatos} />
               )}
@@ -347,13 +362,16 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
           centrosCosto={centrosCosto}
           proveedores={proveedores}
           documentoParaEditar={documentoParaEditar}
+          detallado={manualDetallado}
           onGuardado={() => {
+            setCurrentTab(manualDetallado ? 'inventario' : 'compras');
+            setManualDetallado(false);
             setModalManualAbierto(false);
             setDocumentoParaEditar(undefined);
             recargarDatos();
-            setCurrentTab('compras');
           }}
           onCerrar={() => {
+            setManualDetallado(false);
             setModalManualAbierto(false);
             setDocumentoParaEditar(undefined);
           }}

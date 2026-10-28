@@ -1,4 +1,4 @@
-import { CompraDocumento, Proveedor, Categoria, CentroCosto, RegistroPago, EmpresaInfo, Venta } from '../types';
+import { CompraDocumento, Proveedor, Categoria, CentroCosto, RegistroPago, EmpresaInfo, Venta, Producto, MovimientoInventario } from '../types';
 import { EMPRESA_DEFECTO } from '../data/defaults';
 import { fechaLocal } from '../utils/formatters';
 
@@ -12,7 +12,7 @@ import { fechaLocal } from '../utils/formatters';
  * detectan consultando la revisión cada pocos segundos.
  */
 
-type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centrosCosto' | 'observaciones';
+type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centrosCosto' | 'observaciones' | 'productos' | 'movimientosInventario';
 
 const CLAVE_CACHE_EMPRESA = 'vetcompras_empresa';
 const INTERVALO_SONDEO_MS = 4000;
@@ -715,6 +715,52 @@ export const dataService = {
     fijarEmpresa(datos);
     return api('/configuracion/empresa', { method: 'PUT', body: JSON.stringify(datos) }).then(() => undefined);
   },
+
+  // ================= INVENTARIO (informativo) =================
+
+  async obtenerProductos(): Promise<Producto[]> {
+    const lista = await listar<Producto>('productos');
+    return lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  },
+
+  async guardarProducto(producto: Producto): Promise<void> {
+    await guardar('productos', { ...producto, actualizadoEn: new Date().toISOString() });
+  },
+
+  /** Borra el producto y todos sus movimientos. */
+  async eliminarProducto(id: string): Promise<void> {
+    const movs = (await listar<MovimientoInventario>('movimientosInventario')).filter((m) => m.productoId === id);
+    if (movs.length) await lote('movimientosInventario', { eliminar: movs.map((m) => m.id) });
+    await eliminar('productos', id);
+  },
+
+  async obtenerMovimientos(): Promise<MovimientoInventario[]> {
+    const lista = await listar<MovimientoInventario>('movimientosInventario');
+    return lista.sort((a, b) => b.fecha.localeCompare(a.fecha) || b.creadoEn.localeCompare(a.creadoEn));
+  },
+
+  /** Guarda un movimiento. Si salió de una compra o venta, queda marcado como editado a mano. */
+  async guardarMovimiento(mov: MovimientoInventario): Promise<void> {
+    const ahora = new Date().toISOString();
+    await guardar('movimientosInventario', { ...mov, editado: mov.origenId ? true : mov.editado, actualizadoEn: ahora, creadoEn: mov.creadoEn || ahora });
+  },
+
+  async eliminarMovimiento(id: string): Promise<void> {
+    await eliminar('movimientosInventario', id);
+  },
+
+  /** Guarda varios productos y movimientos (importación desde Excel). */
+  async importarInventario(productos: Producto[], movimientos: MovimientoInventario[]): Promise<void> {
+    if (productos.length) await lote('productos', { guardar: productos });
+    if (movimientos.length) await lote('movimientosInventario', { guardar: movimientos });
+  },
+
+  /** Rehace los movimientos automáticos desde todas las compras y ventas (respeta lo editado a mano). */
+  async recalcularInventario(): Promise<{ compras: number; ventas: number }> {
+    return api('/inventario/recalcular', { method: 'POST' });
+  },
+
+  nuevoId,
 
   // ================= VENTAS DE LA VETERINARIA =================
 

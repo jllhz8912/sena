@@ -340,3 +340,24 @@ describe('borrar todo', () => {
     expect((await aux('/mantenimiento/borrar-todo', { method: 'POST', body: { confirmacion: 'BORRAR' } })).status).toBe(403);
   });
 });
+
+describe('inventario conectado a compras y ventas', () => {
+  it('la compra suma, la venta resta (aunque no haya stock) y borrar la venta devuelve las unidades', async () => {
+    const admin = await configurarAdmin();
+    const doc = { id: 'c1', tipoDocumento: 'factura_electronica', fechaEmision: '2026-10-01', esGasto: false, total: 100, lineas: [{ id: 'l1', descripcion: 'Nexgard 10-25 kg', cantidad: 3, unidad: 'UND', valorUnitario: 40000 }] };
+    expect((await admin('/documentos/c1', { method: 'PUT', body: doc })).status).toBe(200);
+    const productos = (await admin('/productos')).cuerpo;
+    expect(productos).toHaveLength(1);
+    const venta = { id: 'v1', consecutivo: 'VNT-1', fecha: '2026-10-02', items: [{ id: 'i1', concepto: 'NEXGARD 10-25 KG', cantidad: 5, precioUnitario: 1, subtotal: 5 }] };
+    expect((await admin('/ventas/lote', { method: 'POST', body: { guardar: [venta] } })).status).toBe(200);
+    let movs = (await admin('/movimientosInventario')).cuerpo;
+    expect(movs.map((m: any) => [m.tipo, m.cantidad]).sort()).toEqual([['entrada', 3], ['salida', 5]]);
+    await admin('/ventas/v1', { method: 'DELETE' });
+    movs = (await admin('/movimientosInventario')).cuerpo;
+    expect(movs.map((m: any) => m.tipo)).toEqual(['entrada']);
+    // Recalcular conserva todo igual y borrar todo limpia el inventario
+    expect((await admin('/inventario/recalcular', { method: 'POST' })).cuerpo.compras).toBe(1);
+    await admin('/mantenimiento/borrar-todo', { method: 'POST', body: { confirmacion: 'BORRAR' } });
+    expect((await admin('/productos')).cuerpo).toHaveLength(0);
+  });
+});

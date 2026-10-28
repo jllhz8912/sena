@@ -267,10 +267,10 @@ export const CargaFacturaModal: React.FC<CargaFacturaModalProps> = ({
               </div>
               <div>
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                  Carga de Factura Electrónica
+                  Cargar Compras
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Extracción automática de datos para la veterinaria sin digitación manual.
+                  Facturas electrónicas (XML o ZIP de la DIAN), PDF, fotos o una matriz de Excel con muchas compras.
                 </p>
               </div>
             </div>

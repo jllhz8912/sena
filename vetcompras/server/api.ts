@@ -11,6 +11,7 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
 import { spawn } from 'node:child_process';
 import { BaseDatosLocal, esColeccion, VERSION_ESQUEMA, type Coleccion } from './basedatos';
+import { recalcularInventario, sincronizarInventario } from './inventario';
 import { extraerFacturaPdf, geminiConfigurado } from './gemini';
 import {
   Seguridad,
@@ -70,6 +71,10 @@ function describir(coleccion: Coleccion, r: any): string {
       return `${r.consecutivo || ''} · ${r.concepto || ''} · ${pesos(r.monto)}`;
     case 'proveedores':
       return `${r.nit || ''} · ${r.razonSocial || ''}`;
+    case 'productos':
+      return `${r.codigo ? r.codigo + ' · ' : ''}${r.nombre || ''}`;
+    case 'movimientosInventario':
+      return `${r.tipo || ''} · ${r.cantidad ?? ''} und · ${r.referencia || r.motivo || ''}`;
     case 'observaciones':
       return `${r.tipo || ''} · ${r.modulo || ''} · ${String(r.descripcion || '').slice(0, 80)}`;
     default:
@@ -84,6 +89,8 @@ const NOMBRES_COLECCION: Record<Coleccion, string> = {
   categorias: 'categoría',
   centrosCosto: 'centro de costo',
   observaciones: 'observación de prueba',
+  productos: 'producto de inventario',
+  movimientosInventario: 'movimiento de inventario',
 };
 
 export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void } = {}) {
@@ -429,6 +436,7 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
     seguro((req, res) => {
       bd.crearRespaldo('antes-de-limpiar-documentos');
       bd.vaciar('documentos');
+      recalcularInventario(bd);
       auditar(req, 'Se borraron todas las compras y gastos');
       res.json({ ok: true });
     })
@@ -440,6 +448,7 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
     seguro((req, res) => {
       bd.crearRespaldo('antes-de-limpiar-ventas');
       bd.vaciar('ventas');
+      recalcularInventario(bd);
       auditar(req, 'Se borraron todas las ventas');
       res.json({ ok: true });
     })
@@ -455,7 +464,7 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
         return res.status(400).json({ error: 'Para borrar todo escriba la palabra BORRAR.' });
       }
       const respaldo = bd.crearRespaldo('antes-de-borrar-todo');
-      for (const c of ['documentos', 'ventas', 'proveedores', 'categorias', 'centrosCosto', 'observaciones'] as const) {
+      for (const c of ['documentos', 'ventas', 'proveedores', 'categorias', 'centrosCosto', 'observaciones', 'productos', 'movimientosInventario'] as const) {
         bd.vaciar(c);
       }
       bd.lote('categorias', CATEGORIAS_DEFECTO);
@@ -472,6 +481,7 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
       bd.crearRespaldo('antes-de-cargar-demo');
       bd.vaciar('documentos');
       bd.lote('documentos', generarDatosDemostracion());
+      recalcularInventario(bd);
       auditar(req, 'Datos de demostración cargados (reemplazan las compras)');
       res.json({ ok: true });
     })
@@ -518,6 +528,16 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
     })
   );
 
+  // -------------------------------------------------------------- inventario
+  api.post(
+    '/inventario/recalcular',
+    seguro((req, res) => {
+      const r = recalcularInventario(bd);
+      auditar(req, 'Inventario recalculado desde compras y ventas', { detalle: `${r.compras} compras · ${r.ventas} ventas` });
+      res.json({ ok: true, ...r });
+    })
+  );
+
   // -------------------------------------------------------------- colecciones
   api.get(
     '/:coleccion',
@@ -545,6 +565,7 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
       }
       const existia = bd.existe(coleccion, req.params.id);
       bd.guardar(coleccion, req.body);
+      sincronizarInventario(bd, coleccion, [req.body]);
       auditar(req, `${existia ? 'Modificó' : 'Creó'} ${NOMBRES_COLECCION[coleccion]}`, {
         coleccion,
         registroId: req.params.id,
@@ -561,6 +582,7 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
       const coleccion = coleccionDe(req);
       const anterior = bd.obtener(coleccion, req.params.id);
       bd.eliminar(coleccion, [req.params.id]);
+      sincronizarInventario(bd, coleccion, [], [req.params.id]);
       auditar(req, `Eliminó ${NOMBRES_COLECCION[coleccion]}`, {
         coleccion,
         registroId: req.params.id,
@@ -581,6 +603,7 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
       exigirAdminSi(req, eliminar.length > 0 || COLECCIONES_ADMIN.includes(coleccion));
       const eliminados = eliminar.map((id: string) => describir(coleccion, bd.obtener(coleccion, id)));
       bd.lote(coleccion, guardar, eliminar);
+      sincronizarInventario(bd, coleccion, guardar, eliminar);
       if (guardar.length) {
         auditar(req, `Guardó ${guardar.length} registro(s) de ${NOMBRES_COLECCION[coleccion]} en lote`, {
           coleccion,

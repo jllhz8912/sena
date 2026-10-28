@@ -125,7 +125,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     },
     todo: {
       titulo: 'Borrar toda la información',
-      borra: ['Compras, gastos y anexos', 'Ventas y recibos', 'Proveedores', 'Catálogos (vuelven a los de fábrica)', 'Observaciones de prueba'],
+      borra: ['Compras, gastos y anexos', 'Ventas y recibos', 'Inventario (productos y movimientos)', 'Proveedores', 'Catálogos (vuelven a los de fábrica)', 'Observaciones de prueba'],
       conserva: ['Datos y logo de la veterinaria', 'Forma de ingreso', 'Bitácora', 'Copias de seguridad'],
       textoBoton: 'Borrar todo',
       palabra: 'BORRAR',

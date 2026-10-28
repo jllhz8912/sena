@@ -13,7 +13,8 @@ import {
   AlertTriangle,
   Loader2,
 } from 'lucide-react';
-import { Venta, VentaItem, PagoVenta, CategoriaVenta } from '../../types';
+import { Venta, VentaItem, PagoVenta, CategoriaVenta, Producto } from '../../types';
+import { buscarProducto, calcularSaldos } from '../../utils/inventario';
 import {
   formatCOP,
   CATEGORIAS_VENTA,
@@ -128,8 +129,17 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
   const [guardando, setGuardando] = useState(false);
   const [ventaParaRecibo, setVentaParaRecibo] = useState<Venta | null>(null);
   const conceptoRef = useRef<HTMLInputElement>(null);
+  // Inventario (solo informativo: nunca impide vender)
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [existencias, setExistencias] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
+    Promise.all([dataService.obtenerProductos(), dataService.obtenerMovimientos()])
+      .then(([p, m]) => {
+        setProductos(p.filter((x) => x.activo !== false));
+        setExistencias(new Map(calcularSaldos(p, m).map((s) => [s.producto.id, s.saldo])));
+      })
+      .catch(() => undefined);
     dataService
       .obtenerVentas()
       .then(setVentasPrevias)
@@ -165,8 +175,10 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
   const sugerenciasConcepto = useMemo(() => {
     const sub = (SUBCATEGORIAS_POR_CATEGORIA[nuevo.categoria] || []).map((s) => s.nombreCorto);
     const usados = [...preciosConocidos.entries()].filter(([, v]) => v.categoria === nuevo.categoria).map(([k]) => k);
-    return [...new Set([...sub, ...usados])];
-  }, [nuevo.categoria, preciosConocidos]);
+    return [...new Set([...sub, ...usados, ...productos.map((p) => p.nombre)])];
+  }, [nuevo.categoria, preciosConocidos, productos]);
+
+  const productoNuevo = useMemo(() => buscarProducto(productos, { nombre: nuevo.concepto }), [productos, nuevo.concepto]);
 
   const alCambiarCliente = (nombre: string) => {
     setClienteNombre(nombre);
@@ -181,7 +193,8 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
 
   const alCambiarConceptoNuevo = (concepto: string) => {
     const conocido = preciosConocidos.get(concepto.trim().toLowerCase());
-    setNuevo((n) => ({ ...n, concepto, precioUnitario: n.precioUnitario || conocido?.precio || 0 }));
+    const producto = buscarProducto(productos, { nombre: concepto });
+    setNuevo((n) => ({ ...n, concepto, precioUnitario: n.precioUnitario || conocido?.precio || producto?.precioVenta || 0 }));
   };
 
   // ------------------------------------------------------------ cálculos
@@ -215,6 +228,7 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
         precioUnitario: nuevo.precioUnitario,
         descuento: nuevo.descuento || undefined,
         subtotal: subtotalNuevo,
+        productoId: productoNuevo?.id,
       },
     ]);
     setNuevo((n) => ({ ...n, concepto: '', cantidad: 1, precioUnitario: 0, descuento: 0 }));
@@ -226,6 +240,8 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
       lista.map((i) => {
         if (i.id !== id) return i;
         const actualizado = { ...i, ...cambios };
+        // Si cambia el concepto, se vuelve a buscar el producto del inventario
+        if (cambios.concepto !== undefined) actualizado.productoId = buscarProducto(productos, { nombre: cambios.concepto })?.id;
         return { ...actualizado, subtotal: subtotalItem(actualizado) };
       })
     );
@@ -422,6 +438,12 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
                       <option key={s} value={s} />
                     ))}
                   </datalist>
+                  {productoNuevo && (
+                    <p className={`text-[11px] mt-1 ${(existencias.get(productoNuevo.id) ?? 0) - nuevo.cantidad < 0 ? 'text-amber-700 dark:text-amber-400' : 'text-slate-500'}`}>
+                      Inventario: {(existencias.get(productoNuevo.id) ?? 0).toLocaleString('es-CO')} {productoNuevo.unidad}
+                      {(existencias.get(productoNuevo.id) ?? 0) - nuevo.cantidad < 0 ? ' · quedará en negativo (puede vender igual)' : ''}
+                    </p>
+                  )}
                 </div>
                 <div className="md:col-span-1">
                   <label htmlFor="nuevo-cantidad" className={claseEtiqueta}>Cant.</label>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   X,
   FilePenLine,
@@ -33,6 +33,8 @@ interface RegistroManualModalProps {
   centrosCosto: CentroCosto[];
   proveedores: Proveedor[];
   documentoParaEditar?: CompraDocumento;
+  /** Abrir directamente en el modo por ítems (desde Inventario) */
+  detallado?: boolean;
   onGuardado: (docId: string) => void;
   onCerrar: () => void;
   onProveedorCreado: () => void;
@@ -43,6 +45,7 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
   centrosCosto,
   proveedores,
   documentoParaEditar,
+  detallado,
   onGuardado,
   onCerrar,
   onProveedorCreado,
@@ -98,7 +101,13 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
   // para no perder las líneas ni la discriminación de tarifas de IVA.
   const tieneDetalle =
     !!documentoParaEditar?.lineas?.length && !(documentoParaEditar.lineas.length === 1 && documentoParaEditar.lineas[0].id === 'lin-global');
-  const [modoDetallado, setModoDetallado] = useState(tieneDetalle);
+  const [modoDetallado, setModoDetallado] = useState(tieneDetalle || !!detallado);
+
+  // Productos del inventario como sugerencia al escribir la descripción de cada ítem
+  const [nombresProductos, setNombresProductos] = useState<string[]>([]);
+  useEffect(() => {
+    dataService.obtenerProductos().then((p) => setNombresProductos(p.map((x) => x.nombre))).catch(() => undefined);
+  }, []);
 
   // Valores de factura simplificada (No Responsable de IVA)
   const [subtotalRapido, setSubtotalRapido] = useState(abs(documentoParaEditar?.subtotal));
@@ -364,6 +373,7 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
                 porcentajeIva: totalSubtotal > 0 ? Math.round((totalIva / totalSubtotal) * 100) : 0,
                 valorIva: Math.round(totalIva),
                 totalLinea: Math.round(totalSubtotal + totalIva),
+                resumen: true, // compra sin detalle: no mueve inventario
               },
             ],
         archivoAdjunto,
@@ -746,6 +756,11 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
                 </button>
               </div>
 
+              <datalist id="productos-inventario">
+                {nombresProductos.map((n) => (
+                  <option key={n} value={n} />
+                ))}
+              </datalist>
               <div className="space-y-2">
                 {lineas.map((linea, idx) => (
                   <div
@@ -758,6 +773,7 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
                         value={linea.descripcion}
                         onChange={(e) => handleCambioLinea(linea.id, 'descripcion', e.target.value)}
                         placeholder="Descripción del insumo o servicio"
+                        list="productos-inventario"
                         className="flex-1 px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium"
                       />
                       {lineas.length > 1 && (
