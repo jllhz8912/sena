@@ -19,6 +19,7 @@ import {
   HandCoins,
   DatabaseBackup,
   Gauge,
+  FileBarChart,
 } from 'lucide-react';
 import { dataService } from '../../services/dataService';
 import { EmpresaInfo } from '../../types';
@@ -31,6 +32,8 @@ export type NavItem =
   | 'cuentas_pagar'
   | 'panel_ventas'
   | 'panel_compras'
+  | 'reportes_ventas'
+  | 'reportes_compras'
   | 'cargar_factura'
   | 'cargar_excel'
   | 'inventario'
@@ -137,6 +140,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'precios' as NavItem,
       label: 'Precios de Venta',
       icon: Calculator,
+      badge: null,
+    },
+    {
+      id: 'reportes_ventas' as NavItem,
+      label: 'Reportes de Ventas',
+      icon: FileBarChart,
+      badge: null,
+    },
+    {
+      id: 'reportes_compras' as NavItem,
+      label: 'Reportes de Compras',
+      icon: FileBarChart,
       badge: null,
     },
     {

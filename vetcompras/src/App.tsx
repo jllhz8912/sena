@@ -33,6 +33,8 @@ import { Loader2 } from 'lucide-react';
 import { PantallaPerfiles } from './components/seguridad/PantallaPerfiles';
 import { PanelVentas } from './components/dashboard/PanelVentas';
 import { PanelCompras } from './components/dashboard/PanelCompras';
+import { ReportesVentasPerfil } from './components/reportes/ReportesVentasPerfil';
+import { ReportesComprasPerfil } from './components/reportes/ReportesComprasPerfil';
 import { PerfilAcceso, modulosDe, moduloInicial } from './utils/perfiles';
 
 /** Perfiles a los que ya se les mostraron los avisos de copias y vencimientos en esta sesión */
@@ -133,6 +135,8 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
   const [modalVentaAbierto, setModalVentaAbierto] = useState(false);
   // Ítems que llegan desde "Precios de Venta" para facturarlos
   const [itemsVentaIniciales, setItemsVentaIniciales] = useState<VentaItem[] | undefined>(undefined);
+  // Venta que se corrige desde "Reportes de Ventas"
+  const [ventaParaEditar, setVentaParaEditar] = useState<Venta | undefined>(undefined);
   const [documentoParaEditar, setDocumentoParaEditar] = useState<CompraDocumento | undefined>(undefined);
 
   // Cargar datos desde el servidor local
@@ -226,6 +230,8 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
     dashboard: 'Panel Central • Año en Curso',
     panel_ventas: 'Panel de Ventas',
     panel_compras: 'Panel de Compras y Gastos',
+    reportes_ventas: 'Reportes de Ventas',
+    reportes_compras: 'Reportes de Compras y Gastos',
     ventas: 'Módulo de Ventas de la Veterinaria',
     compras: 'Registro de Compras y Gastos',
     cuentas_pagar: 'Cuentas por Pagar a Proveedores',
@@ -316,6 +322,24 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
             </div>
           ) : (
             <div className="max-w-7xl mx-auto space-y-6">
+              {currentTab === 'reportes_ventas' && (
+                <ReportesVentasPerfil
+                  ventas={ventas}
+                  onEditarVenta={
+                    puede('ventas') || puede('reportes_ventas')
+                      ? (v) => {
+                          setVentaParaEditar(v);
+                          setModalVentaAbierto(true);
+                        }
+                      : undefined
+                  }
+                />
+              )}
+
+              {currentTab === 'reportes_compras' && (
+                <ReportesComprasPerfil documentos={documentos} categorias={categorias} onEditarDocumento={handleEditarDocumento} />
+              )}
+
               {currentTab === 'panel_ventas' && (
                 <PanelVentas
                   ventas={ventas}
@@ -488,7 +512,8 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
           documentoParaEditar={documentoParaEditar}
           detallado={manualDetallado}
           onGuardado={() => {
-            setCurrentTab(manualDetallado ? 'inventario' : 'compras');
+            // Al corregir desde un reporte o un panel se queda en esa pantalla
+            if (!documentoParaEditar) setCurrentTab(manualDetallado ? 'inventario' : 'compras');
             setManualDetallado(false);
             setModalManualAbierto(false);
             setDocumentoParaEditar(undefined);
@@ -507,14 +532,19 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
       {modalVentaAbierto && (
         <ModalRegistroVenta
           itemsIniciales={itemsVentaIniciales}
+          ventaParaEditar={ventaParaEditar}
           onGuardado={() => {
+            const editando = !!ventaParaEditar;
             setItemsVentaIniciales(undefined);
+            setVentaParaEditar(undefined);
             setModalVentaAbierto(false);
             recargarDatos();
-            setCurrentTab('ventas');
+            // Al corregir desde un reporte se queda en el reporte
+            if (!editando) setCurrentTab('ventas');
           }}
           onCerrar={() => {
             setItemsVentaIniciales(undefined);
+            setVentaParaEditar(undefined);
             setModalVentaAbierto(false);
           }}
         />

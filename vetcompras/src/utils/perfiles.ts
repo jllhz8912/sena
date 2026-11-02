@@ -11,10 +11,12 @@ export const MODULOS_SISTEMA: { id: string; label: string; grupo: 'Ventas' | 'Co
   { id: 'panel_compras', label: 'Panel de Compras y Gastos', grupo: 'Compras' },
   { id: 'ventas', label: 'Módulo de Ventas', grupo: 'Ventas' },
   { id: 'precios', label: 'Precios de Venta', grupo: 'Ventas' },
+  { id: 'reportes_ventas', label: 'Reportes de Ventas', grupo: 'Ventas' },
   { id: 'compras', label: 'Compras y Gastos', grupo: 'Compras' },
   { id: 'cuentas_pagar', label: 'Cuentas por Pagar', grupo: 'Compras' },
   { id: 'cargar_factura', label: 'Cargar Compras (XML / PDF / Excel)', grupo: 'Compras' },
   { id: 'inventario', label: 'Inventario', grupo: 'Compras' },
+  { id: 'reportes_compras', label: 'Reportes de Compras y Gastos', grupo: 'Compras' },
   { id: 'catalogos', label: 'Catálogos', grupo: 'Gestión' },
   { id: 'reportes', label: 'Reportes y DIAN', grupo: 'Gestión' },
   { id: 'configuracion', label: 'Configuración (logo y colores)', grupo: 'Sistema' },
@@ -38,13 +40,13 @@ export const PERFILES_DEFECTO: PerfilAcceso[] = [
     id: 'ventas',
     nombre: 'Ventas',
     descripcion: 'Registrar ventas, consultar precios y el catálogo de productos y servicios.',
-    modulos: ['panel_ventas', 'ventas', 'precios', 'catalogos'],
+    modulos: ['panel_ventas', 'ventas', 'precios', 'reportes_ventas', 'catalogos'],
   },
   {
     id: 'compras',
     nombre: 'Compras y Gastos',
     descripcion: 'Registrar compras y gastos, cuentas por pagar, cargar facturas e inventario.',
-    modulos: ['panel_compras', 'compras', 'cuentas_pagar', 'cargar_factura', 'inventario', 'catalogos'],
+    modulos: ['panel_compras', 'compras', 'cuentas_pagar', 'cargar_factura', 'inventario', 'reportes_compras', 'catalogos'],
   },
   {
     id: ID_ADMINISTRACION,
@@ -54,18 +56,20 @@ export const PERFILES_DEFECTO: PerfilAcceso[] = [
   },
 ];
 
-/** Versión del formato de perfiles guardado. 2: se agregaron los paneles por perfil. */
-export const VERSION_PERFILES = 2;
+/** Versión del formato de perfiles guardado. 2: paneles por perfil. 3: reportes por perfil. */
+export const VERSION_PERFILES = 3;
 
 /**
- * Pone al día perfiles guardados con una versión anterior: en la 2 cada perfil con
- * Ventas recibe el Panel de Ventas y cada uno con Compras el Panel de Compras y Gastos.
+ * Pone al día perfiles guardados con una versión anterior: cada perfil con Ventas recibe
+ * el Panel (v2) y los Reportes de Ventas (v3); cada uno con Compras, los de Compras y Gastos.
  */
 export function migrarPerfiles<T extends { modulos: string[] }>(perfiles: T[], version = 1): T[] {
-  if (version >= 2) return perfiles;
+  if (version >= VERSION_PERFILES) return perfiles;
   return perfiles.map((p) => {
-    const extra = [...(p.modulos.includes('ventas') ? ['panel_ventas'] : []), ...(p.modulos.includes('compras') ? ['panel_compras'] : [])];
-    return { ...p, modulos: [...new Set([...extra, ...p.modulos])] };
+    const tiene = (m: string) => p.modulos.includes(m);
+    const antes = version < 2 ? [...(tiene('ventas') ? ['panel_ventas'] : []), ...(tiene('compras') ? ['panel_compras'] : [])] : [];
+    const despues = [...(tiene('ventas') ? ['reportes_ventas'] : []), ...(tiene('compras') ? ['reportes_compras'] : [])];
+    return { ...p, modulos: [...new Set([...antes, ...p.modulos, ...despues])] };
   });
 }
 

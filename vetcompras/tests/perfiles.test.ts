@@ -12,7 +12,7 @@ import { ID_ADMINISTRACION, MODULOS_SISTEMA, PERFILES_DEFECTO, migrarPerfiles, m
 describe('reglas de perfiles', () => {
   it('los perfiles de fábrica separan ventas, compras y administración', () => {
     const [ventas, compras, admin] = PERFILES_DEFECTO;
-    expect([...modulosDe(ventas)]).toEqual(['panel_ventas', 'ventas', 'precios', 'catalogos']);
+    expect([...modulosDe(ventas)]).toEqual(['panel_ventas', 'ventas', 'precios', 'reportes_ventas', 'catalogos']);
     expect(modulosDe(ventas).has('compras')).toBe(false);
     expect(modulosDe(compras).has('compras') && modulosDe(compras).has('inventario') && !modulosDe(compras).has('ventas')).toBe(true);
     expect(modulosDe(admin).size).toBe(MODULOS_SISTEMA.length);
@@ -34,8 +34,14 @@ describe('reglas de perfiles', () => {
       { id: 'compras', modulos: ['compras', 'inventario'] },
       { id: 'caja', modulos: ['catalogos'] },
     ];
-    expect(migrarPerfiles(viejos).map((p) => p.modulos)).toEqual([['panel_ventas', 'ventas', 'precios'], ['panel_compras', 'compras', 'inventario'], ['catalogos']]);
-    expect(migrarPerfiles(viejos, 2)).toBe(viejos);
+    expect(migrarPerfiles(viejos).map((p) => p.modulos)).toEqual([
+      ['panel_ventas', 'ventas', 'precios', 'reportes_ventas'],
+      ['panel_compras', 'compras', 'inventario', 'reportes_compras'],
+      ['catalogos'],
+    ]);
+    // Guardados en la 2.12 (versión 2): solo reciben los reportes
+    expect(migrarPerfiles([{ modulos: ['panel_ventas', 'ventas'] }], 2)[0].modulos).toEqual(['panel_ventas', 'ventas', 'reportes_ventas']);
+    expect(migrarPerfiles(viejos, 3)).toBe(viejos);
   });
 
   it('crea el identificador desde el nombre y descarta módulos desconocidos', () => {
@@ -113,7 +119,7 @@ describe('perfiles en el servidor local', () => {
   it('un perfil guardado antes de los paneles (2.11) los recibe al leerlo', async () => {
     bd.guardarConfig('perfilesAcceso', { perfiles: [{ id: 'ventas', nombre: 'Ventas', descripcion: '', modulos: ['ventas'] }, { ...PERFILES_DEFECTO[2] }] });
     await llamar('/sesion/ingresar-libre', 'POST', {});
-    expect((await llamar('/perfiles')).cuerpo[0].modulos).toEqual(['panel_ventas', 'ventas']);
+    expect((await llamar('/perfiles')).cuerpo[0].modulos).toEqual(['panel_ventas', 'ventas', 'reportes_ventas']);
   });
 
   it('rechaza PIN no numérico y quitar Administración', async () => {

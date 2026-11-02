@@ -3,6 +3,22 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.13.0
+- **Reportes por perfil**, con periodo (hoy, semana, mes, año o rango), filtros, agrupaciones,
+  columnas a elección (se recuerdan en el equipo), orden por columna, fila de totales y
+  **exportación a Excel**:
+  - **Reportes de Ventas** (perfil Ventas): por venta, por producto o servicio, por categoría,
+    por cliente, por día y por medio de pago; filtros por texto (recibo, cliente, mascota,
+    producto), categoría, medio de pago y pagadas / con saldo por cobrar.
+  - **Reportes de Compras y Gastos** (perfil Compras): por documento, proveedor, categoría,
+    mes, producto (líneas), **IVA descontable por tarifa (F300)** y **retenciones por tercero
+    (F350)**; filtros por texto (número, CUFE, proveedor, producto), proveedor, categoría,
+    compra o gasto, estado de pago y forma de pago.
+- **Editables**: en el detalle por venta o por documento, el lápiz abre el registro para
+  corregirlo; al guardar se vuelve al mismo reporte con los datos actualizados.
+- Los reportes son módulos con permiso propio en "Perfiles y permisos"; los perfiles
+  guardados antes los reciben automáticamente.
+
 ## 2.12.0
 - **Panel propio por perfil**, con selector de periodo (hoy, esta semana, este mes, este año
   o rango de fechas):
