@@ -21,6 +21,14 @@ export const MEDIOS_PAGO_COMPRA = [
   'Cheque / Otro',
 ];
 
+/**
+ * Pagos que se escriben en el propio registro de la compra (contado o abono inicial).
+ * Al cambiar la forma de pago se reemplazan; los abonos hechos después en Cuentas por
+ * pagar se conservan.
+ */
+const NOTAS_PAGO_DEL_REGISTRO = ['Pago de contado', 'Abono inicial', 'Pago inicial registrado al crear documento', 'Pago registrado al editar el documento'];
+export const esPagoDelRegistro = (p: Pick<RegistroPago, 'nota'>) => NOTAS_PAGO_DEL_REGISTRO.includes(p.nota || '');
+
 export const etiquetaFormaPago = (f: string | undefined) => FORMAS_PAGO.find((x) => x.id === f)?.label || (f ? f : 'Contado');
 
 export interface ResultadoPagos {
@@ -56,8 +64,9 @@ export function calcularPagosCompra(opciones: {
   let pagos: RegistroPago[] = validos;
   let error = '';
   if (opciones.formaPago === 'credito') {
-    // Nada se paga al registrar; al editar llegan aquí los abonos hechos después en Cuentas por pagar
-    pagos = validos;
+    // Nada se paga al registrar: solo quedan los abonos hechos después en Cuentas por pagar
+    // (si la compra era de contado y se cambia a crédito, el pago de contado se quita)
+    pagos = validos.filter((p) => !esPagoDelRegistro(p));
   } else if (opciones.formaPago === 'contado') {
     if (!validos.length && neto > 0) pagos = [{ id: `pago-${Date.now()}`, fecha: opciones.fecha, monto: neto, medio: opciones.medioPorDefecto, nota: 'Pago de contado' }];
     else if (Math.abs(suma(validos) - neto) >= 1) error = `En contado los pagos deben sumar ${neto.toLocaleString('es-CO')}; suman ${suma(validos).toLocaleString('es-CO')}.`;

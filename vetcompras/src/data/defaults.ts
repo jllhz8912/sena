@@ -1,4 +1,4 @@
-import { Categoria, CentroCosto, Proveedor, CompraDocumento, EmpresaInfo, Venta } from '../types';
+import { Categoria, CentroCosto, Proveedor, CompraDocumento, EmpresaInfo, Venta, SubcategoriaCompra } from '../types';
 import { fechaLocal } from '../utils/formatters';
 
 export const EMPRESA_DEFECTO: EmpresaInfo = {
@@ -24,6 +24,51 @@ export const EMPRESA_DEFECTO: EmpresaInfo = {
   resolucionLegal: 'Documento soporte equivalente. Régimen No Responsable de IVA según Art. 437 del Estatuto Tributario.',
 };
 
+/** Subcategorías de fábrica de las categorías de compras y gastos (se pueden editar en Catálogos). */
+export const SUBCATEGORIAS_COMPRA_DEFECTO: Record<string, SubcategoriaCompra[]> = {
+  'cat-mercancia': [
+    { id: 'medicamentos', nombre: 'Medicamentos' },
+    { id: 'alimentos', nombre: 'Alimentos y concentrados' },
+    { id: 'vacunas', nombre: 'Vacunas y biológicos' },
+    { id: 'antiparasitarios', nombre: 'Antiparasitarios' },
+    { id: 'accesorios', nombre: 'Accesorios y pet shop' },
+    { id: 'insumos_clinicos', nombre: 'Insumos clínicos y quirúrgicos' },
+    { id: 'peluqueria', nombre: 'Productos de peluquería y aseo animal' },
+  ],
+  'cat-servicios': [
+    { id: 'energia', nombre: 'Energía eléctrica' },
+    { id: 'acueducto', nombre: 'Acueducto y alcantarillado' },
+    { id: 'gas', nombre: 'Gas natural' },
+    { id: 'internet', nombre: 'Internet y telefonía' },
+    { id: 'residuos', nombre: 'Recolección de residuos biológicos' },
+    { id: 'aseo', nombre: 'Aseo (recolección de basuras)' },
+  ],
+  'cat-arriendo': [
+    { id: 'local', nombre: 'Local / clínica' },
+    { id: 'bodega', nombre: 'Bodega' },
+    { id: 'consultorio', nombre: 'Consultorio' },
+    { id: 'parqueadero', nombre: 'Parqueadero' },
+    { id: 'administracion', nombre: 'Cuota de administración' },
+  ],
+  'cat-personal': [
+    { id: 'salarios', nombre: 'Salarios' },
+    { id: 'honorarios', nombre: 'Honorarios' },
+    { id: 'prestaciones', nombre: 'Prestaciones sociales' },
+    { id: 'seguridad_social', nombre: 'Seguridad social y parafiscales' },
+    { id: 'dotacion', nombre: 'Dotación' },
+  ],
+  'cat-varios': [
+    { id: 'aseo_cafeteria', nombre: 'Aseo y cafetería' },
+    { id: 'papeleria', nombre: 'Papelería' },
+    { id: 'mantenimiento', nombre: 'Mantenimiento y reparaciones' },
+    { id: 'publicidad', nombre: 'Publicidad' },
+    { id: 'transporte', nombre: 'Transporte y domicilios' },
+    { id: 'impuestos', nombre: 'Impuestos, tasas y licencias' },
+    { id: 'bancarios', nombre: 'Gastos bancarios' },
+    { id: 'otros', nombre: 'Otros' },
+  ],
+};
+
 export const CATEGORIAS_DEFECTO: Categoria[] = [
   {
     id: 'cat-mercancia',
@@ -33,6 +78,7 @@ export const CATEGORIAS_DEFECTO: Categoria[] = [
     icono: 'ShoppingBag',
     esGasto: false,
     activo: true,
+    subcategorias: SUBCATEGORIAS_COMPRA_DEFECTO['cat-mercancia'],
   },
   {
     id: 'cat-servicios',
@@ -42,6 +88,7 @@ export const CATEGORIAS_DEFECTO: Categoria[] = [
     icono: 'Zap',
     esGasto: true,
     activo: true,
+    subcategorias: SUBCATEGORIAS_COMPRA_DEFECTO['cat-servicios'],
   },
   {
     id: 'cat-arriendo',
@@ -51,6 +98,7 @@ export const CATEGORIAS_DEFECTO: Categoria[] = [
     icono: 'Building2',
     esGasto: true,
     activo: true,
+    subcategorias: SUBCATEGORIAS_COMPRA_DEFECTO['cat-arriendo'],
   },
   {
     id: 'cat-personal',
@@ -60,6 +108,7 @@ export const CATEGORIAS_DEFECTO: Categoria[] = [
     icono: 'Users',
     esGasto: true,
     activo: true,
+    subcategorias: SUBCATEGORIAS_COMPRA_DEFECTO['cat-personal'],
   },
   {
     id: 'cat-varios',
@@ -69,6 +118,7 @@ export const CATEGORIAS_DEFECTO: Categoria[] = [
     icono: 'MoreHorizontal',
     esGasto: true,
     activo: true,
+    subcategorias: SUBCATEGORIAS_COMPRA_DEFECTO['cat-varios'],
   },
 ];
 

@@ -8,6 +8,7 @@ import { Rango, enRango } from './paneles';
 import { categoriaNormalizada, itemsDeVenta, montosPorMedio, saldoDeVenta } from './ventas';
 import { EstadoFactura, estadoFactura, etiquetaFormaPago } from './pagosCompra';
 import { normalizarNombre } from './inventario';
+import { nombreSubcategoria } from './subcategorias';
 
 /** Fila genérica: `clave` y `etiqueta` siempre; el resto según la agrupación. */
 export interface FilaReporte {
@@ -115,17 +116,19 @@ export interface FiltrosCompras {
   texto?: string;
   proveedor?: string;
   categoriaId?: string;
+  subcategoriaId?: string;
   naturaleza?: '' | 'compra' | 'gasto';
   estado?: '' | EstadoFactura;
   formaPago?: '' | FormaPago;
 }
 
-export type AgrupacionCompras = 'documento' | 'proveedor' | 'categoria' | 'mes' | 'producto' | 'iva' | 'retenciones';
+export type AgrupacionCompras = 'documento' | 'proveedor' | 'categoria' | 'subcategoria' | 'mes' | 'producto' | 'iva' | 'retenciones';
 
 export const AGRUPACIONES_COMPRAS: { id: AgrupacionCompras; label: string }[] = [
   { id: 'documento', label: 'Detalle por documento' },
   { id: 'proveedor', label: 'Por proveedor' },
   { id: 'categoria', label: 'Por categoría' },
+  { id: 'subcategoria', label: 'Por subcategoría' },
   { id: 'mes', label: 'Por mes' },
   { id: 'producto', label: 'Por producto (líneas)' },
   { id: 'iva', label: 'IVA descontable por tarifa (F300)' },
@@ -137,6 +140,7 @@ export function filtrarCompras(documentos: CompraDocumento[], f: FiltrosCompras,
     if (!enRango(d.fechaEmision, f.rango)) return false;
     if (f.proveedor && d.proveedor?.nit !== f.proveedor) return false;
     if (f.categoriaId && d.categoriaId !== f.categoriaId) return false;
+    if (f.subcategoriaId && d.subcategoriaId !== f.subcategoriaId) return false;
     if (f.naturaleza === 'compra' && d.esGasto) return false;
     if (f.naturaleza === 'gasto' && !d.esGasto) return false;
     if (f.formaPago && (d.formaPago || 'contado') !== f.formaPago) return false;
@@ -162,6 +166,7 @@ export function agruparCompras(documentos: CompraDocumento[], por: AgrupacionCom
         proveedor: d.proveedor?.razonSocial || '',
         nit: d.proveedor?.nit || '',
         categoria: nombreCat(d.categoriaId),
+        subcategoria: nombreSubcategoria(categorias, d.categoriaId, d.subcategoriaId),
         naturaleza: d.esGasto ? 'Gasto' : 'Compra',
         formaPago: etiquetaFormaPago(d.formaPago),
         subtotal: n(d.subtotal) - n(d.descuentos),
@@ -193,6 +198,10 @@ export function agruparCompras(documentos: CompraDocumento[], por: AgrupacionCom
     const base = { total: n(d.total), iva: n(d.totalIva), retenciones: n(d.totalRetenciones), saldo: Math.max(0, n(d.saldoPendiente)) };
     if (por === 'proveedor') sumar(d.proveedor?.nit || 'sin-nit', d.proveedor?.razonSocial || 'Sin proveedor', base, { nit: d.proveedor?.nit || '' });
     else if (por === 'categoria') sumar(d.categoriaId || 'sin', nombreCat(d.categoriaId), base, { naturaleza: d.esGasto ? 'Gasto' : 'Compra' });
+    else if (por === 'subcategoria') {
+      const sub = nombreSubcategoria(categorias, d.categoriaId, d.subcategoriaId);
+      sumar(`${d.categoriaId || 'sin'}/${d.subcategoriaId || ''}`, sub || 'Sin subcategoría', base, { categoria: nombreCat(d.categoriaId), naturaleza: d.esGasto ? 'Gasto' : 'Compra' });
+    }
     else if (por === 'mes') {
       const [a, m] = d.fechaEmision.split('-');
       sumar(`${a}-${m}`, `${MESES[Number(m) - 1]} ${a}`, { ...base, compras: d.esGasto ? 0 : n(d.total), gastos: d.esGasto ? n(d.total) : 0 });

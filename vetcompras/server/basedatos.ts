@@ -200,6 +200,28 @@ const MIGRACIONES: Migracion[] = [
       db.prepare("UPDATE configuracion SET valor = ? WHERE clave = 'empresa'").run(JSON.stringify(empresa));
     },
   },
+  {
+    version: 6,
+    descripcion: 'Compras y gastos: subcategorías de fábrica en las categorías que aún no tienen',
+    aplicar: (db) => {
+      // Copia fija de las subcategorías de la 2.14: una migración publicada no cambia aunque cambien los valores de fábrica
+      const porCategoria: Record<string, [string, string][]> = {
+        'cat-mercancia': [['medicamentos', 'Medicamentos'], ['alimentos', 'Alimentos y concentrados'], ['vacunas', 'Vacunas y biológicos'], ['antiparasitarios', 'Antiparasitarios'], ['accesorios', 'Accesorios y pet shop'], ['insumos_clinicos', 'Insumos clínicos y quirúrgicos'], ['peluqueria', 'Productos de peluquería y aseo animal']],
+        'cat-servicios': [['energia', 'Energía eléctrica'], ['acueducto', 'Acueducto y alcantarillado'], ['gas', 'Gas natural'], ['internet', 'Internet y telefonía'], ['residuos', 'Recolección de residuos biológicos'], ['aseo', 'Aseo (recolección de basuras)']],
+        'cat-arriendo': [['local', 'Local / clínica'], ['bodega', 'Bodega'], ['consultorio', 'Consultorio'], ['parqueadero', 'Parqueadero'], ['administracion', 'Cuota de administración']],
+        'cat-personal': [['salarios', 'Salarios'], ['honorarios', 'Honorarios'], ['prestaciones', 'Prestaciones sociales'], ['seguridad_social', 'Seguridad social y parafiscales'], ['dotacion', 'Dotación']],
+        'cat-varios': [['aseo_cafeteria', 'Aseo y cafetería'], ['papeleria', 'Papelería'], ['mantenimiento', 'Mantenimiento y reparaciones'], ['publicidad', 'Publicidad'], ['transporte', 'Transporte y domicilios'], ['impuestos', 'Impuestos, tasas y licencias'], ['bancarios', 'Gastos bancarios'], ['otros', 'Otros']],
+      };
+      const filas = db.prepare("SELECT id, datos FROM registros WHERE coleccion = 'categorias'").all() as { id: string; datos: string }[];
+      const actualizar = db.prepare("UPDATE registros SET datos = ? WHERE coleccion = 'categorias' AND id = ?");
+      for (const fila of filas) {
+        const c = JSON.parse(fila.datos);
+        if (Array.isArray(c.subcategorias) || !porCategoria[c.id]) continue;
+        c.subcategorias = porCategoria[c.id].map(([id, nombre]) => ({ id, nombre }));
+        actualizar.run(JSON.stringify(c), fila.id);
+      }
+    },
+  },
 ];
 
 export const VERSION_ESQUEMA = MIGRACIONES[MIGRACIONES.length - 1].version;

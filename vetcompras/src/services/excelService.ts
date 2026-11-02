@@ -4,6 +4,7 @@
  * filtros activados y columnas autoajustadas.
  */
 
+import { nombreSubcategoria } from '../utils/subcategorias';
 import { etiquetaFormaPago } from '../utils/pagosCompra';
 import * as XLSX from 'xlsx';
 import { guardarExcel } from './descargaExcel';
@@ -52,6 +53,7 @@ export function exportarDocumentosAExcel(
     'NIT Proveedor',
     'Razón Social Proveedor',
     'Categoría',
+    'Subcategoría',
     'Centro de Costo',
     'Forma Pago',
     'Medio de Pago',
@@ -88,6 +90,7 @@ export function exportarDocumentosAExcel(
       doc.proveedor?.nit || '',
       doc.proveedor?.razonSocial || '',
       catMap.get(doc.categoriaId) || 'Sin categoría',
+      nombreSubcategoria(categorias, doc.categoriaId, doc.subcategoriaId),
       ccMap.get(doc.centroCostoId) || 'General',
       etiquetaFormaPago(doc.formaPago).toUpperCase(),
       medioInfo.label,

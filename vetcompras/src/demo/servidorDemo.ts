@@ -18,7 +18,9 @@ import {
   EMPRESA_DEFECTO,
   VENTAS_DEFECTO,
   generarDatosDemostracion,
+  SUBCATEGORIAS_COMPRA_DEFECTO,
 } from '../data/defaults';
+import type { Categoria } from '../types';
 import { movimientosAlEliminar, movimientosDeCompra, movimientosDeVenta } from '../utils/inventario';
 
 type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centrosCosto' | 'productos' | 'movimientosInventario' | 'fichasPrecio';
@@ -148,6 +150,8 @@ function cargar(): Estado {
     if (raw) {
       const e = JSON.parse(raw) as Estado;
       for (const c of COLECCIONES) e.colecciones[c] ??= [];
+      // Demostraciones guardadas antes de las subcategorías de compras y gastos
+      for (const c of e.colecciones.categorias as Categoria[]) if (!Array.isArray(c.subcategorias) && SUBCATEGORIAS_COMPRA_DEFECTO[c.id]) c.subcategorias = SUBCATEGORIAS_COMPRA_DEFECTO[c.id];
       return e;
     }
   } catch {
@@ -258,7 +262,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
       marca: { nombre: e.nombreComercial || e.razonSocial || 'Los Criollos Vet', slogan: e.slogan || '', logoUrl: e.logoUrl || '', colorPrimario: e.colorPrimario || '' },
       requiereConfiguracion: modoAcceso === 'usuarios' && estado.usuarios.length === 0,
       minutosInactividad: MINUTOS_INACTIVIDAD,
-      version: '2.13.0-demo',
+      version: '2.14.0-demo',
     };
   }
   if (metodo === 'POST' && ruta === '/sesion/ingresar-libre') {

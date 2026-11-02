@@ -27,7 +27,8 @@ import {
 import { formatCOP, fechaLocal } from '../../utils/formatters';
 import { conceptosPara, tipoDe } from '../../utils/conceptos';
 import { buscarProducto, compraMueveInventario } from '../../utils/inventario';
-import { FORMAS_PAGO, MEDIOS_PAGO_COMPRA, calcularPagosCompra } from '../../utils/pagosCompra';
+import { FORMAS_PAGO, MEDIOS_PAGO_COMPRA, calcularPagosCompra, esPagoDelRegistro } from '../../utils/pagosCompra';
+import { nombreSubcategoria, subcategoriasActivas } from '../../utils/subcategorias';
 import { descargarPlantillaProductosCompra, leerProductosCompra } from '../../services/plantillaProductosCompra';
 import { dataService } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
@@ -134,6 +135,13 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
   const categoriasCompra = categorias.filter((c) => !c.esGasto);
   const categoriasGasto = categorias.filter((c) => c.esGasto);
   const [categoriaId, setCategoriaId] = useState(doc0?.categoriaId || '');
+  const [subcategoriaId, setSubcategoriaId] = useState(doc0?.subcategoriaId || '');
+  const subcategorias = subcategoriasActivas(categorias.find((c) => c.id === categoriaId));
+  // Al cambiar de categoría, la subcategoría anterior deja de aplicar
+  useEffect(() => {
+    if (subcategoriaId && !categorias.find((c) => c.id === categoriaId)?.subcategorias?.some((x) => x.id === subcategoriaId)) setSubcategoriaId('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoriaId]);
   const [centroCostoId, setCentroCostoId] = useState(doc0?.centroCostoId || centrosCosto[0]?.id || 'cc-clinica');
   // Mercancía → solo categorías de compra; si no, cualquiera (primero las de gasto)
   const opcionesCategoria = esMercancia ? categoriasCompra : [...categoriasGasto, ...categoriasCompra];
@@ -198,11 +206,24 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
   const cambiarForma = (f: FormaPago) => {
     setFormaPago(f);
     if (f === 'contado') {
-      setPagosTocados(false);
-      setPagos([]);
+      // Los abonos ya hechos se conservan y el resto se paga de contado
+      const posteriores = pagos.filter((x) => !esPagoDelRegistro(x));
+      const abonado = posteriores.reduce((acc, x) => acc + (Number(x.monto) || 0), 0);
+      if (posteriores.length) {
+        setPagosTocados(true);
+        setPagos([...posteriores, ...(neto - abonado > 0 ? [{ id: nuevoId('pago'), fecha: fechaEmision, monto: Math.round(neto - abonado), medio: medioContado, nota: 'Pago de contado' }] : [])]);
+      } else {
+        setPagosTocados(false);
+        setPagos([]);
+      }
     } else if (f === 'credito_contado') {
       setPagosTocados(true);
-      setPagos((p) => (p.length ? p : [{ id: nuevoId('pago'), fecha: fechaEmision, monto: 0, medio: medioContado, nota: 'Abono inicial' }]));
+      // Si venía de contado, el pago completo no sirve como abono: se empieza con el abono vacío
+      setPagos((p) => {
+        const posteriores = p.filter((x) => !esPagoDelRegistro(x));
+        const iniciales = p.filter((x) => esPagoDelRegistro(x) && x.nota === 'Abono inicial');
+        return [...posteriores, ...(iniciales.length ? iniciales : [{ id: nuevoId('pago'), fecha: fechaEmision, monto: 0, medio: medioContado, nota: 'Abono inicial' }])];
+      });
     }
   };
   const editarPago = (id: string, cambios: Partial<RegistroPago>) => {
@@ -348,6 +369,7 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
         proveedorId: proveedorId || undefined,
         proveedor: { ...(doc0?.proveedor || {}), nit: nit.trim(), razonSocial: razonSocial.trim(), telefono: telefono.trim(), email: email.trim(), ciudad: ciudad.trim() },
         categoriaId,
+        subcategoriaId: subcategoriaId || undefined,
         centroCostoId,
         esGasto: esMercancia ? false : !!cat?.esGasto,
         esMercancia,
@@ -554,7 +576,7 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
                     <input id="reg-fecha" type="date" value={fechaEmision} onChange={(e) => setFechaEmision(e.target.value)} className={input} />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className={`grid grid-cols-1 gap-3 ${modo === 'detallada' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
                   <div>
                     <label className={etiqueta} htmlFor="reg-categoria">Categoría *</label>
                     <select id="reg-categoria" value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={input}>
@@ -563,6 +585,20 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
                           {c.nombre} {c.esGasto ? '(gasto)' : '(compra)'}
                         </option>
                       ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={etiqueta} htmlFor="reg-subcategoria">Subcategoría</label>
+                    <select id="reg-subcategoria" value={subcategoriaId} onChange={(e) => setSubcategoriaId(e.target.value)} className={input} disabled={!subcategorias.length}>
+                      <option value="">{subcategorias.length ? 'Sin subcategoría' : 'Esta categoría no tiene'}</option>
+                      {subcategorias.map((x) => (
+                        <option key={x.id} value={x.id}>
+                          {x.nombre}
+                        </option>
+                      ))}
+                      {subcategoriaId && !subcategorias.some((x) => x.id === subcategoriaId) && (
+                        <option value={subcategoriaId}>{nombreSubcategoria(categorias, categoriaId, subcategoriaId) || subcategoriaId} (eliminada)</option>
+                      )}
                     </select>
                   </div>
                   {modo === 'detallada' && (
@@ -823,8 +859,16 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
                     </div>
                   )}
 
-                  {formaPago === 'credito' && !!doc0?.pagos?.length && (
-                    <p className="text-[11px] text-slate-500">Se conservan {doc0.pagos.length} abono(s) registrados en Cuentas por pagar.</p>
+                  {formaPago === 'credito' && !!doc0?.pagos?.filter((p) => !esPagoDelRegistro(p)).length && (
+                    <p className="text-[11px] text-slate-500">
+                      Se conservan {doc0.pagos.filter((p) => !esPagoDelRegistro(p)).length} abono(s) registrados después en Cuentas por pagar.
+                    </p>
+                  )}
+                  {doc0 && formaPago !== formaInicial && (
+                    <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400" role="status">
+                      Cambia de {FORMAS_PAGO.find((f) => f.id === formaInicial)?.label} a {FORMAS_PAGO.find((f) => f.id === formaPago)?.label}: al guardar, el saldo y el estado de la
+                      factura se recalculan.
+                    </p>
                   )}
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">

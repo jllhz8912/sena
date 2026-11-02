@@ -22,6 +22,7 @@ const COLUMNAS: Record<AgrupacionCompras, ColumnaReporte[]> = {
     { id: 'proveedor', label: 'Proveedor', tipo: 'texto' },
     { id: 'nit', label: 'NIT', tipo: 'texto', visible: false },
     { id: 'categoria', label: 'Categoría', tipo: 'texto' },
+    { id: 'subcategoria', label: 'Subcategoría', tipo: 'texto' },
     { id: 'naturaleza', label: 'Compra / gasto', tipo: 'texto', visible: false },
     { id: 'formaPago', label: 'Forma de pago', tipo: 'texto' },
     { id: 'subtotal', label: 'Base', tipo: 'pesos', visible: false },
@@ -44,6 +45,15 @@ const COLUMNAS: Record<AgrupacionCompras, ColumnaReporte[]> = {
   categoria: [
     { id: 'etiqueta', label: 'Categoría', tipo: 'texto' },
     { id: 'naturaleza', label: 'Compra / gasto', tipo: 'texto' },
+    { id: 'cantidad', label: 'Documentos', tipo: 'numero' },
+    { id: 'iva', label: 'IVA', tipo: 'pesos', visible: false },
+    { id: 'total', label: 'Total', tipo: 'pesos' },
+    { id: 'saldo', label: 'Saldo por pagar', tipo: 'pesos' },
+  ],
+  subcategoria: [
+    { id: 'categoria', label: 'Categoría', tipo: 'texto' },
+    { id: 'etiqueta', label: 'Subcategoría', tipo: 'texto' },
+    { id: 'naturaleza', label: 'Compra / gasto', tipo: 'texto', visible: false },
     { id: 'cantidad', label: 'Documentos', tipo: 'numero' },
     { id: 'iva', label: 'IVA', tipo: 'pesos', visible: false },
     { id: 'total', label: 'Total', tipo: 'pesos' },
@@ -93,6 +103,8 @@ export const ReportesComprasPerfil: React.FC<Props> = ({ documentos, categorias,
   const [texto, setTexto] = useState('');
   const [proveedor, setProveedor] = useState('');
   const [categoriaId, setCategoriaId] = useState('');
+  const [subcategoriaId, setSubcategoriaId] = useState('');
+  const subcategorias = categorias.find((c) => c.id === categoriaId)?.subcategorias || [];
   const [naturaleza, setNaturaleza] = useState<'' | 'compra' | 'gasto'>('');
   const [estado, setEstado] = useState<'' | EstadoFactura>('');
   const [formaPago, setFormaPago] = useState<'' | FormaPago>('');
@@ -104,8 +116,8 @@ export const ReportesComprasPerfil: React.FC<Props> = ({ documentos, categorias,
   }, [documentos]);
   const rango = useMemo(() => rangoPeriodo(periodo, new Date(), rangoLibre), [periodo, rangoLibre]);
   const filtrados = useMemo(
-    () => filtrarCompras(documentos, { rango, texto, proveedor, categoriaId, naturaleza, estado, formaPago }),
-    [documentos, rango, texto, proveedor, categoriaId, naturaleza, estado, formaPago]
+    () => filtrarCompras(documentos, { rango, texto, proveedor, categoriaId, subcategoriaId, naturaleza, estado, formaPago }),
+    [documentos, rango, texto, proveedor, categoriaId, subcategoriaId, naturaleza, estado, formaPago]
   );
   const filas = useMemo(() => agruparCompras(filtrados, agrupacion, categorias), [filtrados, agrupacion, categorias]);
   const titulo = `Reporte compras ${AGRUPACIONES_COMPRAS.find((a) => a.id === agrupacion)?.label} ${rango.desde} a ${rango.hasta}`;
@@ -134,7 +146,16 @@ export const ReportesComprasPerfil: React.FC<Props> = ({ documentos, categorias,
               </option>
             ))}
           </select>
-          <select id="rc-categoria" value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={input} aria-label="Categoría">
+          <select
+            id="rc-categoria"
+            value={categoriaId}
+            onChange={(e) => {
+              setCategoriaId(e.target.value);
+              setSubcategoriaId('');
+            }}
+            className={input}
+            aria-label="Categoría"
+          >
             <option value="">Todas las categorías</option>
             {categorias.map((c) => (
               <option key={c.id} value={c.id}>
@@ -142,6 +163,17 @@ export const ReportesComprasPerfil: React.FC<Props> = ({ documentos, categorias,
               </option>
             ))}
           </select>
+          {subcategorias.length > 0 && (
+            <select id="rc-subcategoria" value={subcategoriaId} onChange={(e) => setSubcategoriaId(e.target.value)} className={input} aria-label="Subcategoría">
+              <option value="">Todas las subcategorías</option>
+              {subcategorias.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.nombre}
+                  {x.activo === false ? ' (eliminada)' : ''}
+                </option>
+              ))}
+            </select>
+          )}
           <select id="rc-naturaleza" value={naturaleza} onChange={(e) => setNaturaleza(e.target.value as typeof naturaleza)} className={input} aria-label="Compra o gasto">
             <option value="">Compras y gastos</option>
             <option value="compra">Solo compras</option>

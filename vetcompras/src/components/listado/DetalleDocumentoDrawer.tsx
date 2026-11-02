@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { nombreSubcategoria } from '../../utils/subcategorias';
 import { etiquetaFormaPago } from '../../utils/pagosCompra';
 import {
   X,
@@ -182,6 +183,11 @@ export const DetalleDocumentoDrawer: React.FC<DetalleDocumentoDrawerProps> = ({
                   <Tag className="w-3.5 h-3.5 text-emerald-600" />
                   {categoria?.nombre || 'Sin categoría'}
                 </span>
+                {documento.subcategoriaId && (
+                  <span className="block text-[11px] text-slate-500">
+                    Subcategoría: {nombreSubcategoria(categorias, documento.categoriaId, documento.subcategoriaId) || '—'}
+                  </span>
+                )}
               </div>
               <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
                 <span className="text-slate-400 block">Centro de Costo</span>

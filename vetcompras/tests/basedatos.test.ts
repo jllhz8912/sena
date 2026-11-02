@@ -121,6 +121,18 @@ describe('BaseDatosLocal', () => {
     expect(bd.obtenerConfig<any>('empresa')).toMatchObject({ razonSocial: 'Clínica Real SAS', nit: '900123456' });
   });
 
+  it('migración v6: agrega subcategorías de fábrica sin tocar las que ya existen ni las categorías propias', () => {
+    bd.guardar('categorias', { id: 'cat-servicios', nombre: 'Gasto servicios públicos', esGasto: true, activo: true });
+    bd.guardar('categorias', { id: 'cat-arriendo', nombre: 'Arriendo', esGasto: true, activo: true, subcategorias: [{ id: 'mia', nombre: 'Mi subcategoría' }] });
+    bd.guardar('categorias', { id: 'cat-propia', nombre: 'Propia', esGasto: true, activo: true });
+    bd.db.exec('PRAGMA user_version = 5');
+    bd.cerrar();
+    bd = new BaseDatosLocal(carpeta);
+    expect((bd.obtener('categorias', 'cat-servicios') as any).subcategorias.map((x: any) => x.nombre)).toContain('Energía eléctrica');
+    expect((bd.obtener('categorias', 'cat-arriendo') as any).subcategorias).toEqual([{ id: 'mia', nombre: 'Mi subcategoría' }]);
+    expect((bd.obtener('categorias', 'cat-propia') as any).subcategorias).toBeUndefined();
+  });
+
   it('migración v5: respeta un nombre real y un color elegido, y cambia el verde de fábrica', () => {
     bd.guardarConfig('empresa', { razonSocial: 'Clínica Real SAS', colorPrimario: '#2563eb', colorSecundario: '#0f766e' });
     bd.db.exec('PRAGMA user_version = 4');

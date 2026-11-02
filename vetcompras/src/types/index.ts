@@ -112,6 +112,8 @@ export interface CompraDocumento {
 
   // Clasificación contable
   categoriaId: string;
+  /** Subcategoría dentro de la categoría (opcional) */
+  subcategoriaId?: string;
   centroCostoId: string;
   esGasto: boolean; // false = compra para inventario/reventa/insumo, true = gasto operativo/administrativo
   /** Respuesta a "¿Es compra de mercancía?" en el registro */
@@ -193,6 +195,15 @@ export interface Categoria {
   icono: string;
   esGasto: boolean; // false = inventario / compra, true = gasto operativo
   activo: boolean;
+  /** Detalle de la categoría (p. ej. Servicios públicos → Energía, Agua, Gas, Internet) */
+  subcategorias?: SubcategoriaCompra[];
+}
+
+export interface SubcategoriaCompra {
+  id: string;
+  nombre: string;
+  /** false = eliminada: no se ofrece al registrar, pero los documentos antiguos conservan su nombre */
+  activo?: boolean;
 }
 
 export interface CentroCosto {

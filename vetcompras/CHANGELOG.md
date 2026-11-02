@@ -3,6 +3,23 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.14.0
+- **Subcategorías en las categorías de compras y gastos** (Catálogos → Categorías de compras y
+  gastos): cada categoría puede tener sus subcategorías; se crean, renombran y eliminan desde
+  la misma ventana de la categoría. Vienen de fábrica, por ejemplo Servicios públicos →
+  Energía eléctrica, Acueducto y alcantarillado, Gas natural, Internet y telefonía,
+  Recolección de residuos biológicos y Aseo; también para Mercancía, Arriendos, Personal y
+  Gastos varios. Al eliminar una, los documentos que ya la usan conservan su nombre.
+- La subcategoría se elige al registrar la compra o gasto (sencilla y detallada) y al
+  revisar facturas XML/PDF; aparece en el detalle del documento, en la exportación a Excel
+  y en Reportes de Compras y Gastos (columna, filtro y agrupación "Por subcategoría").
+- **Cambiar la forma de pago de una compra ya guardada**: al editarla se puede pasar de
+  contado a crédito, a crédito-contado o al revés; el saldo y el estado se recalculan. El
+  pago de contado o el abono inicial del registro se reemplazan y los abonos hechos después
+  en Cuentas por Pagar se conservan.
+- Las instalaciones existentes reciben las subcategorías de fábrica al actualizar
+  (sin tocar las categorías propias ni subcategorías ya creadas).
+
 ## 2.13.0
 - **Reportes por perfil**, con periodo (hoy, semana, mes, año o rango), filtros, agrupaciones,
   columnas a elección (se recuerdan en el equipo), orden por columna, fila de totales y

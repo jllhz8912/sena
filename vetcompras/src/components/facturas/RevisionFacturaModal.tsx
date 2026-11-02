@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { subcategoriasActivas } from '../../utils/subcategorias';
 import {
   X,
   FileCheck,
@@ -664,7 +665,7 @@ export const RevisionFacturaModal: React.FC<RevisionFacturaModalProps> = ({
                   <span>Clasificación Contable Veterinaria</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
                       Categoría
@@ -676,6 +677,7 @@ export const RevisionFacturaModal: React.FC<RevisionFacturaModalProps> = ({
                         setDoc({
                           ...doc,
                           categoriaId: e.target.value,
+                          subcategoriaId: undefined,
                           esGasto: cat ? cat.esGasto : doc.esGasto,
                         });
                       }}
@@ -684,6 +686,26 @@ export const RevisionFacturaModal: React.FC<RevisionFacturaModalProps> = ({
                       {categorias.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.nombre} {c.esGasto ? '(Gasto Operativo)' : '(Compra Insumo/Inventario)'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1" htmlFor="rev-subcategoria">
+                      Subcategoría
+                    </label>
+                    <select
+                      id="rev-subcategoria"
+                      value={doc.subcategoriaId || ''}
+                      onChange={(e) => setDoc({ ...doc, subcategoriaId: e.target.value || undefined })}
+                      disabled={!subcategoriasActivas(categorias.find((c) => c.id === doc.categoriaId)).length}
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium"
+                    >
+                      <option value="">{subcategoriasActivas(categorias.find((c) => c.id === doc.categoriaId)).length ? 'Sin subcategoría' : 'Esta categoría no tiene'}</option>
+                      {subcategoriasActivas(categorias.find((c) => c.id === doc.categoriaId)).map((x) => (
+                        <option key={x.id} value={x.id}>
+                          {x.nombre}
                         </option>
                       ))}
                     </select>

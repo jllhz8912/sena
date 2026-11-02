@@ -403,6 +403,8 @@ export const dataService = {
     const actualizados = docs.map((d) => ({
       ...d,
       categoriaId: nuevaCategoriaId,
+      // La subcategoría era de la categoría anterior
+      subcategoriaId: d.categoriaId === nuevaCategoriaId ? d.subcategoriaId : undefined,
       esGasto: esGasto ?? d.esGasto,
       actualizadoEn: ahora,
       historialCambios: [
