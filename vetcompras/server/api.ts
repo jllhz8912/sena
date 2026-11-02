@@ -28,7 +28,7 @@ import {
 import { generarDatosDemostracion, CATEGORIAS_DEFECTO, CENTROS_COSTO_DEFECTO, PROVEEDORES_DEFECTO } from '../src/data/defaults';
 import pkg from '../package.json';
 import { estadoAlertaCopia } from '../src/utils/alertaCopia';
-import { PERFILES_DEFECTO, modulosDe, normalizarPerfiles, type PerfilAcceso } from '../src/utils/perfiles';
+import { PERFILES_DEFECTO, VERSION_PERFILES, migrarPerfiles, modulosDe, normalizarPerfiles, type PerfilAcceso } from '../src/utils/perfiles';
 
 type Manejador = (req: Request, res: Response) => unknown;
 
@@ -271,7 +271,10 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
   // Perfiles de ingreso (Ventas, Compras y Gastos, Administración) y sus módulos.
   // El PIN se guarda cifrado y nunca se devuelve.
   type PerfilGuardado = PerfilAcceso & { pin?: string };
-  const perfilesGuardados = (): PerfilGuardado[] => bd.obtenerConfig<{ perfiles: PerfilGuardado[] }>('perfilesAcceso')?.perfiles || PERFILES_DEFECTO;
+  const perfilesGuardados = (): PerfilGuardado[] => {
+    const guardado = bd.obtenerConfig<{ perfiles: PerfilGuardado[]; version?: number }>('perfilesAcceso');
+    return guardado ? migrarPerfiles(guardado.perfiles, guardado.version) : PERFILES_DEFECTO;
+  };
   const perfilesPublicos = () => perfilesGuardados().map(({ pin, ...p }) => ({ ...p, modulos: [...modulosDe(p)], tienePin: !!pin }));
 
   api.get(
@@ -286,7 +289,7 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
     soloAdministrador,
     seguro((req, res) => {
       if (req.body?.restaurar) {
-        bd.guardarConfig('perfilesAcceso', { perfiles: PERFILES_DEFECTO });
+        bd.guardarConfig('perfilesAcceso', { perfiles: PERFILES_DEFECTO, version: VERSION_PERFILES });
         auditar(req, 'Perfiles restaurados a los de fábrica');
         return res.json(perfilesPublicos());
       }
@@ -307,7 +310,7 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
         }
         return pedido.quitarPin || !previo?.pin ? p : { ...p, pin: previo.pin };
       });
-      bd.guardarConfig('perfilesAcceso', { perfiles });
+      bd.guardarConfig('perfilesAcceso', { perfiles, version: VERSION_PERFILES });
       auditar(req, 'Perfiles y permisos modificados', { detalle: perfiles.map((p) => `${p.nombre}: ${modulosDe(p).size} módulo(s)${p.pin ? ', con PIN' : ''}`).join(' · ') });
       res.json(perfilesPublicos());
     })

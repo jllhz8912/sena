@@ -7,17 +7,17 @@ import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
 import { BaseDatosLocal } from '../server/basedatos';
 import { crearApi } from '../server/api';
-import { ID_ADMINISTRACION, MODULOS_SISTEMA, PERFILES_DEFECTO, modulosDe, moduloInicial, normalizarPerfiles } from '../src/utils/perfiles';
+import { ID_ADMINISTRACION, MODULOS_SISTEMA, PERFILES_DEFECTO, migrarPerfiles, modulosDe, moduloInicial, normalizarPerfiles } from '../src/utils/perfiles';
 
 describe('reglas de perfiles', () => {
   it('los perfiles de fábrica separan ventas, compras y administración', () => {
     const [ventas, compras, admin] = PERFILES_DEFECTO;
-    expect([...modulosDe(ventas)]).toEqual(['ventas', 'precios', 'catalogos']);
+    expect([...modulosDe(ventas)]).toEqual(['panel_ventas', 'ventas', 'precios', 'catalogos']);
     expect(modulosDe(ventas).has('compras')).toBe(false);
     expect(modulosDe(compras).has('compras') && modulosDe(compras).has('inventario') && !modulosDe(compras).has('ventas')).toBe(true);
     expect(modulosDe(admin).size).toBe(MODULOS_SISTEMA.length);
-    expect(moduloInicial(ventas)).toBe('ventas');
-    expect(moduloInicial(compras)).toBe('compras');
+    expect(moduloInicial(ventas)).toBe('panel_ventas');
+    expect(moduloInicial(compras)).toBe('panel_compras');
     expect(moduloInicial(admin)).toBe('dashboard');
   });
 
@@ -26,6 +26,16 @@ describe('reglas de perfiles', () => {
     expect(() => normalizarPerfiles([PERFILES_DEFECTO[0]])).toThrow(/Administración/);
     expect(() => normalizarPerfiles([{ nombre: 'Caja', modulos: [] }, PERFILES_DEFECTO[2]])).toThrow(/al menos un módulo/);
     expect(() => normalizarPerfiles([])).toThrow();
+  });
+
+  it('los perfiles guardados en la 2.11 reciben su panel al actualizar', () => {
+    const viejos = [
+      { id: 'ventas', modulos: ['ventas', 'precios'] },
+      { id: 'compras', modulos: ['compras', 'inventario'] },
+      { id: 'caja', modulos: ['catalogos'] },
+    ];
+    expect(migrarPerfiles(viejos).map((p) => p.modulos)).toEqual([['panel_ventas', 'ventas', 'precios'], ['panel_compras', 'compras', 'inventario'], ['catalogos']]);
+    expect(migrarPerfiles(viejos, 2)).toBe(viejos);
   });
 
   it('crea el identificador desde el nombre y descarta módulos desconocidos', () => {
@@ -98,6 +108,12 @@ describe('perfiles en el servidor local', () => {
     expect(otra.cuerpo[2].tienePin).toBe(true);
     const sinPin = await llamar('/perfiles', 'PUT', { perfiles: otra.cuerpo.map((p: any, i: number) => (i === 2 ? { ...p, quitarPin: true } : p)) });
     expect(sinPin.cuerpo[2].tienePin).toBe(false);
+  });
+
+  it('un perfil guardado antes de los paneles (2.11) los recibe al leerlo', async () => {
+    bd.guardarConfig('perfilesAcceso', { perfiles: [{ id: 'ventas', nombre: 'Ventas', descripcion: '', modulos: ['ventas'] }, { ...PERFILES_DEFECTO[2] }] });
+    await llamar('/sesion/ingresar-libre', 'POST', {});
+    expect((await llamar('/perfiles')).cuerpo[0].modulos).toEqual(['panel_ventas', 'ventas']);
   });
 
   it('rechaza PIN no numérico y quitar Administración', async () => {

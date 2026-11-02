@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   HandCoins,
   DatabaseBackup,
+  Gauge,
 } from 'lucide-react';
 import { dataService } from '../../services/dataService';
 import { EmpresaInfo } from '../../types';
@@ -28,6 +29,8 @@ export type NavItem =
   | 'ventas'
   | 'compras'
   | 'cuentas_pagar'
+  | 'panel_ventas'
+  | 'panel_compras'
   | 'cargar_factura'
   | 'cargar_excel'
   | 'inventario'
@@ -81,6 +84,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'dashboard' as NavItem,
       label: 'Dashboard (Año Actual)',
       icon: LayoutDashboard,
+      badge: null,
+    },
+    {
+      id: 'panel_ventas' as NavItem,
+      label: 'Panel de Ventas',
+      icon: Gauge,
+      badge: null,
+    },
+    {
+      id: 'panel_compras' as NavItem,
+      label: 'Panel de Compras',
+      icon: Gauge,
       badge: null,
     },
     {

@@ -3,6 +3,21 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.12.0
+- **Panel propio por perfil**, con selector de periodo (hoy, esta semana, este mes, este año
+  o rango de fechas):
+  - **Panel de Ventas** (pantalla inicial del perfil Ventas): total vendido, ticket promedio,
+    cobrado, por cobrar y cartera total; **cuadre de caja** por medio de pago (efectivo,
+    Nequi, Daviplata, transferencia, tarjeta y crédito); ventas por categoría; lo más
+    vendido; ventas a crédito por cobrar; últimas ventas para validar y ventas mes a mes.
+  - **Panel de Compras y Gastos** (pantalla inicial del perfil Compras): compras, gastos,
+    total, IVA descontable, retenciones y compras que sumaron al inventario; control de
+    facturas (por pagar, con saldo, vencidas, pagadas); vencidas y por vencer en 7 días;
+    categorías; proveedores; mes a mes y últimos documentos para validar.
+- Los paneles son módulos con permiso propio en "Perfiles y permisos". Los perfiles guardados
+  en la 2.11 reciben su panel automáticamente. Administración conserva el Dashboard general
+  y puede abrir ambos paneles.
+
 ## 2.11.0
 - **Perfiles de ingreso**: después de "Ingresar" se elige **Ventas**, **Compras y Gastos** o
   **Administración**. Cada perfil ve solo sus módulos en el menú, en "Nuevo registro", en el

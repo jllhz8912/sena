@@ -7,6 +7,8 @@
 /** Módulos del menú que se pueden permitir o quitar a un perfil. */
 export const MODULOS_SISTEMA: { id: string; label: string; grupo: 'Ventas' | 'Compras' | 'Gestión' | 'Sistema' }[] = [
   { id: 'dashboard', label: 'Dashboard (panel central)', grupo: 'Gestión' },
+  { id: 'panel_ventas', label: 'Panel de Ventas', grupo: 'Ventas' },
+  { id: 'panel_compras', label: 'Panel de Compras y Gastos', grupo: 'Compras' },
   { id: 'ventas', label: 'Módulo de Ventas', grupo: 'Ventas' },
   { id: 'precios', label: 'Precios de Venta', grupo: 'Ventas' },
   { id: 'compras', label: 'Compras y Gastos', grupo: 'Compras' },
@@ -36,13 +38,13 @@ export const PERFILES_DEFECTO: PerfilAcceso[] = [
     id: 'ventas',
     nombre: 'Ventas',
     descripcion: 'Registrar ventas, consultar precios y el catálogo de productos y servicios.',
-    modulos: ['ventas', 'precios', 'catalogos'],
+    modulos: ['panel_ventas', 'ventas', 'precios', 'catalogos'],
   },
   {
     id: 'compras',
     nombre: 'Compras y Gastos',
     descripcion: 'Registrar compras y gastos, cuentas por pagar, cargar facturas e inventario.',
-    modulos: ['compras', 'cuentas_pagar', 'cargar_factura', 'inventario', 'catalogos'],
+    modulos: ['panel_compras', 'compras', 'cuentas_pagar', 'cargar_factura', 'inventario', 'catalogos'],
   },
   {
     id: ID_ADMINISTRACION,
@@ -51,6 +53,21 @@ export const PERFILES_DEFECTO: PerfilAcceso[] = [
     modulos: MODULOS_SISTEMA.map((m) => m.id),
   },
 ];
+
+/** Versión del formato de perfiles guardado. 2: se agregaron los paneles por perfil. */
+export const VERSION_PERFILES = 2;
+
+/**
+ * Pone al día perfiles guardados con una versión anterior: en la 2 cada perfil con
+ * Ventas recibe el Panel de Ventas y cada uno con Compras el Panel de Compras y Gastos.
+ */
+export function migrarPerfiles<T extends { modulos: string[] }>(perfiles: T[], version = 1): T[] {
+  if (version >= 2) return perfiles;
+  return perfiles.map((p) => {
+    const extra = [...(p.modulos.includes('ventas') ? ['panel_ventas'] : []), ...(p.modulos.includes('compras') ? ['panel_compras'] : [])];
+    return { ...p, modulos: [...new Set([...extra, ...p.modulos])] };
+  });
+}
 
 /** Administración siempre conserva todos los módulos (alguien debe poder administrar). */
 export function modulosDe(perfil: Pick<PerfilAcceso, 'id' | 'modulos'> | null | undefined): Set<string> {

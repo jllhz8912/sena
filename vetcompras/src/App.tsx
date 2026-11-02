@@ -31,6 +31,8 @@ import { ToastProvider, useToast } from './context/ToastContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Loader2 } from 'lucide-react';
 import { PantallaPerfiles } from './components/seguridad/PantallaPerfiles';
+import { PanelVentas } from './components/dashboard/PanelVentas';
+import { PanelCompras } from './components/dashboard/PanelCompras';
 import { PerfilAcceso, modulosDe, moduloInicial } from './utils/perfiles';
 
 /** Perfiles a los que ya se les mostraron los avisos de copias y vencimientos en esta sesión */
@@ -222,6 +224,8 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
 
   const titulos: Record<NavItem, string> = {
     dashboard: 'Panel Central • Año en Curso',
+    panel_ventas: 'Panel de Ventas',
+    panel_compras: 'Panel de Compras y Gastos',
     ventas: 'Módulo de Ventas de la Veterinaria',
     compras: 'Registro de Compras y Gastos',
     cuentas_pagar: 'Cuentas por Pagar a Proveedores',
@@ -312,6 +316,31 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
             </div>
           ) : (
             <div className="max-w-7xl mx-auto space-y-6">
+              {currentTab === 'panel_ventas' && (
+                <PanelVentas
+                  ventas={ventas}
+                  onNuevaVenta={puede('ventas') ? () => setModalVentaAbierto(true) : undefined}
+                  onIrAVentas={puede('ventas') ? () => setCurrentTab('ventas') : undefined}
+                />
+              )}
+
+              {currentTab === 'panel_compras' && (
+                <PanelCompras
+                  documentos={documentos}
+                  categorias={categorias}
+                  onNuevaCompra={
+                    puede('compras')
+                      ? () => {
+                          setDocumentoParaEditar(undefined);
+                          setModalManualAbierto(true);
+                        }
+                      : undefined
+                  }
+                  onIrACompras={puede('compras') ? () => setCurrentTab('compras') : undefined}
+                  onIrACuentasPorPagar={puede('cuentas_pagar') ? () => setCurrentTab('cuentas_pagar') : undefined}
+                />
+              )}
+
               {currentTab === 'dashboard' && (
                 <DashboardView
                   documentos={documentos}

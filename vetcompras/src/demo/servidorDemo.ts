@@ -10,7 +10,7 @@
  */
 
 import { estadoAlertaCopia } from '../utils/alertaCopia';
-import { PERFILES_DEFECTO, modulosDe, normalizarPerfiles, type PerfilAcceso } from '../utils/perfiles';
+import { PERFILES_DEFECTO, VERSION_PERFILES, migrarPerfiles, modulosDe, normalizarPerfiles, type PerfilAcceso } from '../utils/perfiles';
 import {
   CATEGORIAS_DEFECTO,
   CENTROS_COSTO_DEFECTO,
@@ -61,6 +61,7 @@ interface Estado extends Datos {
   alertaCopia?: string | null;
   /** Perfiles de ingreso (en la demostración el PIN se guarda tal cual, solo en este navegador) */
   perfiles?: (PerfilAcceso & { pin?: string })[];
+  perfilesVersion?: number;
   diasRecordatorio?: number;
   sesion: { usuarioId: string; ultimoUso: number } | null;
   modoAcceso: 'libre' | 'usuarios';
@@ -257,7 +258,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
       marca: { nombre: e.nombreComercial || e.razonSocial || 'Los Criollos Vet', slogan: e.slogan || '', logoUrl: e.logoUrl || '', colorPrimario: e.colorPrimario || '' },
       requiereConfiguracion: modoAcceso === 'usuarios' && estado.usuarios.length === 0,
       minutosInactividad: MINUTOS_INACTIVIDAD,
-      version: '2.11.0-demo',
+      version: '2.12.0-demo',
     };
   }
   if (metodo === 'POST' && ruta === '/sesion/ingresar-libre') {
@@ -320,7 +321,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
     if (yo.rol !== 'administrador') throw new ErrorHttp(403, 'Su usuario no tiene permiso para esta acción. Solicítela a un administrador.');
   };
 
-  const perfilesDemo = (): (PerfilAcceso & { pin?: string })[] => estado.perfiles || PERFILES_DEFECTO;
+  const perfilesDemo = (): (PerfilAcceso & { pin?: string })[] => (estado.perfiles ? migrarPerfiles(estado.perfiles, estado.perfilesVersion) : PERFILES_DEFECTO);
   const publico = (p: PerfilAcceso & { pin?: string }) => {
     const { pin, ...resto } = p;
     return { ...resto, modulos: [...modulosDe(p)], tienePin: !!pin };
@@ -340,6 +341,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
       throw new ErrorHttp(400, err.message);
     }
     const anteriores = perfilesDemo();
+    estado.perfilesVersion = VERSION_PERFILES;
     estado.perfiles = limpios.map((p, i) => {
       const pedido = cuerpo.perfiles[i] || {};
       if (pedido.pin) {
