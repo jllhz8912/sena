@@ -51,6 +51,8 @@ interface SidebarProps {
   copiaPendiente?: boolean;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  /** Módulos del perfil con que se ingresó (sin valor: todos) */
+  modulos?: Set<string>;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -63,6 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   copiaPendiente = false,
   mobileOpen,
   setMobileOpen,
+  modulos,
 }) => {
   const [empresa, setEmpresa] = useState<EmpresaInfo>(() => dataService.obtenerDatosEmpresa());
 
@@ -150,12 +153,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'seguridad' as NavItem,
-      label: dataService.modoAcceso() === 'libre' ? 'Ingreso y Bitácora' : 'Usuarios y Seguridad',
+      label: dataService.modoAcceso() === 'libre' ? 'Perfiles y Bitácora' : 'Perfiles y Seguridad',
       icon: ShieldCheck,
       badge: dataService.modoAcceso() === 'libre' ? null : 'Admin',
       badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
     },
   ].filter((item) => {
+    // Solo los módulos del perfil de ingreso
+    if (modulos && !modulos.has(item.id)) return false;
     // Configuración, catálogos y seguridad solo para administradores
     if (dataService.esAdministrador()) return true;
     return !(['configuracion', 'seguridad', 'catalogos'] as NavItem[]).includes(item.id);
@@ -349,54 +354,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       )}
 
-      {/* 3. BARRA INFERIOR MÓVIL (Bottom Navigation Bar para celulares) */}
+      {/* 3. BARRA INFERIOR MÓVIL (los primeros módulos del perfil + "Más") */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 flex items-center justify-around py-1.5 px-2 safe-area-pb shadow-lg">
-        <button
-          onClick={() => handleItemClick('dashboard')}
-          className={`flex flex-col items-center gap-0.5 p-1 rounded-xl text-[10px] font-medium transition-colors ${
-            currentTab === 'dashboard'
-              ? 'text-emerald-600 dark:text-emerald-400 font-bold'
-              : 'text-slate-500 dark:text-slate-400'
-          }`}
-        >
-          <LayoutDashboard className="w-5 h-5" />
-          <span>Dashboard</span>
-        </button>
-
-        <button
-          onClick={() => handleItemClick('compras')}
-          className={`flex flex-col items-center gap-0.5 p-1 rounded-xl text-[10px] font-medium transition-colors relative ${
-            currentTab === 'compras'
-              ? 'text-emerald-600 dark:text-emerald-400 font-bold'
-              : 'text-slate-500 dark:text-slate-400'
-          }`}
-        >
-          <ReceiptText className="w-5 h-5" />
-          <span>Compras</span>
-          {totalPendientes > 0 && (
-            <span className="absolute -top-1 right-1 w-2 h-2 rounded-full bg-rose-500" />
-          )}
-        </button>
-
-        <button
-          onClick={() => handleItemClick('cargar_factura')}
-          className="flex flex-col items-center gap-0.5 -mt-4 bg-emerald-600 hover:bg-emerald-500 text-white p-2.5 rounded-2xl shadow-lg shadow-emerald-600/30 text-[10px] font-bold active:scale-95 transition-transform"
-        >
-          <UploadCloud className="w-5 h-5" />
-          <span>Subir</span>
-        </button>
-
-        <button
-          onClick={() => handleItemClick('reportes')}
-          className={`flex flex-col items-center gap-0.5 p-1 rounded-xl text-[10px] font-medium transition-colors ${
-            currentTab === 'reportes'
-              ? 'text-emerald-600 dark:text-emerald-400 font-bold'
-              : 'text-slate-500 dark:text-slate-400'
-          }`}
-        >
-          <BarChart3 className="w-5 h-5" />
-          <span>Reportes</span>
-        </button>
+        {menuItems.slice(0, 4).map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.id}
+              onClick={() => handleItemClick(item.id)}
+              className={`flex flex-col items-center gap-0.5 p-1 rounded-xl text-[10px] font-medium transition-colors relative max-w-[76px] ${
+                currentTab === item.id ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-500 dark:text-slate-400'
+              }`}
+            >
+              <Icon className="w-5 h-5" />
+              <span className="truncate max-w-full">{item.label.replace('Módulo de ', '').split(' ')[0]}</span>
+              {item.id === 'compras' && totalPendientes > 0 && <span className="absolute -top-1 right-1 w-2 h-2 rounded-full bg-rose-500" />}
+            </button>
+          );
+        })}
 
         <button
           onClick={() => setMobileOpen(true)}

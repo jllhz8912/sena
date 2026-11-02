@@ -20,12 +20,14 @@ import {
   MessageSquare,
   DoorOpen,
   Lock,
+  UserCog,
 } from 'lucide-react';
 import { dataService, Rol, UsuarioActual } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
 import { ModalConfirmacion } from '../common/ModalConfirmacion';
 import { problemaClave } from './PantallaAcceso';
 import { PanelObservaciones } from '../prueba/PanelObservaciones';
+import { PanelPerfiles } from './PanelPerfiles';
 
 type UsuarioFila = UsuarioActual & { activo: boolean; creadoEn: string; ultimoAcceso: string | null };
 type Evento = Awaited<ReturnType<typeof dataService.listarAuditoria>>[number];
@@ -372,14 +374,15 @@ const PanelFormaIngreso: React.FC<{ onCambio: () => void }> = ({ onCambio }) => 
 
 // ============================================================== VISTA
 export const SeguridadView: React.FC<{ onSesionTerminada: () => void }> = ({ onSesionTerminada }) => {
-  const [pestana, setPestana] = useState<'usuarios' | 'actividad' | 'observaciones'>(
-    dataService.etapa() === 'prueba' ? 'observaciones' : 'usuarios'
+  const [pestana, setPestana] = useState<'perfiles' | 'usuarios' | 'actividad' | 'observaciones'>(
+    dataService.etapa() === 'prueba' ? 'observaciones' : 'perfiles'
   );
   const [, refrescar] = useState(0);
   const libre = dataService.modoAcceso() === 'libre';
   const pestanas = [
     ...(dataService.etapa() === 'prueba' ? [{ id: 'observaciones' as const, label: 'Observaciones de prueba', icon: MessageSquare }] : []),
-    { id: 'usuarios' as const, label: libre ? 'Forma de ingreso' : 'Usuarios y permisos', icon: libre ? DoorOpen : Users },
+    { id: 'perfiles' as const, label: 'Perfiles y permisos', icon: UserCog },
+    { id: 'usuarios' as const, label: libre ? 'Forma de ingreso' : 'Usuarios', icon: libre ? DoorOpen : Users },
     { id: 'actividad' as const, label: 'Bitácora de actividad', icon: History },
   ];
 
@@ -406,6 +409,7 @@ export const SeguridadView: React.FC<{ onSesionTerminada: () => void }> = ({ onS
           {!libre && <PanelUsuarios />}
         </div>
       )}
+      {pestana === 'perfiles' && <PanelPerfiles />}
       {pestana === 'actividad' && <PanelActividad />}
       {pestana === 'observaciones' && <PanelObservaciones />}
     </div>

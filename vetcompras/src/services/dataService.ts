@@ -2,6 +2,10 @@ import { CompraDocumento, Proveedor, Categoria, CentroCosto, RegistroPago, Empre
 import { EMPRESA_DEFECTO } from '../data/defaults';
 import { aplicarCategoriasVenta, fechaLocal } from '../utils/formatters';
 import type { EstadoAlertaCopia } from '../utils/alertaCopia';
+import { modulosDe, type PerfilAcceso } from '../utils/perfiles';
+
+const CLAVE_PERFIL = 'vetcompras_perfil';
+let perfilActivo: PerfilAcceso | null = null;
 
 /**
  * Capa de acceso a datos de VetCompras.
@@ -226,6 +230,7 @@ export const dataService = {
   },
 
   async salir(): Promise<void> {
+    this.salirDelPerfil();
     await api('/sesion/salir', { method: 'POST' }).catch(() => undefined);
     usuarioActual = null;
     inicializacion = null;
@@ -647,6 +652,59 @@ export const dataService = {
 
   obtenerEstadoCopias(): Promise<EstadoCopias> {
     return api('/respaldos/estado');
+  },
+
+  // ================= PERFILES DE INGRESO =================
+
+  obtenerPerfiles(): Promise<PerfilAcceso[]> {
+    return api('/perfiles');
+  },
+
+  /** Guarda perfiles y permisos (solo Administración). `pin` cambia el PIN; `quitarPin` lo elimina. */
+  guardarPerfiles(perfiles: (PerfilAcceso & { pin?: string; quitarPin?: boolean })[]): Promise<PerfilAcceso[]> {
+    return api('/perfiles', { method: 'PUT', body: JSON.stringify({ perfiles }) });
+  },
+
+  restaurarPerfiles(): Promise<PerfilAcceso[]> {
+    return api('/perfiles', { method: 'PUT', body: JSON.stringify({ restaurar: true }) });
+  },
+
+  async entrarConPerfil(id: string, pin?: string): Promise<PerfilAcceso> {
+    const perfil = await api<PerfilAcceso>('/perfiles/entrar', { method: 'POST', body: JSON.stringify({ id, pin }) });
+    perfilActivo = perfil;
+    try {
+      sessionStorage.setItem(CLAVE_PERFIL, perfil.id);
+    } catch {
+      // Sin almacenamiento de sesión: al recargar se vuelve a elegir el perfil
+    }
+    return perfil;
+  },
+
+  perfilActivo(): PerfilAcceso | null {
+    return perfilActivo;
+  },
+
+  /** Perfil elegido antes en esta pestaña (al recargar no se vuelve a preguntar, salvo si pide PIN). */
+  perfilRecordado(): string | null {
+    try {
+      return sessionStorage.getItem(CLAVE_PERFIL);
+    } catch {
+      return null;
+    }
+  },
+
+  salirDelPerfil(): void {
+    perfilActivo = null;
+    try {
+      sessionStorage.removeItem(CLAVE_PERFIL);
+    } catch {
+      // Nada que limpiar
+    }
+  },
+
+  /** ¿El perfil activo puede usar este módulo? Sin perfil elegido, no. */
+  puedeVer(modulo: string): boolean {
+    return modulosDe(perfilActivo).has(modulo);
   },
 
   /** Alerta semanal obligatoria de copia de seguridad (pública: bloquea también la pantalla de inicio). */

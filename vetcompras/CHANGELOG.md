@@ -3,6 +3,30 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.11.0
+- **Perfiles de ingreso**: después de "Ingresar" se elige **Ventas**, **Compras y Gastos** o
+  **Administración**. Cada perfil ve solo sus módulos en el menú, en "Nuevo registro", en el
+  botón flotante y en la barra del celular:
+  - Ventas: Módulo de Ventas, Precios de Venta y Catálogos.
+  - Compras y Gastos: Compras y Gastos, Cuentas por Pagar, Cargar Compras, Inventario y Catálogos.
+  - Administración: todos los módulos.
+- **Perfiles y permisos** (Perfiles y Bitácora): Administración marca qué módulos ve cada
+  perfil, cambia nombres y descripciones, crea o elimina perfiles y asigna un **PIN** (4 a 8
+  números, guardado cifrado). Botón para restaurar los de fábrica. Cada ingreso con perfil
+  queda en la bitácora. "Cambiar de perfil" desde el menú del usuario.
+- **Compras y Gastos**: registro **Sencilla** (datos básicos) o **Detallada** (tipo, prefijo,
+  CUFE, centro de costo, retenciones, soporte). Pregunta "¿Es compra de mercancía?" y
+  "¿Desea que afecte el inventario?"; si afecta, los productos se cargan a mano o con una
+  **plantilla de Excel** (descargar, diligenciar y subir). Si no afecta, solo datos básicos.
+- **Formas de pago**: contado (uno o varios medios), crédito y **crédito-contado** (abono
+  inicial y saldo con vencimiento).
+- **Control de facturas** en Compras y Gastos: todas, por pagar, con saldo, vencidas y
+  pagadas, con cantidad, valor y saldo; clic para filtrar.
+- **Inventario** solo administra (consultar, validar, bajas, ajustes, saldo inicial): las
+  entradas salen de las compras que afectan inventario y las salidas de las ventas, aunque
+  no haya saldo.
+- Se quita el menú "Registro Manual": el registro está en Compras y Gastos y en Ventas.
+
 ## 2.10.0
 - **Alerta semanal obligatoria de copia de seguridad**: cada 7 días aparece un aviso rojo a
   pantalla completa, "HAGA LA COPIA DE SEGURIDAD Y SÚBALA A LA NUBE (DRIVE)", con los pasos

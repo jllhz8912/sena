@@ -44,6 +44,11 @@ interface NavbarProps {
   onVerCartera: () => void;
   estadoCopias: EstadoCopias | null;
   onVerCopias: () => void;
+  /** Módulos que puede usar el perfil de ingreso */
+  puede?: (modulo: string) => boolean;
+  perfil?: { nombre: string } | null;
+  onCambiarPerfil?: () => void;
+  onNuevaVenta?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -58,6 +63,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   onVerCartera,
   estadoCopias,
   onVerCopias,
+  puede = () => true,
+  perfil,
+  onCambiarPerfil,
+  onNuevaVenta,
 }) => {
   const usuario = dataService.usuarioActual();
   const esAdmin = dataService.esAdministrador();
@@ -239,7 +248,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span className="truncate max-w-[140px]">{empresa.nombreComercial || empresa.razonSocial || 'Veterinaria'}</span>
         </button>
 
-        {/* Gestor de Datos / Demo */}
+        {/* Gestor de Datos / Demo (solo perfiles con Copias de Seguridad) */}
+        {puede('copias') && (
         <div className="relative" ref={menuDatosRef}>
           <button
             onClick={() => setMenuDatosAbierto(!menuDatosAbierto)}
@@ -362,8 +372,17 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
 
-        {/* Alertas de vencimiento de facturas */}
-        <AlertasVencimiento documentos={documentos} onVerCartera={onVerCartera} estadoCopias={estadoCopias} onVerCopias={onVerCopias} />
+        )}
+
+        {/* Alertas de vencimiento de facturas y de copias, según el perfil */}
+        {(puede('cuentas_pagar') || puede('copias')) && (
+          <AlertasVencimiento
+            documentos={puede('cuentas_pagar') ? documentos : []}
+            onVerCartera={onVerCartera}
+            estadoCopias={puede('copias') ? estadoCopias : null}
+            onVerCopias={onVerCopias}
+          />
+        )}
 
         {/* Usuario y sesión */}
         <div className="relative">
@@ -373,7 +392,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="Mi usuario"
           >
             <UserCircle2 className="w-4 h-4 text-emerald-600" />
-            <span className="hidden md:inline max-w-[110px] truncate">{usuario?.nombre}</span>
+            <span className="hidden md:inline max-w-[140px] truncate">{perfil ? perfil.nombre : usuario?.nombre}</span>
             <ChevronDown className="w-3.5 h-3.5 opacity-60" />
           </button>
           {menuUsuarioAbierto && (
@@ -383,6 +402,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <p className="text-[11px] text-slate-500">
                   {accesoLibre ? 'Ingreso sin contraseña' : `${usuario?.usuario} · ${usuario?.rol === 'administrador' ? 'Administrador' : 'Auxiliar'}`}
                 </p>
+                {perfil && (
+                  <p className="text-[11px] mt-1 font-semibold text-emerald-700 dark:text-emerald-400">Perfil: {perfil.nombre}</p>
+                )}
                 <p className="text-[11px] text-slate-400 mt-1">
                   VetCompras {dataService.version()}
                   {dataService.etapa() === 'prueba' ? ' (prueba)' : ''}
@@ -398,6 +420,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                   className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-left"
                 >
                   <KeyRound className="w-4 h-4 text-emerald-600" /> Cambiar mi contraseña
+                </button>
+              )}
+              {onCambiarPerfil && (
+                <button
+                  id="cambiar-perfil"
+                  onClick={() => {
+                    setMenuUsuarioAbierto(false);
+                    onCambiarPerfil();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-left"
+                >
+                  <UserCircle2 className="w-4 h-4 text-emerald-600" /> Cambiar de perfil
                 </button>
               )}
               <button
@@ -420,7 +454,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
         </button>
 
-        {/* Action Button: + Nuevo Registro */}
+        {/* Action Button: + Nuevo Registro (opciones según el perfil) */}
+        {(puede('ventas') || puede('compras') || puede('cargar_factura')) && (
         <div className="relative" ref={menuNuevoRef}>
           <button
             onClick={() => setMenuNuevoAbierto(!menuNuevoAbierto)}
@@ -433,6 +468,29 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {menuNuevoAbierto && (
             <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95">
+              {puede('ventas') && onNuevaVenta && (
+                <>
+                  <button
+                    id="nuevo-venta"
+                    onClick={() => {
+                      setMenuNuevoAbierto(false);
+                      onNuevaVenta();
+                    }}
+                    className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-800 dark:text-slate-100 transition-colors group"
+                  >
+                    <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 shrink-0">
+                      <Plus className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-emerald-950 dark:text-emerald-200">Nueva venta</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Productos y servicios, varios medios de pago y recibo</p>
+                    </div>
+                  </button>
+                  {(puede('cargar_factura') || puede('compras')) && <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />}
+                </>
+              )}
+              {puede('cargar_factura') && (
+              <>
               <button
                 onClick={() => {
                   setMenuNuevoAbierto(false);
@@ -476,7 +534,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
+              </>
+              )}
 
+              {puede('compras') && (
               <button
                 onClick={() => {
                   setMenuNuevoAbierto(false);
@@ -496,9 +557,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </p>
                 </div>
               </button>
+              )}
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Modal de Datos de la Empresa / Veterinaria */}

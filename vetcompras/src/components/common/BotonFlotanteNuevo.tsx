@@ -2,9 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Plus, UploadCloud, FilePenLine, FileSpreadsheet, CircleDollarSign, X } from 'lucide-react';
 
 interface BotonFlotanteNuevoProps {
-  onSubirFactura: () => void;
-  onCargarExcel: () => void;
-  onRegistroManual: () => void;
+  onSubirFactura?: () => void;
+  onCargarExcel?: () => void;
+  onRegistroManual?: () => void;
   onNuevaVenta?: () => void;
 }
 
@@ -47,10 +47,11 @@ export const BotonFlotanteNuevo: React.FC<BotonFlotanteNuevoProps> = ({
             </button>
           )}
 
+          {onSubirFactura && (
           <button
             onClick={() => {
               setAbierto(false);
-              onSubirFactura();
+              onSubirFactura?.();
             }}
             className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl text-slate-800 dark:text-slate-100 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 font-semibold text-xs group transition-all"
           >
@@ -59,11 +60,13 @@ export const BotonFlotanteNuevo: React.FC<BotonFlotanteNuevoProps> = ({
               <UploadCloud className="w-4 h-4" />
             </div>
           </button>
+          )}
 
+          {onCargarExcel && (
           <button
             onClick={() => {
               setAbierto(false);
-              onCargarExcel();
+              onCargarExcel?.();
             }}
             className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl text-slate-800 dark:text-slate-100 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 font-semibold text-xs group transition-all"
           >
@@ -72,11 +75,13 @@ export const BotonFlotanteNuevo: React.FC<BotonFlotanteNuevoProps> = ({
               <FileSpreadsheet className="w-4 h-4" />
             </div>
           </button>
+          )}
 
+          {onRegistroManual && (
           <button
             onClick={() => {
               setAbierto(false);
-              onRegistroManual();
+              onRegistroManual?.();
             }}
             className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl text-slate-800 dark:text-slate-100 hover:bg-teal-50 dark:hover:bg-teal-950/60 font-semibold text-xs group transition-all"
           >
@@ -85,6 +90,7 @@ export const BotonFlotanteNuevo: React.FC<BotonFlotanteNuevoProps> = ({
               <FilePenLine className="w-4 h-4" />
             </div>
           </button>
+          )}
         </div>
       )}
 

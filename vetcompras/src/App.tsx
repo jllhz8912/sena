@@ -30,12 +30,80 @@ import { formatCOP } from './utils/formatters';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Loader2 } from 'lucide-react';
+import { PantallaPerfiles } from './components/seguridad/PantallaPerfiles';
+import { PerfilAcceso, modulosDe, moduloInicial } from './utils/perfiles';
 
-function VetComprasApp({ onSalir }: { onSalir: () => void }) {
-  const [currentTab, setCurrentTab] = useState<NavItem>('dashboard');
+/** Perfiles a los que ya se les mostraron los avisos de copias y vencimientos en esta sesión */
+const avisosMostrados = new Set<string>();
+
+/** Después de ingresar: elegir el perfil (Ventas, Compras y Gastos, Administración) y abrir el sistema con sus módulos. */
+function ConPerfil({ onSalir }: { onSalir: () => void }) {
+  const [perfiles, setPerfiles] = useState<PerfilAcceso[] | null>(null);
+  const [perfil, setPerfil] = useState<PerfilAcceso | null>(dataService.perfilActivo());
+  const [error, setError] = useState('');
+
+  const cargar = useCallback(async () => {
+    try {
+      const lista = await dataService.obtenerPerfiles();
+      setPerfiles(lista);
+      // Al recargar la página se conserva el perfil elegido (si no pide PIN)
+      const recordado = lista.find((p) => p.id === dataService.perfilRecordado());
+      if (!dataService.perfilActivo() && recordado && !recordado.tienePin) setPerfil(await dataService.entrarConPerfil(recordado.id));
+    } catch (err: any) {
+      setError(err?.message || 'No se pudieron cargar los perfiles.');
+    }
+  }, []);
+  useEffect(() => {
+    cargar();
+  }, [cargar]);
+
+  if (perfil) {
+    return (
+      <VetComprasApp
+        key={perfil.id}
+        perfil={perfil}
+        onSalir={onSalir}
+        onCambiarPerfil={() => {
+          dataService.salirDelPerfil();
+          setPerfil(null);
+          cargar();
+        }}
+      />
+    );
+  }
+  if (error) {
+    return (
+      <div className="h-screen flex items-center justify-center p-4">
+        <div className="max-w-md p-6 rounded-2xl border border-rose-200 bg-rose-50 text-rose-900 space-y-3">
+          <p className="font-bold">No se pudieron cargar los perfiles</p>
+          <p className="text-sm">{error}</p>
+          <button onClick={() => (setError(''), cargar())} className="px-4 py-2 rounded-xl bg-rose-600 text-white text-sm font-semibold">
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
+  if (!perfiles) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+      </div>
+    );
+  }
+  return <PantallaPerfiles perfiles={perfiles} onElegido={setPerfil} onSalir={onSalir} />;
+}
+
+function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => void; perfil: PerfilAcceso; onCambiarPerfil: () => void }) {
+  // Módulos que el perfil puede ver; cualquier intento de abrir otro lleva a su pantalla inicial
+  const permitidos = modulosDe(perfil);
+  const puede = (m: string) => permitidos.has(m);
+  const inicio = moduloInicial(perfil) as NavItem;
+  const [currentTab, setCurrentTabLibre] = useState<NavItem>(inicio);
+  const setCurrentTab = (t: NavItem) => setCurrentTabLibre(puede(t) ? t : inicio);
   // "Aceptar e ir a Copias de Seguridad" en la alerta semanal
   useEffect(() => {
-    const irACopias = () => setCurrentTab('copias');
+    const irACopias = () => setCurrentTabLibre((t) => (modulosDe(perfil).has('copias') ? 'copias' : t));
     if (pedidoIrACopias()) irACopias();
     window.addEventListener(EVENTO_IR_A_COPIAS, irACopias);
     return () => window.removeEventListener(EVENTO_IR_A_COPIAS, irACopias);
@@ -104,6 +172,7 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
 
   // Si el usuario hace click en el menú lateral para subir factura, importar excel o registro manual:
   const handleCambioPestana = (tab: NavItem) => {
+    if (!puede(tab)) return;
     if (tab === 'cargar_factura') {
       setModalCargaAbierto(true);
     } else if (tab === 'cargar_excel') {
@@ -122,16 +191,16 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
   };
 
   const { mostrarToast } = useToast();
-  const avisoMostrado = React.useRef(false);
+  // Avisos al abrir: una sola vez por perfil en la sesión, y solo a quien le corresponden
   useEffect(() => {
-    if (cargando || !copiasConsultadas || avisoMostrado.current) return;
-    avisoMostrado.current = true;
+    if (cargando || !copiasConsultadas || avisosMostrados.has(perfil.id)) return;
+    avisosMostrados.add(perfil.id);
     const copia = estadoRecordatorio(estadoCopias);
-    if (copia.vencido) {
+    if (copia.vencido && puede('copias')) {
       mostrarToast('warning', 'Copia de seguridad pendiente', `${copia.texto} Vaya a "Copias de Seguridad".`, 12000);
     }
     const r = resumenAlertas(documentos);
-    if (r.urgentes === 0) return;
+    if (r.urgentes === 0 || !puede('cuentas_pagar')) return;
     const partes = [
       r.vencidas.length && `${r.vencidas.length} vencida(s) por ${formatCOP(sumaSaldos(r.vencidas))}`,
       r.hoy.length && `${r.hoy.length} vence(n) hoy por ${formatCOP(sumaSaldos(r.hoy))}`,
@@ -164,7 +233,7 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
     reportes: 'Reportería e Informes Tributarios (DIAN)',
     catalogos: 'Catálogos: productos, servicios, gastos, categorías y proveedores',
     configuracion: 'Configuración de la Veterinaria y Marca',
-    seguridad: dataService.modoAcceso() === 'libre' ? 'Forma de Ingreso y Bitácora' : 'Usuarios, Permisos y Bitácora',
+    seguridad: dataService.modoAcceso() === 'libre' ? 'Perfiles, Ingreso y Bitácora' : 'Perfiles, Usuarios y Bitácora',
     copias: 'Copias de Seguridad',
   };
 
@@ -181,6 +250,7 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
         copiaPendiente={estadoRecordatorio(estadoCopias).vencido}
         mobileOpen={mobileMenuAbierto}
         setMobileOpen={setMobileMenuAbierto}
+        modulos={permitidos}
       />
 
       {/* Contenedor Principal */}
@@ -201,6 +271,10 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
           onVerCartera={() => setCurrentTab('cuentas_pagar')}
           estadoCopias={estadoCopias}
           onVerCopias={() => setCurrentTab('copias')}
+          puede={puede}
+          perfil={perfil}
+          onCambiarPerfil={onCambiarPerfil}
+          onNuevaVenta={() => setModalVentaAbierto(true)}
         />
 
         {dataService.etapa() === 'prueba' && (
@@ -331,15 +405,21 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
       </div>
 
       {/* Botón Flotante de Acceso Rápido "+ Nuevo Registro" */}
-      <BotonFlotanteNuevo
-        onNuevaVenta={() => setModalVentaAbierto(true)}
-        onSubirFactura={() => setModalCargaAbierto(true)}
-        onCargarExcel={() => setModalExcelAbierto(true)}
-        onRegistroManual={() => {
-          setDocumentoParaEditar(undefined);
-          setModalManualAbierto(true);
-        }}
-      />
+      {(puede('ventas') || puede('compras') || puede('cargar_factura')) && (
+        <BotonFlotanteNuevo
+          onNuevaVenta={puede('ventas') ? () => setModalVentaAbierto(true) : undefined}
+          onSubirFactura={puede('cargar_factura') ? () => setModalCargaAbierto(true) : undefined}
+          onCargarExcel={puede('cargar_factura') ? () => setModalExcelAbierto(true) : undefined}
+          onRegistroManual={
+            puede('compras')
+              ? () => {
+                  setDocumentoParaEditar(undefined);
+                  setModalManualAbierto(true);
+                }
+              : undefined
+          }
+        />
+      )}
 
       {/* Modal Carga Factura Electrónica (XML / PDF / ZIP) */}
       {modalCargaAbierto && (
@@ -501,7 +581,7 @@ function PuertaDeAcceso() {
       return <PantallaAcceso key="cambio_clave" modo="cambio_clave" usuario={estado.usuario} onListo={alIngresar} />;
     case 'listo':
       return (
-        <VetComprasApp
+        <ConPerfil
           key={estado.usuario.id}
           onSalir={async () => {
             await dataService.salir();

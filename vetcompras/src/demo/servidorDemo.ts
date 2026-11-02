@@ -10,6 +10,7 @@
  */
 
 import { estadoAlertaCopia } from '../utils/alertaCopia';
+import { PERFILES_DEFECTO, modulosDe, normalizarPerfiles, type PerfilAcceso } from '../utils/perfiles';
 import {
   CATEGORIAS_DEFECTO,
   CENTROS_COSTO_DEFECTO,
@@ -58,6 +59,8 @@ interface Estado extends Datos {
   ultimaCopia?: { fecha: string; medio: string } | null;
   /** Última vez que se aceptó la alerta semanal de copia de seguridad */
   alertaCopia?: string | null;
+  /** Perfiles de ingreso (en la demostración el PIN se guarda tal cual, solo en este navegador) */
+  perfiles?: (PerfilAcceso & { pin?: string })[];
   diasRecordatorio?: number;
   sesion: { usuarioId: string; ultimoUso: number } | null;
   modoAcceso: 'libre' | 'usuarios';
@@ -254,7 +257,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
       marca: { nombre: e.nombreComercial || e.razonSocial || 'Los Criollos Vet', slogan: e.slogan || '', logoUrl: e.logoUrl || '', colorPrimario: e.colorPrimario || '' },
       requiereConfiguracion: modoAcceso === 'usuarios' && estado.usuarios.length === 0,
       minutosInactividad: MINUTOS_INACTIVIDAD,
-      version: '2.10.0-demo',
+      version: '2.11.0-demo',
     };
   }
   if (metodo === 'POST' && ruta === '/sesion/ingresar-libre') {
@@ -317,6 +320,45 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
     if (yo.rol !== 'administrador') throw new ErrorHttp(403, 'Su usuario no tiene permiso para esta acción. Solicítela a un administrador.');
   };
 
+  const perfilesDemo = (): (PerfilAcceso & { pin?: string })[] => estado.perfiles || PERFILES_DEFECTO;
+  const publico = (p: PerfilAcceso & { pin?: string }) => {
+    const { pin, ...resto } = p;
+    return { ...resto, modulos: [...modulosDe(p)], tienePin: !!pin };
+  };
+  if (metodo === 'GET' && ruta === '/perfiles') return perfilesDemo().map(publico);
+  if (metodo === 'PUT' && ruta === '/perfiles') {
+    admin();
+    if (cuerpo?.restaurar) {
+      estado.perfiles = undefined;
+      auditar(yo.usuario, 'Perfiles restaurados a los de fábrica');
+      return perfilesDemo().map(publico);
+    }
+    let limpios: PerfilAcceso[];
+    try {
+      limpios = normalizarPerfiles(cuerpo?.perfiles);
+    } catch (err: any) {
+      throw new ErrorHttp(400, err.message);
+    }
+    const anteriores = perfilesDemo();
+    estado.perfiles = limpios.map((p, i) => {
+      const pedido = cuerpo.perfiles[i] || {};
+      if (pedido.pin) {
+        if (!/^\d{4,8}$/.test(pedido.pin)) throw new ErrorHttp(400, `El PIN de ${p.nombre} debe tener de 4 a 8 números.`);
+        return { ...p, pin: String(pedido.pin) };
+      }
+      const previo = anteriores.find((a) => a.id === p.id);
+      return pedido.quitarPin || !previo?.pin ? p : { ...p, pin: previo.pin };
+    });
+    auditar(yo.usuario, 'Perfiles y permisos modificados');
+    return estado.perfiles.map(publico);
+  }
+  if (metodo === 'POST' && ruta === '/perfiles/entrar') {
+    const perfil = perfilesDemo().find((p) => p.id === cuerpo?.id);
+    if (!perfil) throw new ErrorHttp(404, 'Ese perfil ya no existe.');
+    if (perfil.pin && String(cuerpo?.pin || '') !== perfil.pin) throw new ErrorHttp(401, 'El PIN no es correcto.');
+    auditar(yo.usuario, `Ingreso con el perfil ${perfil.nombre}`);
+    return publico(perfil);
+  }
   if (metodo === 'POST' && ruta === '/sesion/cambiar-clave') {
     if (cuerpo.claveActual !== yo.clave) throw new ErrorHttp(400, 'La contraseña actual no es correcta.');
     const nueva = validarClave(cuerpo.claveNueva);

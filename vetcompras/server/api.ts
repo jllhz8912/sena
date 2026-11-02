@@ -22,10 +22,13 @@ import {
   ipDe,
   NOMBRE_COOKIE,
   MINUTOS_INACTIVIDAD,
+  cifrarClave,
+  verificarClave,
 } from './seguridad';
 import { generarDatosDemostracion, CATEGORIAS_DEFECTO, CENTROS_COSTO_DEFECTO, PROVEEDORES_DEFECTO } from '../src/data/defaults';
 import pkg from '../package.json';
 import { estadoAlertaCopia } from '../src/utils/alertaCopia';
+import { PERFILES_DEFECTO, modulosDe, normalizarPerfiles, type PerfilAcceso } from '../src/utils/perfiles';
 
 type Manejador = (req: Request, res: Response) => unknown;
 
@@ -261,6 +264,67 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
         etapa: process.env.ETAPA === 'prueba' ? 'prueba' : 'produccion',
         copias: bd.estadoCopias(),
       });
+    })
+  );
+
+  // -------------------------------------------------------------- perfiles
+  // Perfiles de ingreso (Ventas, Compras y Gastos, Administración) y sus módulos.
+  // El PIN se guarda cifrado y nunca se devuelve.
+  type PerfilGuardado = PerfilAcceso & { pin?: string };
+  const perfilesGuardados = (): PerfilGuardado[] => bd.obtenerConfig<{ perfiles: PerfilGuardado[] }>('perfilesAcceso')?.perfiles || PERFILES_DEFECTO;
+  const perfilesPublicos = () => perfilesGuardados().map(({ pin, ...p }) => ({ ...p, modulos: [...modulosDe(p)], tienePin: !!pin }));
+
+  api.get(
+    '/perfiles',
+    seguro((_req, res) => {
+      res.json(perfilesPublicos());
+    })
+  );
+
+  api.put(
+    '/perfiles',
+    soloAdministrador,
+    seguro((req, res) => {
+      if (req.body?.restaurar) {
+        bd.guardarConfig('perfilesAcceso', { perfiles: PERFILES_DEFECTO });
+        auditar(req, 'Perfiles restaurados a los de fábrica');
+        return res.json(perfilesPublicos());
+      }
+      let limpios: PerfilAcceso[];
+      try {
+        limpios = normalizarPerfiles(req.body?.perfiles);
+      } catch (err: any) {
+        throw Object.assign(new Error(err.message), { status: 400 });
+      }
+      const anteriores = perfilesGuardados();
+      const entrada = req.body.perfiles as Array<{ id?: string; pin?: string; quitarPin?: boolean }>;
+      const perfiles: PerfilGuardado[] = limpios.map((p, i) => {
+        const pedido = entrada[i] || {};
+        const previo = anteriores.find((a) => a.id === p.id);
+        if (pedido.pin) {
+          if (!/^\d{4,8}$/.test(pedido.pin)) throw Object.assign(new Error(`El PIN de ${p.nombre} debe tener de 4 a 8 números.`), { status: 400 });
+          return { ...p, pin: cifrarClave(pedido.pin) };
+        }
+        return pedido.quitarPin || !previo?.pin ? p : { ...p, pin: previo.pin };
+      });
+      bd.guardarConfig('perfilesAcceso', { perfiles });
+      auditar(req, 'Perfiles y permisos modificados', { detalle: perfiles.map((p) => `${p.nombre}: ${modulosDe(p).size} módulo(s)${p.pin ? ', con PIN' : ''}`).join(' · ') });
+      res.json(perfilesPublicos());
+    })
+  );
+
+  api.post(
+    '/perfiles/entrar',
+    seguro((req, res) => {
+      const perfil = perfilesGuardados().find((p) => p.id === req.body?.id);
+      if (!perfil) throw Object.assign(new Error('Ese perfil ya no existe.'), { status: 404 });
+      if (perfil.pin && !verificarClave(String(req.body?.pin || ''), perfil.pin)) {
+        auditar(req, 'PIN de perfil incorrecto', { detalle: perfil.nombre });
+        throw Object.assign(new Error('El PIN no es correcto.'), { status: 401 });
+      }
+      auditar(req, `Ingreso con el perfil ${perfil.nombre}`);
+      const { pin, ...publico } = perfil;
+      res.json({ ...publico, modulos: [...modulosDe(perfil)], tienePin: !!pin });
     })
   );
 
