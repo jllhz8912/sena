@@ -15,8 +15,12 @@ import {
   MapPin,
   ShieldCheck,
   Save,
+  Boxes,
+  ShoppingCart,
 } from 'lucide-react';
-import { Proveedor, Categoria, CentroCosto, EmpresaInfo } from '../../types';
+import { Proveedor, Categoria, CentroCosto, EmpresaInfo, Venta } from '../../types';
+import { ConceptosCatalogo } from './ConceptosCatalogo';
+import { CategoriasVentaCatalogo } from './CategoriasVentaCatalogo';
 import { ModalConfirmacion } from '../common/ModalConfirmacion';
 import { dataService } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
@@ -25,17 +29,21 @@ interface CatalogosViewProps {
   proveedores: Proveedor[];
   categorias: Categoria[];
   centrosCosto: CentroCosto[];
+  ventas?: Venta[];
   onDatosActualizados: () => void;
 }
+
+type Pestana = 'conceptos' | 'categoriasVenta' | 'proveedores' | 'categorias' | 'centros' | 'empresa';
 
 export const CatalogosView: React.FC<CatalogosViewProps> = ({
   proveedores,
   categorias,
   centrosCosto,
+  ventas = [],
   onDatosActualizados,
 }) => {
   const { mostrarToast } = useToast();
-  const [pestanaActiva, setPestanaActiva] = useState<'proveedores' | 'categorias' | 'centros' | 'empresa'>('proveedores');
+  const [pestanaActiva, setPestanaActiva] = useState<Pestana>('conceptos');
   const [busqueda, setBusqueda] = useState('');
   const [empresa, setEmpresa] = useState<EmpresaInfo>(() => dataService.obtenerDatosEmpresa());
   const [guardandoEmpresa, setGuardandoEmpresa] = useState(false);
@@ -100,58 +108,41 @@ export const CatalogosView: React.FC<CatalogosViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Selector de Pestañas */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800">
-        <button
-          onClick={() => {
-            setPestanaActiva('proveedores');
-            setBusqueda('');
-          }}
-          className={`flex items-center gap-2 px-5 py-3 border-b-2 font-semibold text-xs tracking-tight transition-all ${
-            pestanaActiva === 'proveedores'
-              ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
-        >
-          <Building className="w-4 h-4" />
-          <span>Proveedores ({proveedores.length})</span>
-        </button>
-
-        <button
-          onClick={() => setPestanaActiva('categorias')}
-          className={`flex items-center gap-2 px-5 py-3 border-b-2 font-semibold text-xs tracking-tight transition-all ${
-            pestanaActiva === 'categorias'
-              ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
-        >
-          <Tag className="w-4 h-4" />
-          <span>Categorías ({categorias.length})</span>
-        </button>
-
-        <button
-          onClick={() => setPestanaActiva('centros')}
-          className={`flex items-center gap-2 px-5 py-3 border-b-2 font-semibold text-xs tracking-tight transition-all ${
-            pestanaActiva === 'centros'
-              ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
-        >
-          <FolderTree className="w-4 h-4" />
-          <span>Centros de Costo ({centrosCosto.length})</span>
-        </button>
-
-        <button
-          onClick={() => setPestanaActiva('empresa')}
-          className={`flex items-center gap-2 px-5 py-3 border-b-2 font-semibold text-xs tracking-tight transition-all ${
-            pestanaActiva === 'empresa'
-              ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
-        >
-          <Building2 className="w-4 h-4" />
-          <span>Datos de la Veterinaria</span>
-        </button>
+      <div className="flex border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
+        {(
+          [
+            { id: 'conceptos', icono: Boxes, texto: 'Productos, servicios y gastos' },
+            { id: 'categoriasVenta', icono: ShoppingCart, texto: 'Categorías de venta' },
+            { id: 'categorias', icono: Tag, texto: `Categorías de compras y gastos (${categorias.length})` },
+            { id: 'centros', icono: FolderTree, texto: `Centros de Costo (${centrosCosto.length})` },
+            { id: 'proveedores', icono: Building, texto: `Proveedores (${proveedores.length})` },
+            { id: 'empresa', icono: Building2, texto: 'Datos de la Veterinaria' },
+          ] as { id: Pestana; icono: React.ComponentType<{ className?: string }>; texto: string }[]
+        ).map(({ id, icono: Icono, texto }) => (
+          <button
+            key={id}
+            id={`pestana-${id}`}
+            onClick={() => {
+              setPestanaActiva(id);
+              setBusqueda('');
+            }}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 font-semibold text-xs tracking-tight transition-all whitespace-nowrap ${
+              pestanaActiva === id
+                ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+          >
+            <Icono className="w-4 h-4" />
+            <span>{texto}</span>
+          </button>
+        ))}
       </div>
+
+      {pestanaActiva === 'conceptos' && (
+        <ConceptosCatalogo categorias={categorias} centrosCosto={centrosCosto} ventas={ventas} onDatosActualizados={onDatosActualizados} />
+      )}
+
+      {pestanaActiva === 'categoriasVenta' && <CategoriasVentaCatalogo ventas={ventas} onDatosActualizados={onDatosActualizados} />}
 
       {/* PESTAÑA PROVEEDORES */}
       {pestanaActiva === 'proveedores' && (
@@ -250,7 +241,7 @@ export const CatalogosView: React.FC<CatalogosViewProps> = ({
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <p className="text-xs text-slate-500">
-              Clasificaciones precargadas para compras de medicamentos, concentrados y gastos veterinarios.
+              Clasifican las compras y los gastos (medicamentos, concentrados, arriendo, servicios…) en los reportes y en el IVA descontable.
             </p>
             <button
               onClick={() => setModalCategoria({ abierto: true })}

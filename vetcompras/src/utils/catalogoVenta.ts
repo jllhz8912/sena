@@ -4,7 +4,8 @@
  * antes) y lo busca por varias variables a la vez.
  */
 import { FichaPrecio, Producto, Venta } from '../types';
-import { CATEGORIAS_VENTA, SUBCATEGORIAS_POR_CATEGORIA } from './formatters';
+import { CATEGORIAS_SERVICIO, CATEGORIAS_VENTA, CATEGORIAS_VENTA_TODAS, SUBCATEGORIAS_POR_CATEGORIA } from './formatters';
+import { controlaInventario, sirvePara, tipoDe } from './conceptos';
 import { normalizarNombre } from './inventario';
 import { itemsDeVenta } from './ventas';
 
@@ -29,10 +30,9 @@ export interface EntradaCatalogo {
   origen: OrigenCatalogo;
 }
 
-/** Categorías de venta que corresponden a servicios (el resto son productos). */
-export const CATEGORIAS_SERVICIO = new Set(['consultas_clinica', 'tratamientos_clinica', 'vacunas', 'banos']);
+export { CATEGORIAS_SERVICIO };
 const tipoDeCategoria = (c: string): TipoCatalogo => (CATEGORIAS_SERVICIO.has(c) ? 'servicio' : 'producto');
-const nombreCategoria = (c: string) => CATEGORIAS_VENTA.find((x) => x.id === c)?.label || c;
+const nombreCategoria = (c: string) => (CATEGORIAS_VENTA.find((x) => x.id === c) || CATEGORIAS_VENTA_TODAS.find((x) => x.id === c))?.label || c;
 
 export function construirCatalogo(opciones: {
   fichas?: FichaPrecio[];
@@ -67,13 +67,15 @@ export function construirCatalogo(opciones: {
       codigo: p?.codigo, grupo: p?.grupo, alias: p?.alias || [], unidad: f.unidad, existencia: f.productoId ? existencias.get(f.productoId) : undefined, origen: 'ficha',
     });
   }
-  // 2) Productos del inventario
+  // 2) Productos y servicios del catálogo que se venden
   for (const p of productos) {
-    if (p.activo === false) continue;
+    if (!sirvePara(p, 'venta')) continue;
     const vendido = vendidos.get(normalizarNombre(p.nombre));
+    const tipo: TipoCatalogo = tipoDe(p) === 'servicio' ? 'servicio' : 'producto';
     agregar({
-      nombre: p.nombre, tipo: 'producto', categoria: vendido?.categoria || 'vitrina', precio: p.precioVenta || vendido?.precio || 0, productoId: p.id,
-      codigo: p.codigo, grupo: p.grupo, alias: p.alias || [], unidad: p.unidad, existencia: existencias.get(p.id), origen: 'inventario',
+      nombre: p.nombre, tipo, categoria: p.categoriaVenta || vendido?.categoria || (tipo === 'servicio' ? 'varios' : 'vitrina'), subcategoria: p.subcategoriaVenta,
+      precio: p.precioVenta || vendido?.precio || 0, productoId: p.id,
+      codigo: p.codigo, grupo: p.grupo, alias: p.alias || [], unidad: p.unidad, existencia: controlaInventario(p) ? existencias.get(p.id) : undefined, origen: 'inventario',
     });
   }
   // 3) Lo vendido antes (con su último precio)

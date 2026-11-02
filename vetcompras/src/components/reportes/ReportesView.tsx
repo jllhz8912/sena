@@ -50,6 +50,7 @@ import {
   getMedioPagoVentaInfo,
   getSubcategoriaVentaInfo,
   SUBCATEGORIAS_POR_CATEGORIA,
+  CATEGORIAS_VENTA,
   SUBCATEGORIAS_TRATAMIENTOS,
   SUBCATEGORIAS_VITRINA,
   fechaLocal,
@@ -76,8 +77,8 @@ interface ReportesViewProps {
   ventas?: Venta[];
 }
 
-// Las 7 Categorías Oficiales de Venta de la Veterinaria
-const CATEGORIAS_VENTA_DEF: Array<{
+// Estilo de las categorías de venta de fábrica (las creadas en Catálogos usan el genérico)
+const ESTILOS_CATEGORIA_VENTA: Array<{
   key: CategoriaVenta;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -95,6 +96,14 @@ const CATEGORIAS_VENTA_DEF: Array<{
   { key: 'varios', label: 'Varios / Otros', icon: Tag, color: 'text-slate-600 dark:text-slate-400', bgLight: 'bg-slate-50 dark:bg-slate-900', borderLight: 'border-slate-200 dark:border-slate-800' },
 ];
 
+type DefCategoriaVenta = (typeof ESTILOS_CATEGORIA_VENTA)[number];
+
+/** Categorías de venta vigentes (editables en Catálogos) con su icono y colores. */
+function definicionesCategoriasVenta(): DefCategoriaVenta[] {
+  const generico = ESTILOS_CATEGORIA_VENTA[ESTILOS_CATEGORIA_VENTA.length - 1];
+  return CATEGORIAS_VENTA.map((c) => ({ ...(ESTILOS_CATEGORIA_VENTA.find((e) => e.key === c.id) || generico), key: c.id, label: c.label }));
+}
+
 export const ReportesView: React.FC<ReportesViewProps> = ({
   documentos,
   categorias,
@@ -102,6 +111,7 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
   proveedores,
   ventas = [],
 }) => {
+  const CATEGORIAS_VENTA_DEF = definicionesCategoriasVenta();
   const { mostrarToast } = useToast();
 
   // Tab activo:
@@ -296,7 +306,7 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
     };
   }, [todasVentasPeriodo, todosDocsPeriodo, ventas, documentos]);
 
-  // 4. Desglose de Ventas por las 7 Categorías Oficiales
+  // 4. Desglose de Ventas por categoría de venta
   const reporte7CategoriasVenta = useMemo(() => {
     const mapa = new Map<
       string,
@@ -309,7 +319,7 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
       }
     >();
 
-    // Inicializar con las 7 categorías oficiales para que siempre aparezcan
+    // Inicializar con las categorías de venta vigentes para que siempre aparezcan
     CATEGORIAS_VENTA_DEF.forEach((cat) => {
       mapa.set(cat.key, {
         categoriaKey: cat.key,
@@ -841,7 +851,7 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
       <div className="flex border-b border-slate-200 dark:border-slate-800 overflow-x-auto text-xs font-semibold whitespace-nowrap scrollbar-none">
         {[
           { id: 1, label: '1. Estado de Utilidad y Rendimiento', icon: TrendingUp },
-          { id: 2, label: '2. Ventas por Categoría (7 Categorías)', icon: Tag },
+          { id: 2, label: `2. Ventas por Categoría (${CATEGORIAS_VENTA_DEF.length})`, icon: Tag },
           { id: 3, label: '3. Compras y Gastos por Categoría', icon: Package },
           { id: 4, label: '4. Medios de Pago (Efectivo / Bancos)', icon: CreditCard },
           { id: 5, label: '5. Cartera (Por Cobrar y Por Pagar)', icon: Clock },
@@ -1067,7 +1077,7 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
             <div>
               <h4 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
                 <Tag className="w-5 h-5 text-emerald-600" />
-                <span>Ventas Discriminadas por las 7 Categorías</span>
+                <span>Ventas Discriminadas por Categoría</span>
               </h4>
               <p className="text-xs text-slate-500">
                 Baños, Vacunas, Consultas clinica, Tratamientos clinica, Purinas (bultos y paquetes), Purinas a granel, Vitrina
@@ -1087,7 +1097,7 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
                 }}
                 className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white"
               >
-                <option value="todas">Todas las 7 Categorías</option>
+                <option value="todas">Todas las categorías</option>
                 {CATEGORIAS_VENTA_DEF.map((c) => (
                   <option key={c.key} value={c.key}>
                     {c.label}
@@ -1116,7 +1126,7 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
           {/* Tarjetas Visuales de las 7 Categorías de Venta */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {reporte7CategoriasVenta.map((cat) => {
-              const def = CATEGORIAS_VENTA_DEF.find((c) => c.key === cat.categoriaKey) || CATEGORIAS_VENTA_DEF[0];
+              const def = CATEGORIAS_VENTA_DEF.find((c) => c.key === cat.categoriaKey) || { ...ESTILOS_CATEGORIA_VENTA[ESTILOS_CATEGORIA_VENTA.length - 1], label: cat.nombre };
               const Icon = def.icon;
               const isSelected = filtroCategoriaVenta === cat.categoriaKey;
 

@@ -20,6 +20,7 @@ import {
   CATEGORIAS_VENTA,
   MEDIOS_PAGO_VENTA,
   SUBCATEGORIAS_POR_CATEGORIA,
+  CATEGORIAS_SERVICIO,
   fechaLocal,
 } from '../../utils/formatters';
 import {
@@ -35,6 +36,7 @@ import { useToast } from '../../context/ToastContext';
 import { ModalDocumentoVenta } from './ModalDocumentoVenta';
 import { BuscadorVenta } from './BuscadorVenta';
 import { EntradaCatalogo, construirCatalogo } from '../../utils/catalogoVenta';
+import { sirvePara } from '../../utils/conceptos';
 
 interface ModalRegistroVentaProps {
   ventaParaEditar?: Venta;
@@ -144,7 +146,7 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
   useEffect(() => {
     Promise.all([dataService.obtenerProductos(), dataService.obtenerMovimientos()])
       .then(([p, m]) => {
-        setProductos(p.filter((x) => x.activo !== false));
+        setProductos(p.filter((x) => sirvePara(x, 'venta')));
         setExistencias(new Map(calcularSaldos(p, m).map((s) => [s.producto.id, s.saldo])));
       })
       .catch(() => undefined);
@@ -260,8 +262,41 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
   const cambio = cambioEfectivo(pagos);
   const subtotalNuevo = subtotalItem(nuevo);
 
+  // Un concepto nuevo escrito a mano se puede guardar en el catálogo para la próxima venta
+  const [guardarEnCatalogo, setGuardarEnCatalogo] = useState(false);
+  const conceptoEsNuevo =
+    !!nuevo.concepto.trim() && !productoNuevo && !fichas.some((f) => normalizarNombre(f.nombre) === normalizarNombre(nuevo.concepto));
+
+  const crearEnCatalogo = async (): Promise<Producto | undefined> => {
+    const ahora = new Date().toISOString();
+    const tipo = CATEGORIAS_SERVICIO.has(nuevo.categoria) ? 'servicio' : 'producto';
+    const sub = SUBCATEGORIAS_POR_CATEGORIA[nuevo.categoria]?.find((x) => x.nombreCorto.toLowerCase() === nuevo.concepto.trim().toLowerCase());
+    const concepto: Producto = {
+      id: nuevoId('prod'),
+      nombre: nuevo.concepto.trim(),
+      tipo,
+      usos: tipo === 'servicio' ? ['venta'] : ['venta', 'compra'],
+      categoriaVenta: nuevo.categoria,
+      subcategoriaVenta: sub?.value,
+      precioVenta: nuevo.precioUnitario || undefined,
+      unidad: tipo === 'servicio' ? 'SERVICIO' : 'UND',
+      activo: true,
+      creadoEn: ahora,
+      actualizadoEn: ahora,
+    };
+    try {
+      await dataService.guardarProducto(concepto);
+      setProductos((lista) => [...lista, concepto]);
+      mostrarToast('success', 'Guardado en el catálogo', `“${concepto.nombre}” ya aparece en el buscador. Puede editarlo en Catálogos.`);
+      return concepto;
+    } catch (err: any) {
+      mostrarToast('warning', 'No se guardó en el catálogo', err?.message || 'La venta sigue igual.');
+      return undefined;
+    }
+  };
+
   // ------------------------------------------------------------ ítems
-  const agregarItem = () => {
+  const agregarItem = async () => {
     if (!nuevo.concepto.trim()) {
       mostrarToast('warning', 'Falta el concepto', 'Escriba o elija qué se está vendiendo.');
       conceptoRef.current?.focus();
@@ -272,6 +307,7 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
       return;
     }
     const sub = SUBCATEGORIAS_POR_CATEGORIA[nuevo.categoria]?.find((s) => s.nombreCorto.toLowerCase() === nuevo.concepto.trim().toLowerCase());
+    const creado = guardarEnCatalogo && conceptoEsNuevo ? await crearEnCatalogo() : undefined;
     setItems((lista) => [
       ...lista,
       {
@@ -283,9 +319,10 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
         precioUnitario: nuevo.precioUnitario,
         descuento: nuevo.descuento || undefined,
         subtotal: subtotalNuevo,
-        productoId: productoNuevo?.id,
+        productoId: creado?.id || productoNuevo?.id,
       },
     ]);
+    setGuardarEnCatalogo(false);
     setNuevo((n) => ({ ...n, concepto: '', cantidad: 1, precioUnitario: 0, descuento: 0 }));
     conceptoRef.current?.focus();
   };
@@ -530,6 +567,12 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
                     <Plus className="w-4 h-4" /> Agregar {subtotalNuevo > 0 ? formatCOP(subtotalNuevo) : ''}
                   </button>
                 </div>
+                {conceptoEsNuevo && (
+                  <label className="col-span-full flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 cursor-pointer">
+                    <input id="guardar-en-catalogo" type="checkbox" checked={guardarEnCatalogo} onChange={(e) => setGuardarEnCatalogo(e.target.checked)} />
+                    “{nuevo.concepto.trim()}” no está en el catálogo: <strong>guardarlo</strong> con esta categoría y precio para las próximas ventas
+                  </label>
+                )}
               </div>
 
               {/* Ítems agregados: editables en la misma tabla */}

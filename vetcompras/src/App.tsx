@@ -154,7 +154,7 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
     cargar_excel: 'Importar Facturas desde Excel',
     registro_manual: 'Registro Manual de Documento',
     reportes: 'Reportería e Informes Tributarios (DIAN)',
-    catalogos: 'Catálogos de Proveedores y Centros de Costo',
+    catalogos: 'Catálogos: productos, servicios, gastos, categorías y proveedores',
     configuracion: 'Configuración de la Veterinaria y Marca',
     seguridad: dataService.modoAcceso() === 'libre' ? 'Forma de Ingreso y Bitácora' : 'Usuarios, Permisos y Bitácora',
     copias: 'Copias de Seguridad',
@@ -312,6 +312,7 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
                   proveedores={proveedores}
                   categorias={categorias}
                   centrosCosto={centrosCosto}
+                  ventas={ventas}
                   onDatosActualizados={recargarDatos}
                 />
               )}

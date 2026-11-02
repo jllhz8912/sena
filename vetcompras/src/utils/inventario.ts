@@ -16,6 +16,8 @@ export function normalizarNombre(texto: string): string {
 }
 
 const ahora = () => new Date().toISOString();
+/** Igual que `controlaInventario` de conceptos.ts (aquí para no crear dependencia circular). */
+const lleva = (p: Producto) => (p.tipo || 'producto') === 'producto' && p.controlaInventario !== false;
 const slug = (t: string) => normalizarNombre(t).replace(/\s+/g, '-').slice(0, 30) || 'producto';
 
 /** Busca el producto por id, código, nombre o alias (sin tildes ni mayúsculas). */
@@ -80,6 +82,11 @@ export function movimientosDeCompra(
       if (editadas.has(linea.id)) continue;
       const costo = Math.abs(Number(linea.valorUnitario) || 0);
       let prod = buscarProducto(catalogo, { id: linea.productoId, codigo: linea.codigo, nombre: linea.descripcion });
+      // Servicios y conceptos de gasto del catálogo no llevan existencias
+      if (prod && !lleva(prod)) {
+        vigentes.delete(idMov);
+        continue;
+      }
       if (!prod) {
         prod = {
           id: `prod-${slug(linea.descripcion)}-${Math.random().toString(36).slice(2, 7)}`,
@@ -139,7 +146,7 @@ export function movimientosDeVenta(
     const cantidad = Math.abs(Number(item.cantidad) || 0);
     if (!cantidad) continue;
     const prod = buscarProducto(productos, { id: item.productoId, nombre: item.concepto });
-    if (!prod) continue; // servicio (consulta, baño…) o producto sin crear: no mueve inventario
+    if (!prod || !lleva(prod)) continue; // servicio (consulta, baño…) o producto sin crear: no mueve inventario
     const idMov = `mov-v-${venta.id}-${item.id}`;
     vigentes.add(idMov);
     if (editadas.has(item.id)) continue;

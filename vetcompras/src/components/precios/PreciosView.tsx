@@ -25,6 +25,7 @@ import { dataService } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
 import { ModalConfirmacion } from '../common/ModalConfirmacion';
 import { CATEGORIAS_VENTA, formatCOP, fechaLocal } from '../../utils/formatters';
+import { sirvePara, tipoDe } from '../../utils/conceptos';
 import { PLANTILLA_COSTOS, calcularPrecio, rentabilidad } from '../../utils/precios';
 import { calcularSaldos } from '../../utils/inventario';
 
@@ -488,12 +489,12 @@ export const PreciosView: React.FC<{ onFacturar: (items: VentaItem[]) => void }>
   const fichasInventario = useMemo(() => {
     const ahora = new Date().toISOString();
     return productos
-      .filter((p) => p.activo !== false && (p.precioVenta || 0) > 0 && !fichas.some((f) => f.productoId === p.id))
+      .filter((p) => sirvePara(p, 'venta') && (p.precioVenta || 0) > 0 && !fichas.some((f) => f.productoId === p.id))
       .map<FichaPrecio>((p) => ({
         id: `ficha-${p.id}`,
-        tipo: 'producto',
+        tipo: tipoDe(p) === 'servicio' ? 'servicio' : 'producto',
         nombre: p.nombre,
-        categoriaVenta: 'vitrina' as CategoriaVenta,
+        categoriaVenta: (p.categoriaVenta || (tipoDe(p) === 'servicio' ? 'varios' : 'vitrina')) as CategoriaVenta,
         productoId: p.id,
         unidad: p.unidad || 'UND',
         costos: [{ id: 'cst-compra', concepto: 'Costo de compra (sin IVA)', cantidad: 1, valorUnitario: costosInventario.get(p.id) || p.costoUltimo || 0 }],
@@ -501,7 +502,7 @@ export const PreciosView: React.FC<{ onFacturar: (items: VentaItem[]) => void }>
         metodo: 'margen',
         porcentajeObjetivo: 30,
         comisionPct: 0,
-        ivaPct: ivaPorDefecto,
+        ivaPct: p.ivaPct ?? ivaPorDefecto,
         redondeo: 100,
         precioVenta: p.precioVenta || 0,
         historial: [],

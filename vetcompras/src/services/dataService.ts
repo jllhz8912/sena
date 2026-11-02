@@ -1,6 +1,6 @@
-import { CompraDocumento, Proveedor, Categoria, CentroCosto, RegistroPago, EmpresaInfo, Venta, Producto, MovimientoInventario, FichaPrecio } from '../types';
+import { CompraDocumento, Proveedor, Categoria, CentroCosto, RegistroPago, EmpresaInfo, Venta, Producto, MovimientoInventario, FichaPrecio, CategoriaVentaConfig } from '../types';
 import { EMPRESA_DEFECTO } from '../data/defaults';
-import { fechaLocal } from '../utils/formatters';
+import { aplicarCategoriasVenta, fechaLocal } from '../utils/formatters';
 
 /**
  * Capa de acceso a datos de VetCompras.
@@ -124,15 +124,22 @@ function leerEmpresaEnCache(): EmpresaInfo {
 }
 
 let empresaActual: EmpresaInfo = leerEmpresaEnCache();
+aplicarCategoriasVenta(empresaActual.categoriasVenta);
 let inicializacion: Promise<void> | null = null;
 
 function fijarEmpresa(datos: EmpresaInfo) {
   empresaActual = datos;
+  aplicarCategoriasVenta(datos.categoriasVenta);
   try {
     localStorage.setItem(CLAVE_CACHE_EMPRESA, JSON.stringify(datos));
   } catch {
     // Sin caché local; no afecta los datos guardados en el servidor
   }
+}
+
+function guardarEmpresa(datos: EmpresaInfo): Promise<void> {
+  fijarEmpresa(datos);
+  return api('/configuracion/empresa', { method: 'PUT', body: JSON.stringify(datos) }).then(() => undefined);
 }
 
 export interface EstadoServidor {
@@ -712,8 +719,14 @@ export const dataService = {
   },
 
   guardarDatosEmpresa(datos: EmpresaInfo): Promise<void> {
-    fijarEmpresa(datos);
-    return api('/configuracion/empresa', { method: 'PUT', body: JSON.stringify(datos) }).then(() => undefined);
+    // Las pantallas de datos de la veterinaria no editan las categorías de venta:
+    // se conservan las vigentes aunque el formulario traiga una copia anterior
+    return guardarEmpresa({ ...datos, categoriasVenta: empresaActual.categoriasVenta });
+  },
+
+  /** Guarda las categorías de venta editadas en Catálogos (null = volver a las de fábrica). */
+  guardarCategoriasVenta(config: CategoriaVentaConfig[] | null): Promise<void> {
+    return guardarEmpresa({ ...empresaActual, categoriasVenta: config || undefined });
   },
 
   // ================= INVENTARIO (informativo) =================

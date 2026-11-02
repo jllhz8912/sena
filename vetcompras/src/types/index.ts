@@ -239,6 +239,18 @@ export interface EmpresaInfo {
   tituloDocumentoVenta?: string; // ej: 'COMPROBANTE DE VENTA' o 'RECIBO DE CAJA'
   textoPieRecibo?: string; // Términos, agradecimiento o garantías
   resolucionLegal?: string; // Régimen o documento equivalente
+  /** Categorías de venta editadas en Catálogos (sin valor: las de fábrica) */
+  categoriasVenta?: CategoriaVentaConfig[];
+}
+
+export interface CategoriaVentaConfig {
+  id: string;
+  label: string;
+  /** Servicio (consultas, baños…) o producto (vitrina, purinas…) */
+  tipo: 'producto' | 'servicio';
+  /** false = eliminada: no se ofrece al vender, pero las ventas antiguas conservan su nombre */
+  activo: boolean;
+  subcategorias?: { value: string; label: string }[];
 }
 
 // ================= VENTAS VETERINARIA =================
@@ -254,7 +266,9 @@ export type CategoriaVenta =
   | 'pet_shop'
   | 'clinica'
   | 'purinas'
-  | 'medicamentos';
+  | 'medicamentos'
+  // Categorías creadas por la veterinaria en Catálogos
+  | (string & {});
 
 export type SubcategoriaTratamiento =
   | 'parvovirus' // 1. Parvovirus
@@ -338,10 +352,32 @@ export interface Venta {
 // impide vender. Las compras suman, las ventas restan; las bajas y ajustes se
 // registran a mano. Todo movimiento se puede editar.
 
+/** Para qué se usa un concepto del catálogo. */
+export type UsoConcepto = 'venta' | 'compra' | 'gasto';
+
+/**
+ * Concepto del catálogo: producto, servicio o concepto de gasto. Se usa para
+ * vender, comprar o registrar gastos; solo los productos con control de
+ * inventario mueven existencias.
+ */
 export interface Producto {
   id: string;
   codigo?: string;
   nombre: string;
+  /** Sin valor: producto (compatibilidad con los productos creados antes) */
+  tipo?: 'producto' | 'servicio' | 'gasto';
+  /** Sin valor: según el tipo (producto: venta y compra; servicio: venta; gasto: gasto) */
+  usos?: UsoConcepto[];
+  /** Sin valor: los productos sí controlan inventario; servicios y gastos no */
+  controlaInventario?: boolean;
+  categoriaVenta?: string;
+  subcategoriaVenta?: string;
+  /** Categoría con que se registra en compras o gastos */
+  categoriaCompraId?: string;
+  centroCostoId?: string;
+  /** Tarifa de IVA habitual (%) */
+  ivaPct?: number;
+  descripcion?: string;
   /** Agrupación libre: Medicamentos, Alimentos, Accesorios, Vacunas… */
   grupo?: string;
   unidad: string;

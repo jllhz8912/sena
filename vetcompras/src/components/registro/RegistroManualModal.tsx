@@ -23,8 +23,11 @@ import {
   Proveedor,
   FormaPago,
   EstadoPago,
+  Producto,
 } from '../../types';
 import { formatCOP, fechaLocal } from '../../utils/formatters';
+import { conceptosPara, tipoDe } from '../../utils/conceptos';
+import { buscarProducto } from '../../utils/inventario';
 import { dataService } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
 
@@ -103,10 +106,10 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
     !!documentoParaEditar?.lineas?.length && !(documentoParaEditar.lineas.length === 1 && documentoParaEditar.lineas[0].id === 'lin-global');
   const [modoDetallado, setModoDetallado] = useState(tieneDetalle || !!detallado);
 
-  // Productos del inventario como sugerencia al escribir la descripción de cada ítem
-  const [nombresProductos, setNombresProductos] = useState<string[]>([]);
+  // Conceptos del catálogo (productos, servicios y gastos) como sugerencia al escribir cada ítem
+  const [conceptos, setConceptos] = useState<Producto[]>([]);
   useEffect(() => {
-    dataService.obtenerProductos().then((p) => setNombresProductos(p.map((x) => x.nombre))).catch(() => undefined);
+    dataService.obtenerProductos().then((p) => setConceptos(conceptosPara(p, ['compra', 'gasto']))).catch(() => undefined);
   }, []);
 
   // Valores de factura simplificada (No Responsable de IVA)
@@ -178,12 +181,35 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
   const totalGeneral = Math.max(0, totalSubtotal - descuentosDocumento + totalIva + impoconsumo);
   const netoAPagar = Math.max(0, totalGeneral - totalRetenciones);
 
+  // Al escribir un concepto del catálogo se traen su código, unidad, IVA, último costo y,
+  // en la primera línea, su categoría y centro de costo (todo se puede cambiar después)
+  const concepto = (descripcion: string) => buscarProducto(conceptos, { nombre: descripcion });
+  const handleDescripcion = (id: string, texto: string) => {
+    const c = concepto(texto);
+    if (c && lineas[0]?.id === id) {
+      if (c.categoriaCompraId && categorias.some((x) => x.id === c.categoriaCompraId)) setCategoriaId(c.categoriaCompraId);
+      if (c.centroCostoId && centrosCosto.some((x) => x.id === c.centroCostoId)) setCentroCostoId(c.centroCostoId);
+    }
+    handleCambioLinea(id, 'descripcion', texto, c);
+  };
+
   // Actualizar cálculo de línea
-  const handleCambioLinea = (id: string, campo: keyof LineaFactura, valor: any) => {
+  const handleCambioLinea = (id: string, campo: keyof LineaFactura, valor: any, c?: Producto) => {
     setLineas((prev) =>
       prev.map((l) => {
         if (l.id !== id) return l;
         const act = { ...l, [campo]: valor };
+        if (campo === 'descripcion') {
+          if (c) {
+            act.productoId = c.id;
+            act.codigo = c.codigo || act.codigo;
+            act.unidad = c.unidad || act.unidad;
+            if (c.ivaPct !== undefined && c.ivaPct !== null) act.porcentajeIva = c.ivaPct;
+            if (!Number(act.valorUnitario) && c.costoUltimo) act.valorUnitario = c.costoUltimo;
+          } else if (act.productoId && conceptos.some((x) => x.id === act.productoId)) {
+            act.productoId = undefined;
+          }
+        }
         const qty = Number(act.cantidad) || 0;
         const unit = Number(act.valorUnitario) || 0;
         const desc = Number(act.descuento) || 0;
@@ -757,8 +783,10 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
               </div>
 
               <datalist id="productos-inventario">
-                {nombresProductos.map((n) => (
-                  <option key={n} value={n} />
+                {conceptos.map((c) => (
+                  <option key={c.id} value={c.nombre}>
+                    {[c.codigo, tipoDe(c) === 'gasto' ? 'Gasto' : tipoDe(c) === 'servicio' ? 'Servicio' : 'Producto'].filter(Boolean).join(' · ')}
+                  </option>
                 ))}
               </datalist>
               <div className="space-y-2">
@@ -771,8 +799,8 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
                       <input
                         type="text"
                         value={linea.descripcion}
-                        onChange={(e) => handleCambioLinea(linea.id, 'descripcion', e.target.value)}
-                        placeholder="Descripción del insumo o servicio"
+                        onChange={(e) => handleDescripcion(linea.id, e.target.value)}
+                        placeholder="Escriba o elija un concepto del catálogo (producto, servicio o gasto)"
                         list="productos-inventario"
                         className="flex-1 px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium"
                       />

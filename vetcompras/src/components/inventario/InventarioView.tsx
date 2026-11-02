@@ -28,6 +28,7 @@ import { dataService } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
 import { ModalConfirmacion } from '../common/ModalConfirmacion';
 import { formatCOP, formatFecha, fechaLocal } from '../../utils/formatters';
+import { controlaInventario } from '../../utils/conceptos';
 import { MOTIVOS_BAJA, SaldoProducto, ajusteASaldo, buscarProducto, calcularSaldos, efecto } from '../../utils/inventario';
 
 const claseInput =
@@ -386,7 +387,8 @@ export const InventarioView: React.FC<InventarioViewProps> = ({ onCargarCompra, 
 
   const cargar = useCallback(async () => {
     const [p, m] = await Promise.all([dataService.obtenerProductos(), dataService.obtenerMovimientos()]);
-    setProductos(p);
+    // Servicios y conceptos de gasto del catálogo no llevan existencias
+    setProductos(p.filter(controlaInventario));
     setMovimientos(m);
     setCargando(false);
   }, []);

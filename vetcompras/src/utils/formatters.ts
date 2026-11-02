@@ -1,6 +1,7 @@
 /**
  * Formateadores de moneda colombiana, fechas y utilidades para VetCompras
  */
+import type { CategoriaVentaConfig } from '../types';
 
 /**
  * Fecha AAAA-MM-DD en la hora local del equipo. No usar toISOString() para
@@ -236,7 +237,7 @@ export function getMedioPagoInfo(medio: string | undefined): {
   };
 }
 
-export function getCategoriaVentaInfo(categoria: string) {
+function estiloCategoriaVenta(categoria: string) {
   switch (categoria) {
     case 'banos':
       return {
@@ -320,6 +321,13 @@ export function getCategoriaVentaInfo(categoria: string) {
   }
 }
 
+/** Nombre y colores de una categoría de venta (respeta el nombre puesto en Catálogos). */
+export function getCategoriaVentaInfo(categoria: string) {
+  const info = estiloCategoriaVenta(categoria);
+  const configurada = CATEGORIAS_VENTA_TODAS.find((c) => c.id === categoria);
+  return configurada ? { ...info, label: configurada.label } : info;
+}
+
 export function getMedioPagoVentaInfo(medio: string) {
   switch (medio) {
     case 'efectivo':
@@ -373,7 +381,11 @@ export function getMedioPagoVentaInfo(medio: string) {
   }
 }
 
-/** Categorías de venta disponibles para nuevos ítems (en el orden en que se muestran). */
+/**
+ * Categorías de venta disponibles para nuevos ítems (en el orden en que se muestran).
+ * Se pueden crear, renombrar o eliminar en Catálogos: `aplicarCategoriasVenta`
+ * actualiza esta lista en su lugar para que todas las pantallas la vean.
+ */
 export const CATEGORIAS_VENTA: { id: string; label: string }[] = [
   { id: 'consultas_clinica', label: 'Consultas clínica' },
   { id: 'tratamientos_clinica', label: 'Tratamientos clínica' },
@@ -493,6 +505,86 @@ export const SUBCATEGORIAS_POR_CATEGORIA: Record<string, SubcategoriaItem[]> = {
   pet_shop: SUBCATEGORIAS_VITRINA,
   varios: SUBCATEGORIAS_VARIOS,
 };
+
+/** Categorías de venta que corresponden a servicios (el resto son productos). */
+export const CATEGORIAS_SERVICIO = new Set(['consultas_clinica', 'tratamientos_clinica', 'vacunas', 'banos']);
+
+/** Incluye las eliminadas, para seguir mostrando su nombre en ventas antiguas. */
+export const CATEGORIAS_VENTA_TODAS: { id: string; label: string }[] = CATEGORIAS_VENTA.map((c) => ({ ...c }));
+
+const BADGE_GENERICO = 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
+const CATEGORIAS_BASE = CATEGORIAS_VENTA.map((c) => ({ ...c }));
+const SERVICIO_BASE = new Set(CATEGORIAS_SERVICIO);
+const SUBCATEGORIAS_BASE: Record<string, SubcategoriaItem[]> = { ...SUBCATEGORIAS_POR_CATEGORIA };
+
+/** Categorías de venta de fábrica, en el formato que se edita en Catálogos. */
+export function categoriasVentaPredeterminadas(): CategoriaVentaConfig[] {
+  return CATEGORIAS_BASE.map((c) => ({
+    id: c.id,
+    label: c.label,
+    tipo: SERVICIO_BASE.has(c.id) ? 'servicio' : 'producto',
+    activo: true,
+    subcategorias: (SUBCATEGORIAS_BASE[c.id] || []).map((s) => ({ value: s.value, label: s.nombreCorto })),
+  }));
+}
+
+let configuracionActual: CategoriaVentaConfig[] | undefined;
+
+/** Configuración vigente (la guardada o la de fábrica), incluidas las eliminadas. */
+export function categoriasVentaConfiguradas(): CategoriaVentaConfig[] {
+  return (configuracionActual || categoriasVentaPredeterminadas()).map((c) => ({ ...c, subcategorias: [...(c.subcategorias || [])] }));
+}
+
+/**
+ * Aplica las categorías de venta guardadas en Catálogos. Sin configuración se
+ * usan las de fábrica. Las eliminadas (activo: false) desaparecen de las listas
+ * para vender, pero su nombre se sigue mostrando en las ventas ya registradas.
+ */
+export function aplicarCategoriasVenta(config?: CategoriaVentaConfig[] | null): void {
+  configuracionActual = config && config.length ? config : undefined;
+  const lista = categoriasVentaConfiguradas();
+  CATEGORIAS_VENTA.splice(0, CATEGORIAS_VENTA.length, ...lista.filter((c) => c.activo !== false).map((c) => ({ id: c.id, label: c.label })));
+  const todas = [...lista.map((c) => ({ id: c.id, label: c.label }))];
+  for (const b of CATEGORIAS_BASE) if (!todas.some((c) => c.id === b.id)) todas.push({ ...b });
+  CATEGORIAS_VENTA_TODAS.splice(0, CATEGORIAS_VENTA_TODAS.length, ...todas);
+  CATEGORIAS_SERVICIO.clear();
+  for (const c of lista) if (c.tipo === 'servicio') CATEGORIAS_SERVICIO.add(c.id);
+  for (const k of Object.keys(SUBCATEGORIAS_POR_CATEGORIA)) delete SUBCATEGORIAS_POR_CATEGORIA[k];
+  Object.assign(SUBCATEGORIAS_POR_CATEGORIA, SUBCATEGORIAS_BASE);
+  for (const c of lista) {
+    if (!configuracionActual) break;
+    const base = SUBCATEGORIAS_BASE[c.id] || [];
+    const subs = (c.subcategorias || []).filter((s) => s.label?.trim());
+    if (c.activo === false || !subs.length) {
+      delete SUBCATEGORIAS_POR_CATEGORIA[c.id];
+      continue;
+    }
+    SUBCATEGORIAS_POR_CATEGORIA[c.id] = subs.map((s, i) => {
+      const previa = base.find((b) => b.value === s.value);
+      return {
+        value: s.value,
+        label: `${i + 1}. ${s.label.trim()}`,
+        nombreCorto: s.label.trim(),
+        badgeColor: previa?.badgeColor || BADGE_GENERICO,
+      };
+    });
+  }
+}
+
+/** Identificador estable a partir de un nombre ("Hospitalización" → "hospitalizacion"). */
+export function idDesdeNombre(nombre: string, existentes: string[] = []): string {
+  const base =
+    nombre
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 40) || 'categoria';
+  let id = base;
+  for (let n = 2; existentes.includes(id); n++) id = `${base}_${n}`;
+  return id;
+}
 
 export function getSubcategoriaVentaInfo(categoria: string, subcategoria?: string): SubcategoriaItem | null {
   if (!subcategoria) return null;

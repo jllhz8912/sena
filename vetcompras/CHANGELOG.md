@@ -3,6 +3,23 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.8.0
+- **Catálogo único** (Catálogos > Productos, servicios y gastos): crear, editar, desactivar y
+  eliminar productos, servicios y conceptos de gasto en un solo lugar. Cada uno indica para
+  qué sirve (ventas, compras, gastos), su categoría de venta y subcategoría, su categoría de
+  compra o gasto y centro de costo, precio de venta, último costo, tarifa de IVA, unidad,
+  grupo, otros nombres y si lleva existencias.
+- Lo creado allí aparece **al vender** (buscador rápido), **al registrar compras y gastos**
+  (sugerencias de cada ítem, que traen código, unidad, IVA, último costo, categoría y centro
+  de costo), en **Inventario** (solo productos) y en **Precios de Venta**.
+- Los servicios y conceptos de gasto no mueven el inventario.
+- **Traer de las ventas**: crea en el catálogo, con su categoría y último precio, lo que se ha
+  vendido escribiéndolo a mano. En la venta, un concepto nuevo se puede guardar en el
+  catálogo con una casilla.
+- **Categorías de venta editables**: crear, renombrar, ordenar, cambiar subcategorías y
+  eliminar. Las ventas ya registradas conservan su categoría y su nombre; los reportes y el
+  buscador usan las categorías vigentes. Botón para restaurar las de fábrica.
+
 ## 2.7.0
 - **Buscador rápido en la venta** (F2): busca productos y servicios por palabras sueltas en
   cualquier orden y sin tildes (nombre, código, otros nombres, grupo, categoría), con filtros
