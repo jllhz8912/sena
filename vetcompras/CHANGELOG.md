@@ -3,6 +3,15 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.10.0
+- **Alerta semanal obligatoria de copia de seguridad**: cada 7 días aparece un aviso rojo a
+  pantalla completa, "HAGA LA COPIA DE SEGURIDAD Y SÚBALA A LA NUBE (DRIVE)", con los pasos
+  (Copias de Seguridad → "Copiar y descargar", subir el archivo a Google Drive u OneDrive y
+  verificar). No deja ingresar ni trabajar hasta pulsar **Aceptar**; Escape no la cierra.
+- Aparece en la pantalla de inicio y también con el sistema abierto (se revisa cada 15
+  minutos y al volver a la ventana). "Aceptar e ir a Copias de Seguridad" abre ese módulo.
+- Cada aceptación queda en la bitácora (Ingreso y Bitácora).
+
 ## 2.9.0
 - **Panel Central sin gráficas**: ahora muestra tarjetas como las de Reportes, con valor,
   participación (%), cantidad y barra de avance:

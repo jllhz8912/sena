@@ -16,6 +16,7 @@ import { CompraDocumento, Categoria, CentroCosto, Proveedor, Venta, VentaItem } 
 import { dataService, EVENTO_SESION, EstadoSesion, UsuarioActual } from './services/dataService';
 import { PantallaAcceso } from './components/seguridad/PantallaAcceso';
 import { PantallaInicio } from './components/seguridad/PantallaInicio';
+import { EVENTO_IR_A_COPIAS, pedidoIrACopias } from './components/respaldos/AlertaCopiaSemanal';
 import { MARCA } from './data/marca';
 import { SeguridadView } from './components/seguridad/SeguridadView';
 import { InventarioView } from './components/inventario/InventarioView';
@@ -32,6 +33,13 @@ import { Loader2 } from 'lucide-react';
 
 function VetComprasApp({ onSalir }: { onSalir: () => void }) {
   const [currentTab, setCurrentTab] = useState<NavItem>('dashboard');
+  // "Aceptar e ir a Copias de Seguridad" en la alerta semanal
+  useEffect(() => {
+    const irACopias = () => setCurrentTab('copias');
+    if (pedidoIrACopias()) irACopias();
+    window.addEventListener(EVENTO_IR_A_COPIAS, irACopias);
+    return () => window.removeEventListener(EVENTO_IR_A_COPIAS, irACopias);
+  }, []);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuAbierto, setMobileMenuAbierto] = useState(false);
 

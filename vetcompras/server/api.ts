@@ -25,6 +25,7 @@ import {
 } from './seguridad';
 import { generarDatosDemostracion, CATEGORIAS_DEFECTO, CENTROS_COSTO_DEFECTO, PROVEEDORES_DEFECTO } from '../src/data/defaults';
 import pkg from '../package.json';
+import { estadoAlertaCopia } from '../src/utils/alertaCopia';
 
 type Manejador = (req: Request, res: Response) => unknown;
 
@@ -200,6 +201,27 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
   );
 
   // ======================================== desde aquí: requiere sesión válida
+  // Alerta semanal de copia de seguridad: pública porque bloquea también la pantalla de inicio
+  api.get(
+    '/alerta-copia',
+    seguro((_req, res) => {
+      const aceptada = bd.obtenerConfig<{ fecha: string }>('alertaCopiaSemanal')?.fecha;
+      res.json(estadoAlertaCopia(aceptada, bd.estadoCopias().ultima));
+    })
+  );
+
+  api.post(
+    '/alerta-copia/aceptar',
+    exigirCabecera,
+    seguro((req, res) => {
+      const fecha = new Date().toISOString();
+      bd.guardarConfig('alertaCopiaSemanal', { fecha });
+      const usuario = seg.validarSesion(leerCookie(req, NOMBRE_COOKIE), false);
+      bd.auditar({ usuario: usuario?.usuario || '(pantalla de inicio)', accion: 'Alerta semanal de copia de seguridad aceptada', ip: ipDe(req) });
+      res.json(estadoAlertaCopia(fecha, bd.estadoCopias().ultima));
+    })
+  );
+
   api.use(requiereSesion(seg));
 
   api.put(

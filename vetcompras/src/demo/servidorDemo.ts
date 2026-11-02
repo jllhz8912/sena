@@ -9,6 +9,7 @@
  * No se usa en la instalación real: ahí responde el servidor local con SQLite.
  */
 
+import { estadoAlertaCopia } from '../utils/alertaCopia';
 import {
   CATEGORIAS_DEFECTO,
   CENTROS_COSTO_DEFECTO,
@@ -55,6 +56,8 @@ interface Estado extends Datos {
   respaldos: { nombre: string; fecha: string; tamano: number; datos: Datos }[];
   carpetaExterna: string;
   ultimaCopia?: { fecha: string; medio: string } | null;
+  /** Última vez que se aceptó la alerta semanal de copia de seguridad */
+  alertaCopia?: string | null;
   diasRecordatorio?: number;
   sesion: { usuarioId: string; ultimoUso: number } | null;
   modoAcceso: 'libre' | 'usuarios';
@@ -235,6 +238,12 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
   if (metodo !== 'GET' && cabeceras.get('X-VetCompras') !== '1') throw new ErrorHttp(403, 'Solicitud no permitida.');
 
   // ---- públicas
+  if (metodo === 'GET' && ruta === '/alerta-copia') return estadoAlertaCopia(estado.alertaCopia, estado.ultimaCopia);
+  if (metodo === 'POST' && ruta === '/alerta-copia/aceptar') {
+    estado.alertaCopia = ahoraIso();
+    auditar(usuarioSesion(false)?.usuario || '(pantalla de inicio)', 'Alerta semanal de copia de seguridad aceptada');
+    return estadoAlertaCopia(estado.alertaCopia, estado.ultimaCopia);
+  }
   if (metodo === 'GET' && ruta === '/sesion') {
     const u = usuarioSesion(false);
     const modoAcceso = modoAccesoDemo();
@@ -245,7 +254,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
       marca: { nombre: e.nombreComercial || e.razonSocial || 'Los Criollos Vet', slogan: e.slogan || '', logoUrl: e.logoUrl || '', colorPrimario: e.colorPrimario || '' },
       requiereConfiguracion: modoAcceso === 'usuarios' && estado.usuarios.length === 0,
       minutosInactividad: MINUTOS_INACTIVIDAD,
-      version: '2.9.0-demo',
+      version: '2.10.0-demo',
     };
   }
   if (metodo === 'POST' && ruta === '/sesion/ingresar-libre') {

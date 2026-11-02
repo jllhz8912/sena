@@ -1,6 +1,7 @@
 import { CompraDocumento, Proveedor, Categoria, CentroCosto, RegistroPago, EmpresaInfo, Venta, Producto, MovimientoInventario, FichaPrecio, CategoriaVentaConfig } from '../types';
 import { EMPRESA_DEFECTO } from '../data/defaults';
 import { aplicarCategoriasVenta, fechaLocal } from '../utils/formatters';
+import type { EstadoAlertaCopia } from '../utils/alertaCopia';
 
 /**
  * Capa de acceso a datos de VetCompras.
@@ -646,6 +647,15 @@ export const dataService = {
 
   obtenerEstadoCopias(): Promise<EstadoCopias> {
     return api('/respaldos/estado');
+  },
+
+  /** Alerta semanal obligatoria de copia de seguridad (pública: bloquea también la pantalla de inicio). */
+  obtenerAlertaCopia(): Promise<EstadoAlertaCopia> {
+    return api('/alerta-copia', { sondeo: true });
+  },
+
+  aceptarAlertaCopia(): Promise<EstadoAlertaCopia> {
+    return api('/alerta-copia/aceptar', { method: 'POST' });
   },
 
   configurarRecordatorioCopias(diasRecordatorio: number): Promise<EstadoCopias> {

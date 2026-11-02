@@ -4,6 +4,7 @@ import { AvisoDemo } from './AvisoDemo';
 import { configurarGuardadoArchivos } from '../services/reciboPdf';
 import App from '../App';
 import '../index.css';
+import { AlertaCopiaSemanal } from '../components/respaldos/AlertaCopiaSemanal';
 
 // Las llamadas a /api las responde la demostración dentro del navegador
 instalarServidorDemo();
@@ -24,5 +25,6 @@ createRoot(document.getElementById('root')!).render(
   <>
     <App />
     <AvisoDemo />
+    <AlertaCopiaSemanal />
   </>
 );
