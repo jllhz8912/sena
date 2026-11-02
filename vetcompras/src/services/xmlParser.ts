@@ -95,7 +95,7 @@ export function sugerirCategoriaVeterinaria(descripcion: string): string {
   const desc = descripcion
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '');
+    .replace(/[\u0300-\u036f]/g, '');
   const contiene = (...palabras: string[]) => palabras.some((p) => desc.includes(p));
 
   if (contiene('energia', 'acueducto', 'alcantarillado', 'internet', 'telefonia', 'gas natural', 'aseo urbano', 'recoleccion', 'residuos biologicos', 'kwh')) {
