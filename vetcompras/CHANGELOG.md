@@ -3,6 +3,17 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.9.0
+- **Panel Central sin gráficas**: ahora muestra tarjetas como las de Reportes, con valor,
+  participación (%), cantidad y barra de avance:
+  - **Ventas por categoría** del año (todas las categorías vigentes, ordenadas por valor).
+  - **Compras y gastos por categoría**, diferenciando compra y gasto.
+  - **Ventas y compras mes a mes**: ventas, compras, gastos y resultado de cada mes, con el
+    mes actual resaltado.
+  - **Proveedores con más compras** y **compras y gastos por centro de costo**.
+- Clic en una tarjeta de ventas abre Ventas; en una de compras abre Compras y Gastos.
+- El demo descargable abre con doble clic en Windows (declara UTF-8).
+
 ## 2.8.0
 - **Catálogo único** (Catálogos > Productos, servicios y gastos): crear, editar, desactivar y
   eliminar productos, servicios y conceptos de gasto en un solo lugar. Cada uno indica para

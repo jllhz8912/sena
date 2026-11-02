@@ -12,12 +12,8 @@ import {
   Database,
   Pencil,
   Filter,
-  Scissors,
-  Syringe,
-  Stethoscope,
   Activity,
   Package,
-  Wheat,
   ShoppingBag,
   CheckCircle2,
   AlertTriangle,
@@ -55,6 +51,7 @@ import {
   SUBCATEGORIAS_VITRINA,
   fechaLocal,
 } from '../../utils/formatters';
+import { ESTILO_GENERICO, TarjetaResumen, definicionesCategoriasVenta } from '../common/TarjetaResumen';
 import { itemsDeVenta, montosPorMedio, categoriaNormalizada, saldoDeVenta } from '../../utils/ventas';
 import {
   exportarDocumentosAExcel,
@@ -75,33 +72,6 @@ interface ReportesViewProps {
   centrosCosto: CentroCosto[];
   proveedores: Proveedor[];
   ventas?: Venta[];
-}
-
-// Estilo de las categorías de venta de fábrica (las creadas en Catálogos usan el genérico)
-const ESTILOS_CATEGORIA_VENTA: Array<{
-  key: CategoriaVenta;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  color: string;
-  bgLight: string;
-  borderLight: string;
-}> = [
-  { key: 'banos', label: 'Baños', icon: Scissors, color: 'text-cyan-600 dark:text-cyan-400', bgLight: 'bg-cyan-50 dark:bg-cyan-950/40', borderLight: 'border-cyan-200 dark:border-cyan-800' },
-  { key: 'vacunas', label: 'Vacunas', icon: Syringe, color: 'text-indigo-600 dark:text-indigo-400', bgLight: 'bg-indigo-50 dark:bg-indigo-950/40', borderLight: 'border-indigo-200 dark:border-indigo-800' },
-  { key: 'consultas_clinica', label: 'Consultas clinica', icon: Stethoscope, color: 'text-emerald-600 dark:text-emerald-400', bgLight: 'bg-emerald-50 dark:bg-emerald-950/40', borderLight: 'border-emerald-200 dark:border-emerald-800' },
-  { key: 'tratamientos_clinica', label: 'Tratamientos clinica', icon: Activity, color: 'text-rose-600 dark:text-rose-400', bgLight: 'bg-rose-50 dark:bg-rose-950/40', borderLight: 'border-rose-200 dark:border-rose-800' },
-  { key: 'purinas_empaque', label: 'Purinas ( bultos y paquetes)', icon: Package, color: 'text-amber-600 dark:text-amber-400', bgLight: 'bg-amber-50 dark:bg-amber-950/40', borderLight: 'border-amber-200 dark:border-amber-800' },
-  { key: 'purinas_granel', label: 'Purinas a granel', icon: Wheat, color: 'text-orange-600 dark:text-orange-400', bgLight: 'bg-orange-50 dark:bg-orange-950/40', borderLight: 'border-orange-200 dark:border-orange-800' },
-  { key: 'vitrina', label: 'Vitrina', icon: ShoppingBag, color: 'text-purple-600 dark:text-purple-400', bgLight: 'bg-purple-50 dark:bg-purple-950/40', borderLight: 'border-purple-200 dark:border-purple-800' },
-  { key: 'varios', label: 'Varios / Otros', icon: Tag, color: 'text-slate-600 dark:text-slate-400', bgLight: 'bg-slate-50 dark:bg-slate-900', borderLight: 'border-slate-200 dark:border-slate-800' },
-];
-
-type DefCategoriaVenta = (typeof ESTILOS_CATEGORIA_VENTA)[number];
-
-/** Categorías de venta vigentes (editables en Catálogos) con su icono y colores. */
-function definicionesCategoriasVenta(): DefCategoriaVenta[] {
-  const generico = ESTILOS_CATEGORIA_VENTA[ESTILOS_CATEGORIA_VENTA.length - 1];
-  return CATEGORIAS_VENTA.map((c) => ({ ...(ESTILOS_CATEGORIA_VENTA.find((e) => e.key === c.id) || generico), key: c.id, label: c.label }));
 }
 
 export const ReportesView: React.FC<ReportesViewProps> = ({
@@ -1126,57 +1096,22 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
           {/* Tarjetas Visuales de las 7 Categorías de Venta */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {reporte7CategoriasVenta.map((cat) => {
-              const def = CATEGORIAS_VENTA_DEF.find((c) => c.key === cat.categoriaKey) || { ...ESTILOS_CATEGORIA_VENTA[ESTILOS_CATEGORIA_VENTA.length - 1], label: cat.nombre };
-              const Icon = def.icon;
-              const isSelected = filtroCategoriaVenta === cat.categoriaKey;
-
+              const def = CATEGORIAS_VENTA_DEF.find((c) => c.key === cat.categoriaKey) || ESTILO_GENERICO;
               return (
-                <div
+                <TarjetaResumen
                   key={cat.categoriaKey}
+                  titulo={cat.nombre}
+                  estilo={def}
+                  total={cat.total}
+                  porcentaje={cat.porcentaje}
+                  detalle={`${cat.cantidad} venta${cat.cantidad !== 1 ? 's' : ''}`}
+                  accion="Clic para filtrar"
+                  seleccionada={filtroCategoriaVenta === cat.categoriaKey}
                   onClick={() => {
                     setFiltroCategoriaVenta(filtroCategoriaVenta === cat.categoriaKey ? 'todas' : cat.categoriaKey);
                     setFiltroSubcategoriaVenta('todas');
                   }}
-                  className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-                    isSelected
-                      ? 'ring-2 ring-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/40 border-emerald-300'
-                      : `${def.bgLight} ${def.borderLight} hover:shadow-sm`
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className={`p-2 rounded-xl bg-white dark:bg-slate-900 shadow-xs ${def.color}`}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <span className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1">
-                        {cat.nombre}
-                      </span>
-                    </div>
-                    <span className="text-[11px] font-bold text-slate-500">
-                      {cat.porcentaje.toFixed(1)}%
-                    </span>
-                  </div>
-
-                  <div className="mt-1">
-                    <div className="text-xl font-black text-slate-900 dark:text-white">
-                      {formatCOP(cat.total)}
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
-                      <span>{cat.cantidad} venta{cat.cantidad !== 1 ? 's' : ''}</span>
-                      <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
-                        {isSelected ? 'Filtro Activo' : 'Clic para filtrar'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Barra de progreso */}
-                  <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 mt-2.5 overflow-hidden">
-                    <div
-                      className="h-full bg-emerald-500 rounded-full"
-                      style={{ width: `${Math.min(100, cat.porcentaje)}%` }}
-                    />
-                  </div>
-                </div>
+                />
               );
             })}
           </div>

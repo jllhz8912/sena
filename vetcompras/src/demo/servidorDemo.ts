@@ -245,7 +245,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
       marca: { nombre: e.nombreComercial || e.razonSocial || 'Los Criollos Vet', slogan: e.slogan || '', logoUrl: e.logoUrl || '', colorPrimario: e.colorPrimario || '' },
       requiereConfiguracion: modoAcceso === 'usuarios' && estado.usuarios.length === 0,
       minutosInactividad: MINUTOS_INACTIVIDAD,
-      version: '2.8.0-demo',
+      version: '2.9.0-demo',
     };
   }
   if (metodo === 'POST' && ruta === '/sesion/ingresar-libre') {

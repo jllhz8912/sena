@@ -4,36 +4,16 @@ import {
   TrendingDown,
   ShoppingBag,
   DollarSign,
-  AlertCircle,
-  FileCheck,
   Calendar,
   ArrowUpRight,
   Clock,
-  Sparkles,
-  PieChart as PieIcon,
-  BarChart2,
   AlertTriangle,
-  Receipt,
-  Users,
-  ChevronDown,
   FileSpreadsheet,
-  UploadCloud,
 } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  PieChart,
-  Pie,
-  Cell,
-  CartesianGrid,
-} from 'recharts';
 import { CompraDocumento, Categoria, CentroCosto, Venta } from '../../types';
-import { formatCOP, formatFecha, diasParaVencimiento } from '../../utils/formatters';
+import { formatCOP, diasParaVencimiento, getCategoriaVentaInfo } from '../../utils/formatters';
+import { comprasPorCategoria, resumenMensual, ventasPorCategoria } from '../../utils/resumenes';
+import { ESTILO_COMPRA, ESTILO_GASTO, ESTILO_GENERICO, TarjetaResumen, definicionesCategoriasVenta } from '../common/TarjetaResumen';
 import { resumenAlertas, sumaSaldos } from '../../utils/cartera';
 import { saldoDeVenta } from '../../utils/ventas';
 
@@ -50,19 +30,6 @@ interface DashboardViewProps {
   onIrAReportes?: () => void;
 }
 
-const PALETA_COLORES = [
-  // Colores del logo de Los Criollos Vet y complementos
-  '#9330b3', // morado
-  '#498e91', // verde azulado
-  '#244568', // azul marino
-  '#db6e77', // rosado
-  '#af701e', // ocre (Garfield)
-  '#c172d9', // lila
-  '#63a9ac', // turquesa claro
-  '#671066', // morado oscuro
-  '#eab308', // amarillo
-  '#64748b', // gris
-];
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   documentos,
@@ -80,7 +47,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Por defecto: Año en curso
   const [anioSeleccionado, setAnioSeleccionado] = useState<number>(anioActualSistema);
 
-  const catMap = useMemo(() => new Map(categorias.map((c) => [c.id, c])), [categorias]);
   const alertasPago = useMemo(() => resumenAlertas(documentos), [documentos]);
   const ccMap = useMemo(() => new Map(centrosCosto.map((cc) => [cc.id, cc])), [centrosCosto]);
 
@@ -194,91 +160,63 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
   }, [docsDelAnio, docsDelAnioAnterior, documentos, ventasDelAnio]);
 
-  // Datos para Gráfico de Evolución Mensual del Año (Ene a Dic)
-  const datosEvolucionMeses = useMemo(() => {
-    const mesesNombres = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  // Ventas por categoría (mismas tarjetas que en Reportes)
+  const categoriasVenta = useMemo(
+    () => ventasPorCategoria(ventasDelAnio, definicionesCategoriasVenta(), (k) => getCategoriaVentaInfo(k).label),
+    [ventasDelAnio]
+  );
+  const estiloVenta = (key: string) => definicionesCategoriasVenta().find((d) => d.key === key) || ESTILO_GENERICO;
 
-    const meses = mesesNombres.map((nombre, idx) => ({
-      mesNum: idx + 1,
-      nombre,
-      ventas: 0,
-      compras: 0,
-      gastos: 0,
-    }));
+  // Compras y gastos por categoría
+  const categoriasCompra = useMemo(() => comprasPorCategoria(docsDelAnio, categorias), [docsDelAnio, categorias]);
 
-    docsDelAnio.forEach((d) => {
-      const [, mStr] = d.fechaEmision.split('-');
-      const m = parseInt(mStr, 10);
-      if (m >= 1 && m <= 12) {
-        const item = meses[m - 1];
-        if (d.esGasto) {
-          item.gastos += d.total;
-        } else {
-          item.compras += d.total;
-        }
-      }
-    });
+  // Mes a mes
+  const meses = useMemo(() => resumenMensual(ventasDelAnio, docsDelAnio, anioSeleccionado), [ventasDelAnio, docsDelAnio, anioSeleccionado]);
+  const mesActual = anioSeleccionado === anioActualSistema ? new Date().getMonth() + 1 : 13;
 
-    ventasDelAnio.forEach((v) => {
-      const [, mStr] = (v.fecha || '').split('-');
-      const m = parseInt(mStr, 10);
-      if (m >= 1 && m <= 12) {
-        meses[m - 1].ventas += v.monto;
-      }
-    });
-
-    return meses;
-  }, [docsDelAnio, ventasDelAnio]);
-
-  // Datos para Gráfico de Distribución por Categoría (Año en curso)
-  const datosCategorias = useMemo(() => {
-    const mapa = new Map<string, number>();
-
-    docsDelAnio.forEach((doc) => {
-      const cat = catMap.get(doc.categoriaId);
-      const nombre = cat?.nombre || 'Otras';
-      mapa.set(nombre, (mapa.get(nombre) || 0) + doc.total);
-    });
-
-    return Array.from(mapa.entries())
-      .map(([nombre, valor]) => ({ nombre, valor }))
-      .sort((a, b) => b.valor - a.valor)
-      .slice(0, 6);
-  }, [docsDelAnio, catMap]);
-
-  // Datos para Top 10 Proveedores del Año
-  const datosTopProveedores = useMemo(() => {
-    const mapa = new Map<string, number>();
-
+  // Proveedores con más compras del año
+  const topProveedores = useMemo(() => {
+    const mapa = new Map<string, { nombre: string; total: number; cantidad: number }>();
     docsDelAnio.forEach((doc) => {
       const nombre = doc.proveedor?.razonSocial || 'Desconocido';
-      mapa.set(nombre, (mapa.get(nombre) || 0) + doc.total);
+      const e = mapa.get(nombre) || { nombre, total: 0, cantidad: 0 };
+      e.total += doc.total;
+      e.cantidad += 1;
+      mapa.set(nombre, e);
     });
-
-    return Array.from(mapa.entries())
-      .map(([nombre, total]) => ({
-        nombre: nombre.length > 22 ? nombre.substring(0, 22) + '...' : nombre,
-        total,
-      }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 8);
+    const lista = Array.from(mapa.values()).sort((a, b) => b.total - a.total);
+    const gran = lista.reduce((acc, x) => acc + x.total, 0);
+    return lista.slice(0, 8).map((x) => ({ ...x, porcentaje: gran > 0 ? (x.total / gran) * 100 : 0 }));
   }, [docsDelAnio]);
 
-  // Datos por Centro de Costo del Año
-  const datosCentrosCosto = useMemo(() => {
-    const mapa = new Map<string, number>();
-
+  // Compras y gastos por centro de costo
+  const centrosDelAnio = useMemo(() => {
+    const mapa = new Map<string, { nombre: string; total: number; cantidad: number }>();
     docsDelAnio.forEach((doc) => {
-      const cc = ccMap.get(doc.centroCostoId);
-      const nombre = cc?.nombre || 'General';
-      mapa.set(nombre, (mapa.get(nombre) || 0) + doc.total);
+      const nombre = ccMap.get(doc.centroCostoId)?.nombre || 'General';
+      const e = mapa.get(nombre) || { nombre, total: 0, cantidad: 0 };
+      e.total += doc.total;
+      e.cantidad += 1;
+      mapa.set(nombre, e);
     });
-
-    return Array.from(mapa.entries()).map(([nombre, valor]) => ({
-      nombre,
-      valor,
-    }));
+    const lista = Array.from(mapa.values()).sort((a, b) => b.total - a.total);
+    const gran = lista.reduce((acc, x) => acc + x.total, 0);
+    return lista.map((x) => ({ ...x, porcentaje: gran > 0 ? (x.total / gran) * 100 : 0 }));
   }, [docsDelAnio, ccMap]);
+
+  const encabezado = (titulo: string, ayuda: string, accion?: { texto: string; onClick?: () => void }) => (
+    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+      <div>
+        <h3 className="text-sm font-bold text-slate-900 dark:text-white">{titulo}</h3>
+        <p className="text-xs text-slate-400">{ayuda}</p>
+      </div>
+      {accion?.onClick && (
+        <button onClick={accion.onClick} className="self-start sm:self-auto flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline">
+          {accion.texto} <ArrowUpRight className="w-3.5 h-3.5" />
+        </button>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-6 animate-in fade-in">
@@ -567,220 +505,132 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Gráficos Principales: Evolución 12 Meses del Año y Categorías */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Gráfico de Evolución Mensual del Año (8 columnas) */}
-        <div className="lg:col-span-8 p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                Evolución Mes a Mes ({anioSeleccionado}): Ventas vs Compras vs Gastos
-              </h3>
-              <p className="text-xs text-slate-400">
-                Comparativo mensual consolidado de ventas, compras de mercancía y gastos de la veterinaria.
-              </p>
-            </div>
-            <div className="flex items-center gap-3 text-xs font-medium shrink-0">
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" />
-                Ventas
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-sky-600 inline-block" />
-                Compras
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-orange-500 inline-block" />
-                Gastos
-              </span>
-            </div>
-          </div>
-
-          <div className="h-72 w-full pt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={datosEvolucionMeses} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                <XAxis dataKey="nombre" stroke="#94a3b8" fontSize={11} tickLine={false} />
-                <YAxis
-                  stroke="#94a3b8"
-                  fontSize={11}
-                  tickLine={false}
-                  tickFormatter={(val) => `$ ${(val / 1000000).toFixed(1)}M`}
-                />
-                <Tooltip
-                  formatter={(val: any) => [formatCOP(Number(val)), '']}
-                  contentStyle={{
-                    backgroundColor: '#0f172a',
-                    borderRadius: '12px',
-                    border: 'none',
-                    color: '#fff',
-                    fontSize: '12px',
-                  }}
-                />
-                <Bar dataKey="ventas" name="Ventas" fill="#9330b3" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="compras" name="Compras (Mercancía/Insumos)" fill="#0284c7" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="gastos" name="Gastos Operativos" fill="#f97316" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+      {/* Ventas por categoría */}
+      <section className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4" aria-label="Ventas por categoría">
+        {encabezado(
+          `Ventas por categoría (${anioSeleccionado})`,
+          `${formatCOP(totalVentasAnio)} en ${ventasDelAnio.length} venta(s). Participación de cada categoría en lo vendido.`,
+          { texto: 'Ver reporte', onClick: onIrAReportes }
+        )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {categoriasVenta.map((c) => (
+            <TarjetaResumen
+              key={c.key}
+              titulo={c.nombre}
+              estilo={estiloVenta(c.key)}
+              total={c.total}
+              porcentaje={c.porcentaje}
+              detalle={`${c.cantidad} venta${c.cantidad !== 1 ? 's' : ''}`}
+              accion={onIrAVentas ? 'Ver ventas' : undefined}
+              onClick={onIrAVentas}
+            />
+          ))}
         </div>
+      </section>
 
-        {/* Gráfico de Dona: Distribución por Categoría (4 columnas) */}
-        <div className="lg:col-span-4 p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4 flex flex-col justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-              Distribución por Categoría ({anioSeleccionado})
-            </h3>
-            <p className="text-xs text-slate-400">
-              Categorías con mayor participación en el año {anioSeleccionado}.
-            </p>
-          </div>
-
-          <div className="h-56 w-full relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={datosCategorias}
-                  dataKey="valor"
-                  nameKey="nombre"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={75}
-                  paddingAngle={4}
-                >
-                  {datosCategorias.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={PALETA_COLORES[index % PALETA_COLORES.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(val: any) => [formatCOP(Number(val)), '']}
-                  contentStyle={{
-                    backgroundColor: '#0f172a',
-                    borderRadius: '12px',
-                    border: 'none',
-                    color: '#fff',
-                    fontSize: '12px',
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="space-y-1.5 text-xs">
-            {datosCategorias.slice(0, 4).map((c, i) => (
-              <div key={i} className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-                <span className="flex items-center gap-2 truncate max-w-[170px]">
-                  <span
-                    className="w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: PALETA_COLORES[i % PALETA_COLORES.length] }}
-                  />
-                  <span className="truncate">{c.nombre}</span>
-                </span>
-                <span className="font-bold">{formatCOP(c.valor)}</span>
-              </div>
-            ))}
-          </div>
+      {/* Compras y gastos por categoría */}
+      <section className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4" aria-label="Compras y gastos por categoría">
+        {encabezado(
+          `Compras y gastos por categoría (${anioSeleccionado})`,
+          `${formatCOP(metricas.totalEgresos)} en ${docsDelAnio.length} documento(s): compras ${formatCOP(metricas.comprasAnio)} · gastos ${formatCOP(metricas.gastosAnio)}.`,
+          { texto: 'Ver compras y gastos', onClick: onIrACompras }
+        )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {categoriasCompra.map((c) => (
+            <TarjetaResumen
+              key={c.id}
+              titulo={c.nombre}
+              estilo={c.esGasto ? ESTILO_GASTO : ESTILO_COMPRA}
+              colorPunto={c.color}
+              total={c.total}
+              porcentaje={c.porcentaje}
+              detalle={`${c.cantidad} documento${c.cantidad !== 1 ? 's' : ''} · ${c.esGasto ? 'Gasto' : 'Compra'}`}
+              accion="Ver documentos"
+              onClick={onIrACompras}
+            />
+          ))}
         </div>
-      </div>
+      </section>
 
-      {/* Gráficos Secundarios: Top Proveedores y Centros de Costo del Año */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Top Proveedores (7 columnas) */}
-        <div className="lg:col-span-7 p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-              Top Proveedores Más Comprados en {anioSeleccionado}
-            </h3>
-            <span className="text-xs text-slate-400">Total en el año</span>
-          </div>
-
-          <div className="h-64 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                layout="vertical"
-                data={datosTopProveedores}
-                margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+      {/* Mes a mes: ventas, compras y gastos */}
+      <section className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4" aria-label="Ventas y compras mes a mes">
+        {encabezado(
+          `Ventas y compras mes a mes (${anioSeleccionado})`,
+          'Resultado = ventas − compras − gastos de cada mes (informativo, sin causación contable).'
+        )}
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+          {meses.map((m) => {
+            const futuro = m.mes > mesActual;
+            const actual = m.mes === mesActual;
+            return (
+              <div
+                key={m.mes}
+                className={`p-3.5 rounded-2xl border text-xs space-y-1.5 ${
+                  actual ? 'ring-2 ring-emerald-500 border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/30' : 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30'
+                } ${futuro ? 'opacity-50' : ''}`}
               >
-                <CartesianGrid strokeDasharray="3 3" opacity={0.15} horizontal={false} />
-                <XAxis
-                  type="number"
-                  stroke="#94a3b8"
-                  fontSize={10}
-                  tickFormatter={(v) => `$ ${(v / 1000000).toFixed(1)}M`}
-                />
-                <YAxis dataKey="nombre" type="category" stroke="#94a3b8" fontSize={10} width={105} />
-                <Tooltip
-                  formatter={(val: any) => [formatCOP(Number(val)), 'Total']}
-                  contentStyle={{
-                    backgroundColor: '#0f172a',
-                    borderRadius: '12px',
-                    border: 'none',
-                    color: '#fff',
-                    fontSize: '12px',
-                  }}
-                />
-                <Bar dataKey="total" fill="#498e91" radius={[0, 6, 6, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Gasto por Centro de Costo (5 columnas) */}
-        <div className="lg:col-span-5 p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4 flex flex-col justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-              Presupuesto por Centro de Costo ({anioSeleccionado})
-            </h3>
-            <p className="text-xs text-slate-400">
-              Distribución en Clínica, Tienda/Petshop, Peluquería y Administración durante {anioSeleccionado}.
-            </p>
-          </div>
-
-          <div className="h-52 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={datosCentrosCosto}
-                  dataKey="valor"
-                  nameKey="nombre"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={70}
-                >
-                  {datosCentrosCosto.map((_, i) => (
-                    <Cell key={`cc-${i}`} fill={PALETA_COLORES[(i + 2) % PALETA_COLORES.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(val: any) => [formatCOP(Number(val)), '']}
-                  contentStyle={{
-                    backgroundColor: '#0f172a',
-                    borderRadius: '12px',
-                    border: 'none',
-                    color: '#fff',
-                    fontSize: '12px',
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="space-y-1.5 text-xs">
-            {datosCentrosCosto.map((cc, i) => (
-              <div key={i} className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-                <span className="flex items-center gap-2">
-                  <span
-                    className="w-2.5 h-2.5 rounded-full"
-                    style={{ backgroundColor: PALETA_COLORES[(i + 2) % PALETA_COLORES.length] }}
-                  />
-                  <span>{cc.nombre}</span>
-                </span>
-                <span className="font-bold">{formatCOP(cc.valor)}</span>
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900 dark:text-white">{m.nombre}</span>
+                  {actual && <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">Mes actual</span>}
+                </div>
+                <div className="flex justify-between gap-2"><span className="text-slate-500">Ventas</span><span className="font-semibold tabular-nums text-slate-900 dark:text-white">{formatCOP(m.ventas)}</span></div>
+                <div className="flex justify-between gap-2"><span className="text-slate-500">Compras</span><span className="font-semibold tabular-nums text-slate-700 dark:text-slate-300">{formatCOP(m.compras)}</span></div>
+                <div className="flex justify-between gap-2"><span className="text-slate-500">Gastos</span><span className="font-semibold tabular-nums text-slate-700 dark:text-slate-300">{formatCOP(m.gastos)}</span></div>
+                <div className="flex justify-between gap-2 pt-1.5 border-t border-slate-200 dark:border-slate-700">
+                  <span className="font-semibold text-slate-600 dark:text-slate-300">Resultado</span>
+                  <span className={`font-black tabular-nums ${m.resultado < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'}`}>{formatCOP(m.resultado)}</span>
+                </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
+      </section>
+
+      {/* Proveedores y centros de costo */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4" aria-label="Proveedores">
+          {encabezado(`Proveedores con más compras (${anioSeleccionado})`, 'Total facturado por cada proveedor en el año.')}
+          {topProveedores.length ? (
+            <ul className="space-y-3">
+              {topProveedores.map((p) => (
+                <li key={p.nombre} className="space-y-1">
+                  <div className="flex items-center justify-between gap-3 text-xs">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{p.nombre}</span>
+                    <span className="font-bold tabular-nums text-slate-900 dark:text-white shrink-0">{formatCOP(p.total)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min(100, p.porcentaje)}%` }} />
+                    </div>
+                    <span className="text-[10px] text-slate-500 w-24 text-right shrink-0">{p.porcentaje.toFixed(1)}% · {p.cantidad} doc.</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-slate-500">Sin compras registradas en {anioSeleccionado}.</p>
+          )}
+        </section>
+
+        <section className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4" aria-label="Centros de costo">
+          {encabezado(`Compras y gastos por centro de costo (${anioSeleccionado})`, 'Clínica, tienda, peluquería, administración…')}
+          {centrosDelAnio.length ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {centrosDelAnio.map((c) => (
+                <TarjetaResumen
+                  key={c.nombre}
+                  titulo={c.nombre}
+                  estilo={ESTILO_GENERICO}
+                  total={c.total}
+                  porcentaje={c.porcentaje}
+                  detalle={`${c.cantidad} documento${c.cantidad !== 1 ? 's' : ''}`}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500">Sin compras ni gastos registrados en {anioSeleccionado}.</p>
+          )}
+        </section>
       </div>
     </div>
   );
