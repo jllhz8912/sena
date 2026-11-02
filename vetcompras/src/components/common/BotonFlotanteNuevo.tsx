@@ -80,7 +80,7 @@ export const BotonFlotanteNuevo: React.FC<BotonFlotanteNuevoProps> = ({
             }}
             className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl text-slate-800 dark:text-slate-100 hover:bg-teal-50 dark:hover:bg-teal-950/60 font-semibold text-xs group transition-all"
           >
-            <span>Registro manual compra/gasto</span>
+            <span>Registrar compra o gasto</span>
             <div className="p-1.5 rounded-xl bg-teal-100 dark:bg-teal-950 text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform">
               <FilePenLine className="w-4 h-4" />
             </div>

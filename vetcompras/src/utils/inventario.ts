@@ -48,11 +48,15 @@ export interface CambiosInventario {
 
 const vacio = (): CambiosInventario => ({ productosNuevos: [], productosActualizados: [], guardar: [], eliminar: [] });
 
-/** ¿La compra mueve inventario? Solo mercancía (no gastos) con líneas de detalle. */
 /** Línea que resume la factura (sin detalle de productos): registros rápidos o PDF sin detalle. */
 const esResumen = (l: { id?: string; resumen?: boolean }) => !!l.resumen || l.id === 'lin-global';
 
+/**
+ * ¿La compra mueve inventario? Solo mercancía (no gastos) con líneas de detalle, y nunca
+ * si al registrarla se respondió que no afecta el inventario.
+ */
 export function compraMueveInventario(doc: Partial<CompraDocumento>): boolean {
+  if (doc.afectaInventario === false) return false;
   return !doc.esGasto && Array.isArray(doc.lineas) && doc.lineas.some((l) => !esResumen(l) && Math.abs(Number(l.cantidad) || 0) > 0 && l.descripcion?.trim());
 }
 

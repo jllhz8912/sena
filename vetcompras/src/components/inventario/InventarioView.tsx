@@ -6,7 +6,6 @@ import {
   Boxes,
   ClipboardList,
   Download,
-  FilePenLine,
   FileSpreadsheet,
   History,
   Loader2,
@@ -18,7 +17,6 @@ import {
   Scale,
   Search,
   Trash2,
-  UploadCloud,
   X,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -190,8 +188,9 @@ const ModalMovimiento: React.FC<{
         <label>
           <span className={claseEtiqueta}>Tipo</span>
           <select value={m.tipo} onChange={(e) => setM({ ...m, tipo: e.target.value as TipoMovimiento })} className={claseInput}>
-            <option value="entrada">Entrada (compra, devolución de cliente)</option>
-            <option value="salida">Salida (venta)</option>
+            {/* Entradas y salidas nuevas vienen de compras y ventas; aquí solo se corrigen las existentes */}
+            {(editando || m.tipo === 'entrada') && <option value="entrada">Entrada (compra, devolución de cliente)</option>}
+            {(editando || m.tipo === 'salida') && <option value="salida">Salida (venta)</option>}
             <option value="baja">Baja (daño, pérdida, vencimiento)</option>
             <option value="ajuste">Ajuste (+ suma / − resta)</option>
           </select>
@@ -363,11 +362,16 @@ function descargarPlantilla() {
 // ------------------------------------------------------------------- vista
 
 interface InventarioViewProps {
-  onCargarCompra: () => void;
-  onRegistroManual: () => void;
+  /** Las entradas de mercancía se registran en Compras y Gastos */
+  onIrACompras?: () => void;
 }
 
-export const InventarioView: React.FC<InventarioViewProps> = ({ onCargarCompra, onRegistroManual }) => {
+/**
+ * Administración del inventario: consultar, validar y corregir existencias. Las
+ * entradas vienen de las compras de mercancía que afectan inventario y las
+ * salidas de las ventas; aquí solo se hacen bajas, ajustes y ediciones.
+ */
+export const InventarioView: React.FC<InventarioViewProps> = ({ onIrACompras }) => {
   const { mostrarToast } = useToast();
   const [productos, setProductos] = useState<Producto[]>([]);
   const [movimientos, setMovimientos] = useState<MovimientoInventario[]>([]);
@@ -556,19 +560,14 @@ export const InventarioView: React.FC<InventarioViewProps> = ({ onCargarCompra, 
               <Boxes className="w-5 h-5 text-emerald-600" /> Inventario de productos
             </h2>
             <p className="text-xs text-slate-500 max-w-2xl">
-              Control <strong>informativo</strong>: las compras con detalle de productos suman, las ventas restan y usted registra bajas y ajustes. El saldo puede quedar
-              en negativo y nunca impide vender. Todo movimiento se puede editar.
+              Aquí se <strong>consulta, valida y corrige</strong> el inventario. Las entradas salen de las compras de mercancía registradas en{' '}
+              <strong>Compras y Gastos</strong> (cuando se responde que afectan inventario) y las salidas de las <strong>ventas</strong>. En este módulo solo se
+              registran bajas, ajustes por conteo y correcciones. El saldo puede quedar en negativo y nunca impide vender.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={onCargarCompra} className={`${boton} bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600`} title="Factura XML/ZIP de la DIAN, PDF, foto o matriz de Excel">
-              <UploadCloud className="w-4 h-4" /> Cargar compra
-            </button>
-            <button onClick={onRegistroManual} className={`${boton} border-emerald-600 text-emerald-700 dark:text-emerald-300`} title="Compra sin factura electrónica, con detalle de productos">
-              <FilePenLine className="w-4 h-4" /> Compra manual
-            </button>
-            <button onClick={() => setModalMov({ tipo: 'entrada' })} className={`${boton} border-slate-300 dark:border-slate-700`}>
-              <PackagePlus className="w-4 h-4 text-emerald-600" /> Entrada rápida
+            <button onClick={() => setModalMov({ tipo: 'ajuste' })} className={`${boton} border-slate-300 dark:border-slate-700`} title="Corrige el saldo de un producto (suma o resta unidades)">
+              <PackagePlus className="w-4 h-4 text-amber-600" /> Registrar ajuste
             </button>
             <button onClick={() => setModalMov({ tipo: 'baja' })} className={`${boton} border-slate-300 dark:border-slate-700`}>
               <PackageMinus className="w-4 h-4 text-rose-600" /> Registrar baja
@@ -619,8 +618,8 @@ export const InventarioView: React.FC<InventarioViewProps> = ({ onCargarCompra, 
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Buscar producto, código, grupo, referencia…" className={claseInput + ' pl-9'} />
         </div>
-        <button onClick={() => archivoRef.current?.click()} className={`${boton} border-slate-300 dark:border-slate-700`} title="Inventario inicial o movimientos desde una matriz de Excel">
-          <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Importar Excel
+        <button onClick={() => archivoRef.current?.click()} className={`${boton} border-slate-300 dark:border-slate-700`} title="Saldo inicial o conteo físico desde Excel (no es para compras)">
+          <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Importar saldo inicial
         </button>
         <input ref={archivoRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={elegirArchivo} />
         <button onClick={descargarPlantilla} className={`${boton} border-slate-300 dark:border-slate-700`}>
@@ -650,7 +649,13 @@ export const InventarioView: React.FC<InventarioViewProps> = ({ onCargarCompra, 
               <p>No hay productos {productos.length ? 'con ese filtro' : 'todavía'}.</p>
               {!productos.length && (
                 <p className="text-xs">
-                  Cargue una compra con detalle de productos, importe su inventario inicial desde Excel o pulse “Recalcular” para tomar las compras y ventas ya registradas.
+                  Registre una compra de mercancía en <strong>Compras y Gastos</strong> y responda que afecta el inventario, importe el saldo inicial desde Excel o
+                  pulse “Recalcular” para tomar las compras y ventas ya registradas.
+                  {onIrACompras && (
+                    <button onClick={onIrACompras} className="ml-1 font-semibold text-emerald-700 dark:text-emerald-400 underline">
+                      Ir a Compras y Gastos
+                    </button>
+                  )}
                 </p>
               )}
             </div>

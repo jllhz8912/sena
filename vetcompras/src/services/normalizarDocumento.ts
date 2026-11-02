@@ -46,7 +46,7 @@ export function completarDocumento(parcial: Partial<CompraDocumento>, c: Catalog
   const categoria = c.categorias.find((x) => x.id === categoriaId);
   const total = Number(parcial.total || 0);
   const esNotaCredito = parcial.tipoDocumento === 'nota_credito';
-  const sinSaldo = parcial.formaPago !== 'credito' || esNotaCredito || total <= 0;
+  const sinSaldo = (parcial.formaPago !== 'credito' && parcial.formaPago !== 'credito_contado') || esNotaCredito || total <= 0;
   const fechaEmision = parcial.fechaEmision || fechaLocal();
 
   return {

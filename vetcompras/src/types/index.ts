@@ -20,7 +20,8 @@ export type OrigenDocumento = 'electronica' | 'manual';
 
 export type EstadoPago = 'pagada' | 'pendiente' | 'parcial';
 
-export type FormaPago = 'contado' | 'credito';
+/** Contado (todo pagado), crédito (todo queda debiendo) o crédito-contado (abono inicial y saldo a crédito). */
+export type FormaPago = 'contado' | 'credito' | 'credito_contado';
 
 export interface ProveedorInfo {
   nit: string;
@@ -113,6 +114,15 @@ export interface CompraDocumento {
   categoriaId: string;
   centroCostoId: string;
   esGasto: boolean; // false = compra para inventario/reventa/insumo, true = gasto operativo/administrativo
+  /** Respuesta a "¿Es compra de mercancía?" en el registro */
+  esMercancia?: boolean;
+  /**
+   * Respuesta a "¿Desea que afecte el inventario?". false: nunca mueve existencias.
+   * Sin valor (documentos anteriores, XML, Excel): mueve si es compra con detalle de productos.
+   */
+  afectaInventario?: boolean;
+  /** Formulario con que se registró: sencilla (datos básicos) o detallada (todos los datos) */
+  modoRegistro?: 'sencilla' | 'detallada';
 
   // Moneda e importes
   moneda: string; // COP por defecto

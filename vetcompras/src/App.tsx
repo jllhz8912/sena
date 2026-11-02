@@ -291,14 +291,7 @@ function VetComprasApp({ onSalir }: { onSalir: () => void }) {
               )}
 
               {currentTab === 'inventario' && (
-                <InventarioView
-                  onCargarCompra={() => setModalCargaAbierto(true)}
-                  onRegistroManual={() => {
-                    setDocumentoParaEditar(undefined);
-                    setManualDetallado(true);
-                    setModalManualAbierto(true);
-                  }}
-                />
+                <InventarioView onIrACompras={() => setCurrentTab('compras')} />
               )}
 
               {currentTab === 'cuentas_pagar' && (

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { etiquetaFormaPago } from '../../utils/pagosCompra';
 import {
   X,
   FileText,
@@ -162,7 +163,7 @@ export const DetalleDocumentoDrawer: React.FC<DetalleDocumentoDrawerProps> = ({
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
                 <span className="text-slate-400 block mb-1">Forma Pago</span>
                 <span className="font-bold text-slate-800 dark:text-slate-100 uppercase">
-                  {documento.formaPago}
+                  {etiquetaFormaPago(documento.formaPago)}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">

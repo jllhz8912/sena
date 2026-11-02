@@ -4,6 +4,7 @@
  * filtros activados y columnas autoajustadas.
  */
 
+import { etiquetaFormaPago } from '../utils/pagosCompra';
 import * as XLSX from 'xlsx';
 import { guardarExcel } from './descargaExcel';
 import { itemsDeVenta, pagosDeVenta, saldoDeVenta } from '../utils/ventas';
@@ -88,7 +89,7 @@ export function exportarDocumentosAExcel(
       doc.proveedor?.razonSocial || '',
       catMap.get(doc.categoriaId) || 'Sin categoría',
       ccMap.get(doc.centroCostoId) || 'General',
-      doc.formaPago.toUpperCase(),
+      etiquetaFormaPago(doc.formaPago).toUpperCase(),
       medioInfo.label,
       medioInfo.tipo === 'efectivo'
         ? 'Efectivo'
@@ -623,7 +624,7 @@ export function exportarTodaLaBaseAExcel(
       d.proveedor?.razonSocial || '',
       catMap.get(d.categoriaId) || '',
       ccMap.get(d.centroCostoId) || '',
-      d.formaPago,
+      etiquetaFormaPago(d.formaPago),
       medioInfo.label,
       tipoMedioTexto,
       d.estadoPago,

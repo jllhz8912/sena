@@ -489,10 +489,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-teal-950 dark:text-teal-200">
-                    Registro manual
+                    Registrar compra o gasto
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Cuenta de cobro, documento soporte, recibos o tiquetes POS
+                    Sencilla o detallada: factura, cuenta de cobro, recibo o tiquete POS
                   </p>
                 </div>
               </button>

@@ -5,7 +5,6 @@ import {
   UploadCloud,
   Boxes,
   Calculator,
-  FilePenLine,
   BarChart3,
   FolderTree,
   ChevronLeft,
@@ -120,12 +119,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'precios' as NavItem,
       label: 'Precios de Venta',
       icon: Calculator,
-      badge: null,
-    },
-    {
-      id: 'registro_manual' as NavItem,
-      label: 'Registro Manual',
-      icon: FilePenLine,
       badge: null,
     },
     {

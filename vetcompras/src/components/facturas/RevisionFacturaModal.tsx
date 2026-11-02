@@ -111,6 +111,11 @@ export const RevisionFacturaModal: React.FC<RevisionFacturaModalProps> = ({
     actualizadoEn: new Date().toISOString(),
   }));
 
+  // Preguntas de mercancía e inventario (por defecto: compra con productos → sí afecta)
+  const tieneProductos = (doc.lineas || []).some((l) => !l.resumen && l.id !== 'lin-global' && Math.abs(Number(l.cantidad) || 0) > 0 && l.descripcion?.trim());
+  const esMercancia = doc.esMercancia ?? !doc.esGasto;
+  const afectaInv = doc.afectaInventario ?? (esMercancia && tieneProductos);
+
   const [duplicadoExistente, setDuplicadoExistente] = useState<CompraDocumento | null>(null);
   const [forzarGuardadoDuplicado, setForzarGuardadoDuplicado] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -257,6 +262,9 @@ export const RevisionFacturaModal: React.FC<RevisionFacturaModalProps> = ({
       const sinSaldo = doc.formaPago === 'contado' || doc.tipoDocumento === 'nota_credito' || Number(doc.total || 0) <= 0;
       const docParaGuardar = {
         ...doc,
+        esMercancia,
+        afectaInventario: esMercancia && afectaInv,
+        esGasto: esMercancia ? false : doc.esGasto,
         saldoPendiente: sinSaldo ? 0 : Math.max(0, Number(doc.total || 0) - Math.abs(Number(doc.totalRetenciones || 0))),
         estadoPago: sinSaldo ? 'pagada' : (doc.estadoPago || 'pendiente'),
         fechaPago: sinSaldo ? doc.fechaEmision : doc.fechaPago,
@@ -620,6 +628,37 @@ export const RevisionFacturaModal: React.FC<RevisionFacturaModalProps> = ({
 
               {/* Sección 3: Clasificación Veterinaria */}
               <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
+                  {[
+                    { id: 'rev-mercancia', texto: '¿Es compra de mercancía?', valor: esMercancia, cambiar: (v: boolean) => setDoc({ ...doc, esMercancia: v, ...(v ? { esGasto: false } : {}) }) },
+                    ...(esMercancia
+                      ? [{ id: 'rev-inventario', texto: '¿Desea que afecte el inventario?', valor: afectaInv, cambiar: (v: boolean) => setDoc({ ...doc, afectaInventario: v }) }]
+                      : []),
+                  ].map((q) => (
+                    <div key={q.id}>
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">{q.texto}</p>
+                      <div className="flex gap-2">
+                        {[true, false].map((v) => (
+                          <button
+                            key={String(v)}
+                            type="button"
+                            id={`${q.id}-${v ? 'si' : 'no'}`}
+                            aria-pressed={q.valor === v}
+                            onClick={() => q.cambiar(v)}
+                            className={`flex-1 px-3 py-1.5 rounded-lg border-2 text-xs font-bold ${q.valor === v ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200' : 'border-slate-200 dark:border-slate-700'}`}
+                          >
+                            {v ? 'Sí' : 'No'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {esMercancia && afectaInv && !tieneProductos && (
+                    <p className="sm:col-span-2 text-[11px] text-amber-700 dark:text-amber-400">
+                      Esta factura no trae detalle de productos: no moverá el inventario. Para cargarlos, edítela después en Compras y Gastos (Detallada) o súbala con la plantilla.
+                    </p>
+                  )}
+                </div>
                 <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-800 text-sm font-bold text-slate-900 dark:text-white">
                   <Calculator className="w-4 h-4 text-emerald-600" />
                   <span>Clasificación Contable Veterinaria</span>

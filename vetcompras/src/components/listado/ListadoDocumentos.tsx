@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { ESTADOS_FACTURA, estadoFactura, resumenFacturas } from '../../utils/pagosCompra';
 import {
   Search,
   Filter,
@@ -109,7 +110,8 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
   const ccMap = useMemo(() => new Map(centrosCosto.map((cc) => [cc.id, cc])), [centrosCosto]);
 
   // Filtrado de documentos
-  const documentosFiltrados = useMemo(() => {
+  // Todos los filtros menos el estado de pago (con estos se cuentan los botones de control)
+  const documentosBase = useMemo(() => {
     const hoy = new Date();
     const inicioMes = fechaLocal(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
     const inicioMesAnterior = fechaLocal(new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1));
@@ -166,7 +168,6 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
           return false;
         }
       }
-      if (filtroEstadoPago && d.estadoPago !== filtroEstadoPago) return false;
       if (filtroOrigen && d.origen !== filtroOrigen) return false;
 
       return true;
@@ -181,9 +182,14 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
     filtroCentroCosto,
     filtroTipoDoc,
     filtroMedioPago,
-    filtroEstadoPago,
     filtroOrigen,
   ]);
+
+  const controlFacturas = useMemo(() => resumenFacturas(documentosBase), [documentosBase]);
+  const documentosFiltrados = useMemo(
+    () => (filtroEstadoPago ? documentosBase.filter((d) => d.tipoDocumento !== 'nota_credito' && estadoFactura(d) === filtroEstadoPago) : documentosBase),
+    [documentosBase, filtroEstadoPago]
+  );
 
   // Ordenar documentos
   const documentosOrdenados = useMemo(() => {
@@ -372,6 +378,16 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
             <option value="anio_actual">Este año en curso</option>
           </select>
 
+          {/* Registrar compra o gasto (sencilla o detallada) */}
+          <button
+            id="btn-nueva-compra"
+            onClick={onAbrirRegistroManual}
+            className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 shrink-0"
+          >
+            <FilePenLine className="w-4 h-4" />
+            <span>Registrar compra o gasto</span>
+          </button>
+
           {/* Botón Importar Excel */}
           {onAbrirCargaExcel && (
             <button
@@ -471,9 +487,11 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
             className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
           >
             <option value="">Cualquier estado</option>
-            <option value="pagada">Pagadas</option>
-            <option value="pendiente">Pendientes</option>
-            <option value="parcial">Pago Parcial</option>
+            {ESTADOS_FACTURA.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.label}
+              </option>
+            ))}
           </select>
 
           <select
@@ -486,6 +504,35 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
             <option value="manual">Manual</option>
           </select>
         </div>
+      </div>
+
+      {/* Control de facturas: cuántas se deben, cuáles tienen saldo, cuáles están pagadas */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2" role="group" aria-label="Control de facturas por estado de pago">
+        {([{ id: '', label: 'Todas', ayuda: 'Según los filtros de arriba' }, ...ESTADOS_FACTURA] as { id: string; label: string; ayuda: string }[]).map((e) => {
+          const r = controlFacturas[(e.id || 'todas') as keyof typeof controlFacturas];
+          const activo = filtroEstadoPago === e.id;
+          const color =
+            e.id === 'vencida' ? 'text-rose-600 dark:text-rose-400' : e.id === 'pagada' ? 'text-emerald-700 dark:text-emerald-400' : e.id ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white';
+          return (
+            <button
+              key={e.id || 'todas'}
+              id={`control-${e.id || 'todas'}`}
+              type="button"
+              onClick={() => setFiltroEstadoPago(activo && e.id ? '' : e.id)}
+              aria-pressed={activo}
+              title={e.ayuda}
+              className={`text-left p-3 rounded-2xl border transition-all ${
+                activo ? 'ring-2 ring-emerald-500 border-emerald-300 bg-emerald-50/60 dark:bg-emerald-950/30' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:shadow-sm'
+              }`}
+            >
+              <span className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                {e.label} <span className={`text-sm font-black ${color}`}>{r.cantidad}</span>
+              </span>
+              <span className="block text-sm font-black text-slate-900 dark:text-white tabular-nums mt-0.5">{formatCOP(e.id === 'pagada' || !e.id ? r.total : r.saldo)}</span>
+              <span className="block text-[10px] text-slate-500">{e.id === 'pagada' || !e.id ? 'valor facturado' : 'saldo por pagar'}{!e.id && r.saldo > 0 ? ` · saldo ${formatCOP(r.saldo)}` : ''}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Barra de Acciones Masivas */}
@@ -559,10 +606,11 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
               )}
               <button
                 onClick={onAbrirRegistroManual}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs border border-slate-200 dark:border-slate-700"
+                id="btn-registrar-compra"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md shadow-emerald-600/20"
               >
                 <FilePenLine className="w-4 h-4" />
-                <span>Registro manual</span>
+                <span>Registrar compra o gasto</span>
               </button>
             </div>
           </div>
