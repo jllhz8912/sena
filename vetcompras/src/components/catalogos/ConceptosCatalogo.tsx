@@ -25,6 +25,7 @@ import {
   vendidosSinCatalogo,
 } from '../../utils/conceptos';
 import { normalizarNombre } from '../../utils/inventario';
+import { categoriaVentaPorDefecto } from '../../utils/formatters';
 
 interface ConceptosCatalogoProps {
   categorias: Categoria[];
@@ -327,7 +328,7 @@ const ModalConcepto: React.FC<{
   const [c, setC] = useState<Producto>(() =>
     concepto
       ? { ...concepto, tipo: tipoDe(concepto), usos: usosDe(concepto), controlaInventario: controlaInventario(concepto) }
-      : { id: nuevoId('prod'), nombre: '', unidad: 'UND', tipo: 'producto', usos: ['venta', 'compra'], controlaInventario: true, categoriaVenta: 'vitrina', ivaPct: 19, activo: true, creadoEn: ahora, actualizadoEn: ahora }
+      : { id: nuevoId('prod'), nombre: '', unidad: 'UND', tipo: 'producto', usos: ['venta', 'compra'], controlaInventario: true, categoriaVenta: categoriaVentaPorDefecto('producto'), ivaPct: 19, activo: true, creadoEn: ahora, actualizadoEn: ahora }
   );
   const [alias, setAlias] = useState((concepto?.alias || []).join(', '));
   const [guardando, setGuardando] = useState(false);
@@ -343,7 +344,7 @@ const ModalConcepto: React.FC<{
       tipo: nuevo,
       usos: usosPorDefecto(nuevo),
       controlaInventario: nuevo === 'producto',
-      categoriaVenta: nuevo === 'gasto' ? undefined : c.categoriaVenta && (nuevo === 'servicio') === CATEGORIAS_SERVICIO.has(c.categoriaVenta) ? c.categoriaVenta : nuevo === 'servicio' ? 'consultas_clinica' : 'vitrina',
+      categoriaVenta: nuevo === 'gasto' ? undefined : c.categoriaVenta && (nuevo === 'servicio') === CATEGORIAS_SERVICIO.has(c.categoriaVenta) ? c.categoriaVenta : categoriaVentaPorDefecto(nuevo === 'servicio' ? 'servicio' : 'producto'),
       subcategoriaVenta: undefined,
       categoriaCompraId: nuevo === 'gasto' || nuevo === 'producto' ? c.categoriaCompraId || sugerida?.id : c.categoriaCompraId,
       unidad: nuevo === 'servicio' && c.unidad === 'UND' ? 'SERVICIO' : nuevo !== 'servicio' && c.unidad === 'SERVICIO' ? 'UND' : c.unidad,
@@ -414,7 +415,7 @@ const ModalConcepto: React.FC<{
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
               <label className={etiqueta} htmlFor="concepto-nombre">Nombre *</label>
-              <input id="concepto-nombre" autoFocus value={c.nombre} onChange={(e) => setC({ ...c, nombre: e.target.value })} className={input + ' font-bold'} placeholder={t === 'gasto' ? 'Ej.: Arriendo local' : t === 'servicio' ? 'Ej.: Consulta general' : 'Ej.: Nexgard 10-25 kg'} />
+              <input id="concepto-nombre" autoFocus value={c.nombre} onChange={(e) => setC({ ...c, nombre: e.target.value })} className={input + ' font-bold'} placeholder={t === 'gasto' ? 'Ej.: Arriendo local' : t === 'servicio' ? 'Ej.: Servicio técnico' : 'Ej.: Producto 500 g'} />
             </div>
             <div>
               <label className={etiqueta} htmlFor="concepto-codigo">Código</label>
@@ -505,7 +506,7 @@ const ModalConcepto: React.FC<{
             </div>
             <div>
               <label className={etiqueta} htmlFor="concepto-grupo">Grupo</label>
-              <input id="concepto-grupo" value={c.grupo || ''} onChange={(e) => setC({ ...c, grupo: e.target.value })} className={input} placeholder="Medicamentos, Alimentos…" />
+              <input id="concepto-grupo" value={c.grupo || ''} onChange={(e) => setC({ ...c, grupo: e.target.value })} className={input} placeholder="Línea, familia o grupo…" />
             </div>
             {t === 'producto' && (
               <div>

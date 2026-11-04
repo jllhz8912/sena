@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   CircleDollarSign,
+  Wrench,
   Plus,
   Search,
   FileSpreadsheet,
@@ -37,6 +38,8 @@ import {
   SUBCATEGORIAS_POR_CATEGORIA,
   SUBCATEGORIAS_TRATAMIENTOS,
   SUBCATEGORIAS_VITRINA,
+  CATEGORIAS_VENTA,
+  CATEGORIAS_SERVICIO,
 } from '../../utils/formatters';
 import { exportarVentasAExcel } from '../../services/excelService';
 import { dataService } from '../../services/dataService';
@@ -47,6 +50,24 @@ import { ModalDocumentoVenta } from './ModalDocumentoVenta';
 import { ModalConfirmacion } from '../common/ModalConfirmacion';
 import { ModalBorradoSeguro } from '../respaldos/ModalBorradoSeguro';
 import { etiquetaReferencia } from '../../utils/etiquetas';
+
+const ICONOS_CATEGORIA: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string }> = {
+  banos: { icon: Scissors, color: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800' },
+  vacunas: { icon: Syringe, color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800' },
+  consultas_clinica: { icon: Stethoscope, color: 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-800' },
+  tratamientos_clinica: { icon: Activity, color: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800' },
+  purinas_empaque: { icon: Package, color: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800' },
+  purinas_granel: { icon: Wheat, color: 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800' },
+  vitrina: { icon: ShoppingBag, color: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800' },
+};
+const COLORES_CATEGORIA = [
+  'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-800',
+  'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800',
+  'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800',
+  'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800',
+  'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800',
+  'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800',
+];
 
 interface VentasViewProps {
   ventas: Venta[];
@@ -371,17 +392,17 @@ export const VentasView: React.FC<VentasViewProps> = ({
         </div>
       </div>
 
-      {/* 3. Barra de Categorías de Ventas (7 Categorías) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2.5">
-        {[
-          { id: 'banos', label: 'Baños', icon: Scissors, color: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800' },
-          { id: 'vacunas', label: 'Vacunas', icon: Syringe, color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800' },
-          { id: 'consultas_clinica', label: 'Consultas clinica', icon: Stethoscope, color: 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-800' },
-          { id: 'tratamientos_clinica', label: 'Tratamientos clinica', icon: Activity, color: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800' },
-          { id: 'purinas_empaque', label: 'Purinas (bultos y paq.)', icon: Package, color: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800' },
-          { id: 'purinas_granel', label: 'Purinas a granel', icon: Wheat, color: 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800' },
-          { id: 'vitrina', label: 'Vitrina', icon: ShoppingBag, color: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800' },
-        ].map((c) => {
+      {/* 3. Barra de Categorías de Ventas (las configuradas en Catálogos) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+        {CATEGORIAS_VENTA.map((cat, n) => {
+          // Las categorías las define cada empresa en Catálogos; las conocidas conservan su icono
+          const conocida = ICONOS_CATEGORIA[cat.id];
+          const c = {
+            id: cat.id,
+            label: cat.label,
+            icon: conocida?.icon || (CATEGORIAS_SERVICIO.has(cat.id) ? Wrench : Package),
+            color: conocida?.color || COLORES_CATEGORIA[n % COLORES_CATEGORIA.length],
+          };
           const Icono = c.icon;
           const datos = estadisticas.porCategoria[c.id] || { total: 0, cantidad: 0 };
           const activo = filtroCategoria === c.id;
@@ -447,14 +468,11 @@ export const VentasView: React.FC<VentasViewProps> = ({
             className="px-3 py-2 rounded-xl text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium"
           >
             <option value="todas">Todas las categorías</option>
-            <option value="banos">Baños</option>
-            <option value="vacunas">Vacunas</option>
-            <option value="consultas_clinica">Consultas clinica</option>
-            <option value="tratamientos_clinica">Tratamientos clinica</option>
-            <option value="purinas_empaque">Purinas (bultos y paquetes)</option>
-            <option value="purinas_granel">Purinas a granel</option>
-            <option value="vitrina">Vitrina</option>
-            <option value="varios">Varios / Otros</option>
+            {CATEGORIAS_VENTA.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
           </select>
 
           {/* Filtro de Subcategoría dinámico (muestra las opciones de cualquier categoría seleccionada, incluyendo Varios) */}

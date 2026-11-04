@@ -252,7 +252,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
                   type="text"
                   value={empresa.nombreComercial || ''}
                   onChange={(e) => handleChange('nombreComercial', e.target.value)}
-                  placeholder="Ej: VetSanRoque Hospital 24H"
+                  placeholder="Ej: Tienda Ejemplo"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold"
                 />
               </div>
@@ -534,7 +534,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
                   type="text"
                   value={empresa.sitioWeb || ''}
                   onChange={(e) => handleChange('sitioWeb', e.target.value)}
-                  placeholder="www.vetsanroque.com.co"
+                  placeholder="www.miempresa.com.co"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                 />
               </div>

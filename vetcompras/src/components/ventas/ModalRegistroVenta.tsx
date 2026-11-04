@@ -129,7 +129,7 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
   const [items, setItems] = useState<VentaItem[]>(() =>
     ventaParaEditar ? itemsDeVenta(ventaParaEditar).map((i) => ({ ...i })) : (itemsIniciales || []).map((i) => ({ ...i }))
   );
-  const [nuevo, setNuevo] = useState({ categoria: 'consultas_clinica', concepto: '', cantidad: 1, precioUnitario: 0, descuento: 0 });
+  const [nuevo, setNuevo] = useState({ categoria: CATEGORIAS_VENTA[0]?.id || 'varios', concepto: '', cantidad: 1, precioUnitario: 0, descuento: 0 });
   // 5. Pagos
   const [pagos, setPagos] = useState<PagoVenta[]>(() => (ventaParaEditar ? pagosDeVenta(ventaParaEditar).map((p) => ({ ...p })) : []));
   const [observaciones, setObservaciones] = useState(ventaParaEditar?.observaciones || '');
@@ -526,7 +526,7 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
                     value={nuevo.concepto}
                     onChange={(e) => alCambiarConceptoNuevo(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), agregarItem())}
-                    placeholder="Ej. Consulta general, Nexgard 10-25 kg"
+                    placeholder="Ej. Servicio técnico, Producto 500 g"
                     className={claseInput}
                   />
                   <datalist id="sugerencias-concepto">

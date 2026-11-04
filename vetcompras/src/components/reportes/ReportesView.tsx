@@ -1051,7 +1051,7 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
                 <span>Ventas Discriminadas por Categoría</span>
               </h4>
               <p className="text-xs text-slate-500">
-                Baños, Vacunas, Consultas clinica, Tratamientos clinica, Purinas (bultos y paquetes), Purinas a granel, Vitrina
+                {CATEGORIAS_VENTA.map((c) => c.label).join(", ")}
               </p>
             </div>
 

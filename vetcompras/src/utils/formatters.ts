@@ -509,6 +509,12 @@ export const SUBCATEGORIAS_POR_CATEGORIA: Record<string, SubcategoriaItem[]> = {
 /** Categorías de venta que corresponden a servicios (el resto son productos). */
 export const CATEGORIAS_SERVICIO = new Set(['consultas_clinica', 'tratamientos_clinica', 'vacunas', 'banos']);
 
+/** Primera categoría activa del tipo pedido (para productos o servicios nuevos sin categoría). */
+export function categoriaVentaPorDefecto(tipo: 'producto' | 'servicio'): string {
+  const lista = CATEGORIAS_VENTA.filter((c) => CATEGORIAS_SERVICIO.has(c.id) === (tipo === 'servicio'));
+  return (lista[0] || CATEGORIAS_VENTA[0])?.id || 'varios';
+}
+
 /** Incluye las eliminadas, para seguir mostrando su nombre en ventas antiguas. */
 export const CATEGORIAS_VENTA_TODAS: { id: string; label: string }[] = CATEGORIAS_VENTA.map((c) => ({ ...c }));
 

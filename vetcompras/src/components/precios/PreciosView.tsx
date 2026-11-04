@@ -28,6 +28,7 @@ import { CATEGORIAS_VENTA, formatCOP, fechaLocal } from '../../utils/formatters'
 import { sirvePara, tipoDe } from '../../utils/conceptos';
 import { PLANTILLA_COSTOS, calcularPrecio, rentabilidad } from '../../utils/precios';
 import { calcularSaldos } from '../../utils/inventario';
+import { categoriaVentaPorDefecto } from '../../utils/formatters';
 
 const claseInput =
   'w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500';
@@ -46,7 +47,7 @@ function fichaNueva(tipo: FichaPrecio['tipo'], ivaPorDefecto: number): FichaPrec
     id: nuevoId('ficha'),
     tipo,
     nombre: '',
-    categoriaVenta: (tipo === 'servicio' ? 'consultas_clinica' : 'vitrina') as CategoriaVenta,
+    categoriaVenta: categoriaVentaPorDefecto(tipo === 'servicio' ? 'servicio' : 'producto') as CategoriaVenta,
     unidad: tipo === 'servicio' ? 'SERVICIO' : 'UND',
     costos: PLANTILLA_COSTOS[tipo].map((c) => ({ id: nuevoId('cst'), concepto: c.concepto, cantidad: c.cantidad, valorUnitario: 0 })),
     gastosGeneralesPct: 10,
@@ -178,7 +179,7 @@ const EditorFicha: React.FC<{
               <div className="grid sm:grid-cols-2 gap-3">
                 <label className="sm:col-span-2">
                   <span className={claseEtiqueta}>Nombre (así aparece en la venta y el recibo) *</span>
-                  <input id="ficha-nombre" autoFocus value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value })} className={claseInput} placeholder={f.tipo === 'servicio' ? 'Ej. Consulta general, Baño perro mediano' : 'Ej. Nexgard 10-25 kg'} />
+                  <input id="ficha-nombre" autoFocus value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value })} className={claseInput} placeholder={f.tipo === 'servicio' ? 'Ej. Instalación, Mantenimiento preventivo' : 'Ej. Producto 500 g'} />
                 </label>
                 <label>
                   <span className={claseEtiqueta}>Categoría en ventas</span>
@@ -245,7 +246,7 @@ const EditorFicha: React.FC<{
                     {f.costos.map((c) => (
                       <tr key={c.id}>
                         <td className="pr-2 py-1">
-                          <input value={c.concepto} onChange={(e) => cambiarCosto(c.id, { concepto: e.target.value })} className={claseInput} placeholder="Ej. Vacuna, jeringa, mano de obra" aria-label="Concepto del costo" />
+                          <input value={c.concepto} onChange={(e) => cambiarCosto(c.id, { concepto: e.target.value })} className={claseInput} placeholder="Ej. Insumo, material, mano de obra" aria-label="Concepto del costo" />
                         </td>
                         <td className="px-1">
                           <input type="number" step="any" min={0} value={c.cantidad} onChange={(e) => cambiarCosto(c.id, { cantidad: Number(e.target.value) })} className={claseInput + ' text-right'} aria-label="Cantidad" />
@@ -494,7 +495,7 @@ export const PreciosView: React.FC<{ onFacturar: (items: VentaItem[]) => void }>
         id: `ficha-${p.id}`,
         tipo: tipoDe(p) === 'servicio' ? 'servicio' : 'producto',
         nombre: p.nombre,
-        categoriaVenta: (p.categoriaVenta || (tipoDe(p) === 'servicio' ? 'varios' : 'vitrina')) as CategoriaVenta,
+        categoriaVenta: (p.categoriaVenta || categoriaVentaPorDefecto(tipoDe(p) === 'servicio' ? 'servicio' : 'producto')) as CategoriaVenta,
         productoId: p.id,
         unidad: p.unidad || 'UND',
         costos: [{ id: 'cst-compra', concepto: 'Costo de compra (sin IVA)', cantidad: 1, valorUnitario: costosInventario.get(p.id) || p.costoUltimo || 0 }],

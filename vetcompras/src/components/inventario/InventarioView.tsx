@@ -81,7 +81,7 @@ const ModalProducto: React.FC<{ producto?: Producto; onCerrar: () => void; onGua
       <form onSubmit={guardar} className="grid grid-cols-2 gap-3">
         <label className="col-span-2">
           <span className={claseEtiqueta}>Nombre *</span>
-          <input autoFocus value={p.nombre} onChange={(e) => setP({ ...p, nombre: e.target.value })} className={claseInput} placeholder="Ej. Nexgard 10-25 kg" />
+          <input autoFocus value={p.nombre} onChange={(e) => setP({ ...p, nombre: e.target.value })} className={claseInput} placeholder="Ej. Producto 500 g" />
         </label>
         <label>
           <span className={claseEtiqueta}>Código (opcional)</span>
@@ -89,7 +89,7 @@ const ModalProducto: React.FC<{ producto?: Producto; onCerrar: () => void; onGua
         </label>
         <label>
           <span className={claseEtiqueta}>Grupo</span>
-          <input value={p.grupo || ''} onChange={(e) => setP({ ...p, grupo: e.target.value })} className={claseInput} list="grupos-inventario" placeholder="Medicamentos, Alimentos…" />
+          <input value={p.grupo || ''} onChange={(e) => setP({ ...p, grupo: e.target.value })} className={claseInput} list="grupos-inventario" placeholder="Línea, familia o grupo…" />
         </label>
         <label>
           <span className={claseEtiqueta}>Unidad</span>

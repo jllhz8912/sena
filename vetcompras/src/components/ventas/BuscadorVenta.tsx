@@ -99,7 +99,7 @@ export const BuscadorVenta: React.FC<BuscadorVentaProps> = ({ catalogo, onElegir
           }}
           onFocus={() => setAbierto(true)}
           onKeyDown={alTeclear}
-          placeholder="Buscar producto o servicio: nombre, letras, código, grupo o categoría…  (F2)   Ej.: vac rab · nex 10 · 3*dog chow"
+          placeholder="Buscar producto o servicio: nombre, letras, código, grupo o categoría…  (F2)   Ej.: letras sueltas · código · 3*producto"
           className="w-full pl-10 pr-10 py-3 rounded-xl border-2 border-emerald-500 bg-white dark:bg-slate-800 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-4 focus:ring-emerald-500/20"
           autoComplete="off"
           role="combobox"

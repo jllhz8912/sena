@@ -8,6 +8,7 @@ import { CATEGORIAS_SERVICIO, CATEGORIAS_VENTA, CATEGORIAS_VENTA_TODAS, SUBCATEG
 import { controlaInventario, sirvePara, tipoDe } from './conceptos';
 import { normalizarNombre } from './inventario';
 import { itemsDeVenta } from './ventas';
+import { categoriaVentaPorDefecto } from './formatters';
 
 export type TipoCatalogo = 'producto' | 'servicio';
 export type OrigenCatalogo = 'ficha' | 'inventario' | 'historial' | 'catalogo';
@@ -73,7 +74,7 @@ export function construirCatalogo(opciones: {
     const vendido = vendidos.get(normalizarNombre(p.nombre));
     const tipo: TipoCatalogo = tipoDe(p) === 'servicio' ? 'servicio' : 'producto';
     agregar({
-      nombre: p.nombre, tipo, categoria: p.categoriaVenta || vendido?.categoria || (tipo === 'servicio' ? 'varios' : 'vitrina'), subcategoria: p.subcategoriaVenta,
+      nombre: p.nombre, tipo, categoria: p.categoriaVenta || vendido?.categoria || categoriaVentaPorDefecto(tipo === 'servicio' ? 'servicio' : 'producto'), subcategoria: p.subcategoriaVenta,
       precio: p.precioVenta || vendido?.precio || 0, productoId: p.id,
       codigo: p.codigo, grupo: p.grupo, alias: p.alias || [], unidad: p.unidad, existencia: controlaInventario(p) ? existencias.get(p.id) : undefined, origen: 'inventario',
     });

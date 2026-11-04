@@ -94,7 +94,7 @@ export const ConfigurarEmpresaModal: React.FC<ConfigurarEmpresaModalProps> = ({
                 type="text"
                 value={empresa.nombreComercial || ''}
                 onChange={(e) => setEmpresa({ ...empresa, nombreComercial: e.target.value })}
-                placeholder="Ej: VetSanRoque Hospital 24H"
+                placeholder="Ej: Tienda Ejemplo"
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
               />
             </div>
@@ -193,7 +193,7 @@ export const ConfigurarEmpresaModal: React.FC<ConfigurarEmpresaModalProps> = ({
                 type="email"
                 value={empresa.email}
                 onChange={(e) => setEmpresa({ ...empresa, email: e.target.value })}
-                placeholder="facturacion@vetsanroque.com"
+                placeholder="facturacion@miempresa.com"
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
               />
             </div>

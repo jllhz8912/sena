@@ -214,7 +214,7 @@ export const ModalDatosEmpresa: React.FC<ModalDatosEmpresaProps> = ({
                 type="email"
                 value={empresa.email}
                 onChange={(e) => handleChange('email', e.target.value)}
-                placeholder="Ej: contabilidad@huellitasvet.com"
+                placeholder="Ej: contabilidad@miempresa.com"
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
               />
             </div>
