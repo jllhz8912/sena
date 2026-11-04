@@ -9,7 +9,7 @@ import {
   FolderTree,
   ChevronLeft,
   ChevronRight,
-  Stethoscope,
+  Store,
   Sparkles,
   X,
   Menu,
@@ -220,19 +220,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
               />
             ) : (
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20 shrink-0">
-                <Stethoscope className="w-5 h-5" />
+                <Store className="w-5 h-5" />
               </div>
             )}
             {!collapsed && (
               <div className="flex flex-col min-w-0">
                 <span className="font-bold text-base tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
-                  <span className="truncate">{empresa.nombreComercial || 'VetCompras'}</span>
+                  <span className="truncate">{empresa.nombreComercial || empresa.razonSocial || 'Sistema de Control'}</span>
                   <span className="text-[10px] font-semibold tracking-wider uppercase px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shrink-0">
                     CO
                   </span>
                 </span>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                  {empresa.slogan || 'Gestión Veterinaria'}
+                  {empresa.slogan || 'Ventas, compras e inventario'}
                 </span>
               </div>
             )}
@@ -327,12 +327,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   />
                 ) : (
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20 shrink-0">
-                    <Stethoscope className="w-5 h-5" />
+                    <Store className="w-5 h-5" />
                   </div>
                 )}
                 <div>
                   <span className="font-bold text-base tracking-tight text-slate-900 dark:text-white flex items-center gap-1 truncate max-w-[170px]">
-                    <span className="truncate">{empresa.nombreComercial || 'VetCompras'}</span>
+                    <span className="truncate">{empresa.nombreComercial || empresa.razonSocial || 'Sistema de Control'}</span>
                     <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-100 text-emerald-800 shrink-0">CO</span>
                   </span>
                   <span className="text-[10px] text-slate-500 block truncate max-w-[170px]">{empresa.slogan || 'Menú Principal'}</span>

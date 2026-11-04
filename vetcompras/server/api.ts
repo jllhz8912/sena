@@ -1,6 +1,6 @@
 /**
  * API REST local de VetCompras. Solo atiende al propio PC o a la red local
- * de la veterinaria; los datos nunca salen del equipo (salvo el PDF que se
+ * de la empresa; los datos nunca salen del equipo (salvo el PDF que se
  * envía a Gemini cuando el usuario pide extraer una factura en PDF).
  *
  * Toda ruta, salvo el inicio de sesión, exige un usuario autenticado. Las
@@ -10,6 +10,8 @@
 
 import express, { type Request, type Response, type NextFunction } from 'express';
 import { spawn } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 import { BaseDatosLocal, esColeccion, VERSION_ESQUEMA, type Coleccion } from './basedatos';
 import { recalcularInventario, sincronizarInventario } from './inventario';
 import { extraerFacturaPdf, geminiConfigurado } from './gemini';
@@ -25,8 +27,9 @@ import {
   cifrarClave,
   verificarClave,
 } from './seguridad';
-import { generarDatosDemostracion, CATEGORIAS_DEFECTO, CENTROS_COSTO_DEFECTO, PROVEEDORES_DEFECTO } from '../src/data/defaults';
+import { generarDatosDemostracion, CATEGORIAS_DEFECTO, CENTROS_COSTO_DEFECTO } from '../src/data/defaults';
 import pkg from '../package.json';
+import { codigoEquipo, verificarLicencia, leerClave, type EstadoLicencia } from './licencia';
 import { estadoAlertaCopia } from '../src/utils/alertaCopia';
 import { PERFILES_DEFECTO, VERSION_PERFILES, migrarPerfiles, modulosDe, normalizarPerfiles, type PerfilAcceso } from '../src/utils/perfiles';
 
@@ -40,7 +43,7 @@ const seguro =
       await fn(req, res);
     } catch (error: any) {
       const status = error?.status || 500;
-      if (status >= 500) console.error(`[VetCompras] ${req.method} ${req.path}:`, error);
+      if (status >= 500) console.error(`[Sistema de Control] ${req.method} ${req.path}:`, error);
       res.status(status).json({ error: error?.message || 'Error interno del servidor local.' });
     }
   };
@@ -100,9 +103,71 @@ const NOMBRES_COLECCION: Record<Coleccion, string> = {
   fichasPrecio: 'ficha de precio',
 };
 
-export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void } = {}) {
+export interface OpcionesApi {
+  alApagar?: () => void;
+  /** Licencia por equipo. exigir=false solo en pruebas automáticas. */
+  licencia?: { exigir?: boolean; equipo?: string; clavePublica?: string };
+}
+
+export function crearApi(bd: BaseDatosLocal, opciones: OpcionesApi = {}) {
   const api = express.Router();
   const seg = new Seguridad(bd);
+
+  // =================================================== licencia del equipo
+  const exigirLicencia = opciones.licencia?.exigir !== false;
+  let equipo = opciones.licencia?.equipo || '';
+  const equipoActual = () => (equipo ||= codigoEquipo());
+  let cache: { dia: string; estado: EstadoLicencia } | null = null;
+  // La licencia vive en un archivo aparte de la base de datos: restaurar una copia o
+  // borrar todo no la quita.
+  const archivoLicencia = path.join(bd.carpetaDatos, 'licencia.lic');
+  const leerLicenciaGuardada = (): string | undefined => {
+    try {
+      if (fs.existsSync(archivoLicencia)) return fs.readFileSync(archivoLicencia, 'utf8').trim();
+    } catch {
+      /* se intenta la copia en la base */
+    }
+    return bd.obtenerConfig<{ clave?: string }>('licencia')?.clave;
+  };
+  const estadoLicencia = (): EstadoLicencia => {
+    const dia = new Date().toISOString().slice(0, 10);
+    if (cache && cache.dia === dia) return cache.estado;
+    const estado = verificarLicencia(leerLicenciaGuardada(), equipoActual(), new Date(), opciones.licencia?.clavePublica);
+    cache = { dia, estado };
+    return estado;
+  };
+
+  api.get(
+    '/licencia',
+    seguro((_req, res) => {
+      res.json({ ...estadoLicencia(), exigida: exigirLicencia });
+    })
+  );
+
+  api.post(
+    '/licencia',
+    seguro((req, res) => {
+      if (req.get('X-VetCompras') !== '1') return res.status(403).json({ error: 'Solicitud no permitida.' });
+      const clave = String(req.body?.clave || '').replace(/\s+/g, '');
+      if (!clave) throw Object.assign(new Error('Pegue la clave de licencia o cargue el archivo .lic.'), { status: 400 });
+      leerClave(clave); // mensajes claros si está mal copiada
+      const estado = verificarLicencia(clave, equipoActual(), new Date(), opciones.licencia?.clavePublica);
+      if (!estado.activa) throw Object.assign(new Error(estado.motivo || 'Clave no válida.'), { status: 400 });
+      fs.writeFileSync(archivoLicencia, clave + '\n');
+      bd.guardarConfig('licencia', { clave, activada: new Date().toISOString() });
+      cache = null;
+      bd.auditar({ usuario: '(activación)', accion: 'LICENCIA_ACTIVADA', ip: ipDe(req), detalle: `${estado.cliente || ''} · equipo ${estado.equipo}` });
+      res.json({ ...estadoLicencia(), exigida: exigirLicencia });
+    })
+  );
+
+  // Sin licencia válida no se atiende ninguna otra ruta
+  api.use((req, res, next) => {
+    if (!exigirLicencia) return next();
+    const estado = estadoLicencia();
+    if (estado.activa) return next();
+    res.status(402).json({ error: estado.motivo || 'Licencia no activada.', codigo: 'LICENCIA', equipo: estado.equipo });
+  });
 
   const auditar = (req: Request, accion: string, extra: { coleccion?: string; registroId?: string; detalle?: string } = {}) =>
     bd.auditar({ usuario: req.usuario?.usuario || '(sistema)', accion, ip: ipDe(req), ...extra });
@@ -124,10 +189,10 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
         modoAcceso,
         // Datos de marca para la pantalla de inicio (información pública del negocio)
         marca: {
-          nombre: empresa.nombreComercial || empresa.razonSocial || 'Los Criollos Vet',
+          nombre: empresa.nombreComercial || empresa.razonSocial || 'Mi Empresa',
           slogan: empresa.slogan || '',
           logoUrl: empresa.logoUrl || '',
-          colorPrimario: empresa.colorPrimario || '#9330b3',
+          colorPrimario: empresa.colorPrimario || '#2563eb',
         },
         requiereConfiguracion: modoAcceso === 'usuarios' && !seg.hayUsuarios(),
         minutosInactividad: MINUTOS_INACTIVIDAD,
@@ -255,7 +320,7 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
     '/estado',
     seguro((req, res) => {
       res.json({
-        aplicacion: 'VetCompras',
+        aplicacion: 'Sistema de Control',
         version: pkg.version,
         versionEsquema: VERSION_ESQUEMA,
         revision: bd.obtenerRevision(),
@@ -393,7 +458,7 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
     soloAdministrador,
     seguro((req, res) => {
       bd.guardarConfig('empresa', req.body);
-      auditar(req, 'Datos de la veterinaria modificados', { detalle: `${req.body?.razonSocial || ''} · NIT ${req.body?.nit || ''}` });
+      auditar(req, 'Datos de la empresa modificados', { detalle: `${req.body?.razonSocial || ''} · NIT ${req.body?.nit || ''}` });
       res.json({ ok: true });
     })
   );
@@ -546,7 +611,7 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
     })
   );
 
-  // Borrar todo para empezar de cero. Se conservan los datos de la veterinaria (nombre,
+  // Borrar todo para empezar de cero. Se conservan los datos de la empresa (nombre,
   // logo), la forma de ingreso, la bitácora y las copias de seguridad, para poder volver atrás.
   api.post(
     '/mantenimiento/borrar-todo',
@@ -572,7 +637,15 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
     seguro((req, res) => {
       bd.crearRespaldo('antes-de-cargar-demo');
       bd.vaciar('documentos');
-      bd.lote('documentos', generarDatosDemostracion());
+      const docs = generarDatosDemostracion();
+      bd.lote('documentos', docs);
+      // Proveedores de los documentos de ejemplo, para que el catálogo no quede vacío
+      const proveedores = new Map<string, any>();
+      for (const d of docs as any[]) {
+        const p = d.proveedor;
+        if (p?.nit && !proveedores.has(p.nit) && !bd.obtener('proveedores', 'prov-' + p.nit)) proveedores.set(p.nit, { ...p, id: 'prov-' + p.nit });
+      }
+      if (proveedores.size) bd.lote('proveedores', [...proveedores.values()]);
       recalcularInventario(bd);
       auditar(req, 'Datos de demostración cargados (reemplazan las compras)');
       res.json({ ok: true });
@@ -590,7 +663,6 @@ export function crearApi(bd: BaseDatosLocal, opciones: { alApagar?: () => void }
       bd.vaciar('centrosCosto');
       bd.lote('categorias', CATEGORIAS_DEFECTO);
       bd.lote('centrosCosto', CENTROS_COSTO_DEFECTO);
-      bd.lote('proveedores', PROVEEDORES_DEFECTO);
       auditar(req, 'Sistema restablecido a valores por defecto');
       res.json({ ok: true });
     })

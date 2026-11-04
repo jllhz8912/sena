@@ -46,6 +46,7 @@ import { ModalRegistroVenta } from './ModalRegistroVenta';
 import { ModalDocumentoVenta } from './ModalDocumentoVenta';
 import { ModalConfirmacion } from '../common/ModalConfirmacion';
 import { ModalBorradoSeguro } from '../respaldos/ModalBorradoSeguro';
+import { etiquetaReferencia } from '../../utils/etiquetas';
 
 interface VentasViewProps {
   ventas: Venta[];
@@ -243,13 +244,13 @@ export const VentasView: React.FC<VentasViewProps> = ({
           </div>
           <div>
             <h1 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-              Ventas de la Veterinaria
+              Ventas de la Empresa
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800">
                 Guardado en este PC
               </span>
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Control de ingresos por Pet Shop, Clínica, Baños, Purinas y Medicamentos
+              Control de ingresos por productos y servicios
             </p>
           </div>
         </div>
@@ -423,7 +424,7 @@ export const VentasView: React.FC<VentasViewProps> = ({
               type="text"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar por cliente, mascota, producto, consecutivo..."
+              placeholder={`Buscar por cliente, ${etiquetaReferencia().toLowerCase()}, producto, consecutivo...`}
               className="w-full pl-10 pr-9 py-2 rounded-xl text-xs border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-emerald-500"
             />
             {busqueda && (
@@ -545,7 +546,7 @@ export const VentasView: React.FC<VentasViewProps> = ({
               No se encontraron ventas con los filtros aplicados.
             </p>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              Haz clic en &quot;Registrar Venta&quot; para ingresar los ingresos de Pet Shop, Clínica, Baños, Purinas o Medicamentos.
+              Haz clic en &quot;Registrar Venta&quot; para registrar los ingresos de productos y servicios.
             </p>
             <button
               onClick={() => {
@@ -577,7 +578,7 @@ export const VentasView: React.FC<VentasViewProps> = ({
                     <th className="py-3 px-3">Fecha</th>
                     <th className="py-3 px-3">Categoría</th>
                     <th className="py-3 px-4">Concepto / Detalle</th>
-                    <th className="py-3 px-3">Cliente / Mascota</th>
+                    <th className="py-3 px-3">Cliente / {etiquetaReferencia()}</th>
                     <th className="py-3 px-3 text-right">Monto ($ COP)</th>
                     <th className="py-3 px-3">Medio de Pago</th>
                     <th className="py-3 px-3">Estado</th>
@@ -794,7 +795,7 @@ export const VentasView: React.FC<VentasViewProps> = ({
                     {(v.clienteNombre || v.mascotaNombre) && (
                       <div className="text-[11px] text-slate-500 dark:text-slate-400 flex flex-wrap gap-2">
                         {v.clienteNombre && <span>Cliente: {v.clienteNombre}</span>}
-                        {v.mascotaNombre && <span className="text-emerald-600">Mascota: {v.mascotaNombre}</span>}
+                        {v.mascotaNombre && <span className="text-emerald-600">{etiquetaReferencia()}: {v.mascotaNombre}</span>}
                       </div>
                     )}
 
@@ -889,7 +890,7 @@ export const VentasView: React.FC<VentasViewProps> = ({
         abierto={limpiarTodoAbierto}
         titulo="Borrar todas las ventas registradas"
         borra={['Todas las ventas y recibos']}
-        conserva={['Compras y gastos', 'Proveedores y catálogos', 'Datos de la veterinaria']}
+        conserva={['Compras y gastos', 'Proveedores y catálogos', 'Datos de la empresa']}
         textoBoton="Sí, borrar todas las ventas"
         onEjecutar={confirmarLimpiarTodo}
         onCerrar={() => setLimpiarTodoAbierto(false)}

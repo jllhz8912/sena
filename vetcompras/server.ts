@@ -40,7 +40,7 @@ const modoDesarrollo = process.argv.includes('--dev');
 
 async function iniciar() {
   const bd = new BaseDatosLocal();
-  console.log(`[VetCompras] Base de datos: ${bd.rutaArchivo} (esquema v${bd.versionEsquema()})`);
+  console.log(`[Sistema de Control] Base de datos: ${bd.rutaArchivo} (esquema v${bd.versionEsquema()})`);
 
   const app = express();
   app.disable('x-powered-by');
@@ -88,7 +88,7 @@ async function iniciar() {
     try {
       bd.respaldoDiario();
     } catch (err) {
-      console.error('[VetCompras] No se pudo crear el respaldo diario:', err);
+      console.error('[Sistema de Control] No se pudo crear el respaldo diario:', err);
     }
   }, 60 * 60 * 1000);
 
@@ -107,15 +107,15 @@ async function iniciar() {
 
   servidor = app.listen(PUERTO, HOST, () => {
     const url = `http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PUERTO}`;
-    console.log(`[VetCompras] Listo. Abra ${url} en el navegador.`);
-    if (HOST === '0.0.0.0') console.log('[VetCompras] Compartido en la red local (use la IP de este PC).');
+    console.log(`[Sistema de Control] Listo. Abra ${url} en el navegador.`);
+    if (HOST === '0.0.0.0') console.log('[Sistema de Control] Compartido en la red local (use la IP de este PC).');
   });
 
   servidor.on('error', (err: NodeJS.ErrnoException) => {
     if (err.code === 'EADDRINUSE') {
-      console.error(`[VetCompras] El puerto ${PUERTO} ya está en uso: probablemente VetCompras ya está abierto.`);
+      console.error(`[Sistema de Control] El puerto ${PUERTO} ya está en uso: probablemente el programa ya está abierto.`);
     } else {
-      console.error('[VetCompras] Error del servidor:', err);
+      console.error('[Sistema de Control] Error del servidor:', err);
     }
     bd.cerrar();
     process.exit(1);
@@ -125,6 +125,6 @@ async function iniciar() {
 }
 
 iniciar().catch((err) => {
-  console.error('[VetCompras] No fue posible iniciar:', err?.message || err);
+  console.error('[Sistema de Control] No fue posible iniciar:', err?.message || err);
   process.exit(1);
 });

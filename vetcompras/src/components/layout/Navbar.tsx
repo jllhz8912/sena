@@ -126,7 +126,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     compras: {
       titulo: 'Borrar las compras registradas',
       borra: ['Facturas de compra y gastos', 'Abonos y PDF/XML anexos'],
-      conserva: ['Ventas', 'Proveedores y catálogos', 'Datos de la veterinaria'],
+      conserva: ['Ventas', 'Proveedores y catálogos', 'Datos de la empresa'],
       textoBoton: 'Sí, borrar compras',
       ejecutar: async () => {
         await dataService.limpiarTodosLosDatos();
@@ -136,7 +136,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     todo: {
       titulo: 'Borrar toda la información',
       borra: ['Compras, gastos y anexos', 'Ventas y recibos', 'Inventario (productos y movimientos)', 'Fichas de precios', 'Proveedores', 'Catálogos (vuelven a los de fábrica)', 'Observaciones de prueba'],
-      conserva: ['Datos y logo de la veterinaria', 'Forma de ingreso', 'Bitácora', 'Copias de seguridad'],
+      conserva: ['Datos y logo de la empresa', 'Forma de ingreso', 'Bitácora', 'Copias de seguridad'],
       textoBoton: 'Borrar todo',
       palabra: 'BORRAR',
       ejecutar: async () => {
@@ -147,11 +147,11 @@ export const Navbar: React.FC<NavbarProps> = ({
     demo: {
       titulo: 'Cargar datos de demostración',
       borra: ['Las compras actuales (se reemplazan por facturas de ejemplo)'],
-      conserva: ['Ventas', 'Proveedores y catálogos', 'Datos de la veterinaria'],
+      conserva: ['Ventas', 'Proveedores y catálogos', 'Datos de la empresa'],
       textoBoton: 'Reemplazar por demostración',
       ejecutar: async () => {
         await dataService.cargarDatosDemostracion();
-        mostrarToast('success', 'Datos cargados', 'Se cargaron las compras y facturas de demostración de veterinaria.');
+        mostrarToast('success', 'Datos cargados', 'Se cargaron las compras y facturas de demostración.');
       },
     },
   };
@@ -160,7 +160,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const handleExportarRespaldo = async () => {
     try {
       const json = await dataService.exportarRespaldoJSON();
-      await descargarBlob(new Blob([json], { type: 'application/json' }), `VetCompras_Respaldo_${fechaLocal()}.json`);
+      await descargarBlob(new Blob([json], { type: 'application/json' }), `SistemaControl_Respaldo_${fechaLocal()}.json`);
       mostrarToast('success', 'Copia de seguridad descargada', 'Archivo JSON generado exitosamente.');
       setMenuDatosAbierto(false);
     } catch (err: any) {
@@ -234,7 +234,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <button
           onClick={() => esAdmin && setModalEmpresaAbierto(true)}
           className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700"
-          title="Ver o editar datos tributarios y marca de la veterinaria"
+          title="Ver o editar datos tributarios y marca de la empresa"
         >
           {logoDe(empresa) ? (
             <img
@@ -245,7 +245,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           ) : (
             <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           )}
-          <span className="truncate max-w-[140px]">{empresa.nombreComercial || empresa.razonSocial || 'Veterinaria'}</span>
+          <span className="truncate max-w-[140px]">{empresa.nombreComercial || empresa.razonSocial || 'Mi Empresa'}</span>
         </button>
 
         {/* Gestor de Datos / Demo (solo perfiles con Copias de Seguridad) */}
@@ -277,7 +277,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <Building2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 <div>
-                  <p className="font-medium text-xs">Datos de la Veterinaria</p>
+                  <p className="font-medium text-xs">Datos de la Empresa</p>
                   <p className="text-[11px] text-slate-400">NIT, Razón social, dirección, etc.</p>
                 </div>
               </button>
@@ -406,7 +406,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <p className="text-[11px] mt-1 font-semibold text-emerald-700 dark:text-emerald-400">Perfil: {perfil.nombre}</p>
                 )}
                 <p className="text-[11px] text-slate-400 mt-1">
-                  VetCompras {dataService.version()}
+                  Sistema de Control 2.0 · v{dataService.version()}
                   {dataService.etapa() === 'prueba' ? ' (prueba)' : ''}
                 </p>
               </div>
@@ -564,7 +564,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         )}
       </div>
 
-      {/* Modal de Datos de la Empresa / Veterinaria */}
+      {/* Modal de Datos de la Empresa */}
       <ModalDatosEmpresa
         abierto={modalEmpresaAbierto}
         onCerrar={() => setModalEmpresaAbierto(false)}

@@ -37,6 +37,7 @@ import { ModalDocumentoVenta } from './ModalDocumentoVenta';
 import { BuscadorVenta } from './BuscadorVenta';
 import { EntradaCatalogo, construirCatalogo } from '../../utils/catalogoVenta';
 import { sirvePara } from '../../utils/conceptos';
+import { etiquetaReferencia } from '../../utils/etiquetas';
 
 interface ModalRegistroVentaProps {
   ventaParaEditar?: Venta;
@@ -429,7 +430,7 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
         <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between shrink-0">
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white">{editando ? `Editar venta ${ventaParaEditar?.consecutivo}` : 'Nueva venta'}</h2>
-            <p className="text-xs text-slate-500">Complete en orden: documento, cliente, mascota, ítems y forma de pago.</p>
+            <p className="text-xs text-slate-500">Complete en orden: documento, cliente, {etiquetaReferencia().toLowerCase()}, ítems y forma de pago.</p>
           </div>
           <button onClick={onCerrar} className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" title="Cerrar sin guardar">
             <X className="w-5 h-5" />
@@ -478,15 +479,15 @@ export const ModalRegistroVenta: React.FC<ModalRegistroVentaProps> = ({ ventaPar
               </div>
             </Seccion>
 
-            <Seccion numero={3} titulo="Mascota" icono={Heart}>
+            <Seccion numero={3} titulo={etiquetaReferencia()} icono={Heart}>
               <div className="max-w-md">
-                <label htmlFor="venta-mascota" className={claseEtiqueta}>Nombre y especie / raza</label>
+                <label htmlFor="venta-mascota" className={claseEtiqueta}>{etiquetaReferencia()} (opcional)</label>
                 <input
                   id="venta-mascota"
                   list="mascotas-cliente"
                   value={mascotaNombre}
                   onChange={(e) => setMascotaNombre(e.target.value)}
-                  placeholder="Ej. Lucas (Golden Retriever)"
+                  placeholder={`Ej. dato que identifica la venta (${etiquetaReferencia().toLowerCase()})`}
                   className={claseInput}
                 />
                 <datalist id="mascotas-cliente">

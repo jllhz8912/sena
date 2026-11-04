@@ -17,6 +17,7 @@ import {
   getMedioPagoVentaInfo,
   getSubcategoriaVentaInfo,
 } from '../utils/formatters';
+import { etiquetaReferencia } from '../utils/etiquetas';
 
 /**
  * Calcula el ancho óptimo de las columnas según su contenido
@@ -41,7 +42,7 @@ export function exportarDocumentosAExcel(
   documentos: CompraDocumento[],
   categorias: Categoria[],
   centrosCosto: CentroCosto[],
-  nombreArchivo = 'VetCompras_Listado.xlsx'
+  nombreArchivo = 'SistemaControl_Listado.xlsx'
 ): void {
   const catMap = new Map(categorias.map((c) => [c.id, c.nombre]));
   const ccMap = new Map(centrosCosto.map((c) => [c.id, c.nombre]));
@@ -200,13 +201,13 @@ export function exportarReporteIvaExcel(
     periodoTexto: string;
   },
   documentos: CompraDocumento[],
-  nombreArchivo = 'VetCompras_Reporte_IVA_DIAN.xlsx'
+  nombreArchivo = 'SistemaControl_Reporte_IVA_DIAN.xlsx'
 ): void {
   const wb = XLSX.utils.book_new();
 
   // Hoja 1: Resumen Formulario 300
   const resumenRows = [
-    ['VETCOMPRAS - REPORTE DE IVA DESCONTABLE PARA FORMULARIO 300 DIAN'],
+    ['SISTEMA DE CONTROL - REPORTE DE IVA DESCONTABLE PARA FORMULARIO 300 DIAN'],
     [`Período: ${resumenIva.periodoTexto}`],
     [`Generado: ${new Date().toLocaleDateString('es-CO')}`],
     [],
@@ -290,7 +291,7 @@ export function exportarReporteRetencionesExcel(
     cantidadDocumentos: number;
   }>,
   periodoTexto: string,
-  nombreArchivo = 'VetCompras_Reporte_Retenciones_DIAN.xlsx'
+  nombreArchivo = 'SistemaControl_Reporte_Retenciones_DIAN.xlsx'
 ): void {
   const headers = [
     'NIT Tercero',
@@ -304,7 +305,7 @@ export function exportarReporteRetencionesExcel(
   ];
 
   const rows: any[][] = [
-    ['VETCOMPRAS - REPORTE DE RETENCIONES EN LA FUENTE (FORMULARIO 350 / EXÓGENA)'],
+    ['SISTEMA DE CONTROL - REPORTE DE RETENCIONES EN LA FUENTE (FORMULARIO 350 / EXÓGENA)'],
     [`Período: ${periodoTexto}`],
     [],
     headers,
@@ -372,13 +373,13 @@ export function exportarReporteMediosPagoExcel(
   }>,
   documentos: CompraDocumento[],
   periodoTexto: string,
-  nombreArchivo = 'VetCompras_Reporte_Medios_Pago.xlsx'
+  nombreArchivo = 'SistemaControl_Reporte_Medios_Pago.xlsx'
 ): void {
   const wb = XLSX.utils.book_new();
 
   // Hoja 1: Resumen por Medio de Pago
   const resumenRows: any[][] = [
-    ['VETCOMPRAS - CONSOLIDADO DE PAGOS: EFECTIVO VS ELECTRÓNICO'],
+    ['SISTEMA DE CONTROL - CONSOLIDADO DE PAGOS: EFECTIVO VS ELECTRÓNICO'],
     [`Período: ${periodoTexto}`],
     [`Generado: ${new Date().toLocaleDateString('es-CO')}`],
     [],
@@ -506,7 +507,7 @@ export function exportarReporteProductosExcel(
     porcentajeIva: number;
     totalLinea: number;
   }>,
-  nombreArchivo = 'VetCompras_Historico_Costos_Productos.xlsx'
+  nombreArchivo = 'SistemaControl_Historico_Costos_Productos.xlsx'
 ): void {
   const headers = [
     'Código',
@@ -563,7 +564,7 @@ export function exportarReporteProductosExcel(
 }
 
 /**
- * Exporta la base completa de la veterinaria con hojas separadas:
+ * Exporta la base completa de la empresa con hojas separadas:
  * Hoja 1: Documentos
  * Hoja 2: Detalle de líneas
  * Hoja 3: Proveedores
@@ -573,7 +574,7 @@ export function exportarTodaLaBaseAExcel(
   proveedores: Proveedor[],
   categorias: Categoria[],
   centrosCosto: CentroCosto[],
-  nombreArchivo = 'VetCompras_Base_Completa.xlsx'
+  nombreArchivo = 'SistemaControl_Base_Completa.xlsx'
 ): void {
   const wb = XLSX.utils.book_new();
   const catMap = new Map(categorias.map((c) => [c.id, c.nombre]));
@@ -1163,7 +1164,7 @@ export function descargarPlantillaExcel(): void {
   XLSX.utils.book_append_sheet(wb, ws, 'Compras');
 
   const wsGuia = XLSX.utils.aoa_to_sheet([
-    ['GUÍA DE LA PLANTILLA DE COMPRAS DE VETCOMPRAS'],
+    ['GUÍA DE LA PLANTILLA DE COMPRAS - SISTEMA DE CONTROL'],
     ['Una fila por producto. Las filas con el mismo NIT y número de factura se guardan como una sola compra.'],
     ['Los productos entran al inventario y su precio de venta sugerido queda en el inventario y en "Precios de Venta" (se puede editar después).'],
     [],
@@ -1185,7 +1186,7 @@ export function descargarPlantillaExcel(): void {
   wsGuia['!cols'] = [{ wch: 22 }, { wch: 16 }, { wch: 80 }, { wch: 25 }];
   XLSX.utils.book_append_sheet(wb, wsGuia, 'Instrucciones');
 
-  guardarExcel(wb, 'Plantilla_Facturas_VetCompras.xlsx');
+  guardarExcel(wb, 'Plantilla_Facturas_SistemaControl.xlsx');
 }
 
 /**
@@ -1193,11 +1194,11 @@ export function descargarPlantillaExcel(): void {
  */
 export function exportarVentasAExcel(
   ventas: Venta[],
-  nombreArchivo = 'VetCompras_Ventas.xlsx'
+  nombreArchivo = 'SistemaControl_Ventas.xlsx'
 ): void {
   // Una fila por ítem vendido: permite tablas dinámicas por categoría y concepto
   const headers = [
-    'Recibo', 'Fecha', 'Cliente', 'CC/NIT', 'Teléfono', 'Mascota',
+    'Recibo', 'Fecha', 'Cliente', 'CC/NIT', 'Teléfono', etiquetaReferencia(),
     'Categoría', 'Subcategoría', 'Concepto', 'Cantidad', 'Valor unitario', 'Descuento', 'Subtotal ítem',
     'Total venta', 'Formas de pago', 'Saldo a crédito', 'Estado', 'Observaciones',
   ];
@@ -1266,13 +1267,13 @@ export function exportarReporteUtilidadYCategoriasExcel(
   ventasDetalle: Venta[],
   comprasDetalle: CompraDocumento[],
   categorias: Categoria[],
-  nombreArchivo = 'VetCompras_Reporte_Utilidad_Ventas_Compras.xlsx'
+  nombreArchivo = 'SistemaControl_Reporte_Utilidad_Ventas_Compras.xlsx'
 ): void {
   const wb = XLSX.utils.book_new();
 
   // 1. Hoja Resumen de Utilidad
   const resumenRows: any[][] = [
-    ['REPORTE FINANCIERO Y UTILIDAD OPERATIVA VETERINARIA'],
+    ['REPORTE FINANCIERO Y UTILIDAD OPERATIVA'],
     ['Período:', periodoTexto],
     ['Fecha de Generación:', new Date().toLocaleDateString('es-CO')],
     [],
@@ -1349,7 +1350,7 @@ export function exportarReporteUtilidadYCategoriasExcel(
 
   // 4. Hoja Detalle de Ventas
   const vDetRows: any[][] = [
-    ['Consecutivo', 'Fecha', 'Categoría', 'Subcategoría', 'Concepto', 'Monto (COP)', 'Medio de Pago', 'Estado', 'Cliente', 'Mascota'],
+    ['Consecutivo', 'Fecha', 'Categoría', 'Subcategoría', 'Concepto', 'Monto (COP)', 'Medio de Pago', 'Estado', 'Cliente', etiquetaReferencia()],
     ...ventasDetalle.map((v) => {
       const subInfo = getSubcategoriaVentaInfo(v.categoria, v.subcategoria);
       return [

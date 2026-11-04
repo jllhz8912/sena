@@ -1,7 +1,28 @@
-# Novedades de VetCompras
+# Novedades de Sistema de Control
 
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
+
+## 2.0.0 — Aplicativo Sistema de Control 2.0
+Primera versión comercial y genérica (basada en VetCompras 2.14).
+- **Licencia por equipo**: al instalar, el programa muestra el *código de equipo*; el
+  proveedor emite una clave firmada digitalmente para ese código y el cliente la activa una
+  sola vez (pegándola o con el archivo `.lic`). Sin licencia válida no se puede ingresar. La
+  clave no sirve en otro computador, no se puede alterar (firma Ed25519) y puede tener fecha
+  de vencimiento. Se guarda aparte de la base de datos: restaurar copias o "borrar todo" no la
+  quita.
+- **Marca genérica**: sin logo ni nombre de ningún negocio. Cada empresa carga en
+  Configuración su razón social, NIT, logo y color; el color elegido se aplica a toda la
+  interfaz y a los recibos.
+- **Dato adicional de la venta configurable** (antes "Mascota"): Referencia, Placa,
+  Paciente, Mesa… según el negocio.
+- Instalaciones nuevas: categorías de venta neutras (Productos, Servicios, Otros ingresos),
+  subcategorías y centros de costo genéricos, sin proveedores de ejemplo. Todo editable en
+  Catálogos.
+- Datos en `C:\Users\<usuario>\SistemaControl\datos` (si ya existía una instalación de
+  VetCompras, se sigue usando su carpeta y sus datos).
+- La demostración en un solo archivo no pide licencia, pero permite hasta 60 ventas y 60
+  compras.
 
 ## 2.14.0
 - **Subcategorías en las categorías de compras y gastos** (Catálogos → Categorías de compras y

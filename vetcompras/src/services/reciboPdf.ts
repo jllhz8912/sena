@@ -8,6 +8,7 @@ import type { EmpresaInfo, Venta } from '../types';
 import { formatCOP, formatFecha, getCategoriaVentaInfo, getMedioPagoVentaInfo, numeroALetras } from '../utils/formatters';
 import { itemsDeVenta, pagosDeVenta, saldoDeVenta, cambioEfectivo } from '../utils/ventas';
 import { MARCA, logoDe } from '../data/marca';
+import { etiquetaReferencia } from '../utils/etiquetas';
 
 export type FormatoRecibo = 'carta' | 'tirilla';
 
@@ -44,7 +45,7 @@ function reciboCarta(venta: Venta, empresa: EmpresaInfo): Blob {
   const margen = 15;
   let y = margen;
 
-  // Encabezado: logo y datos de la veterinaria
+  // Encabezado: logo y datos de la empresa
   let xTexto = margen;
   const logo = logoDe(empresa);
   if (formatoImagen(logo)) {
@@ -56,7 +57,7 @@ function reciboCarta(venta: Venta, empresa: EmpresaInfo): Blob {
     }
   }
   doc.setFont('helvetica', 'bold').setFontSize(14).setTextColor(20, 20, 20);
-  doc.text(empresa.nombreComercial || empresa.razonSocial || 'Veterinaria', xTexto, y + 5);
+  doc.text(empresa.nombreComercial || empresa.razonSocial || 'Mi Empresa', xTexto, y + 5);
   doc.setFont('helvetica', 'normal').setFontSize(8.5).setTextColor(80, 80, 80);
   const lineasEmpresa = [
     empresa.nombreComercial && empresa.razonSocial !== empresa.nombreComercial ? empresa.razonSocial : '',
@@ -86,7 +87,7 @@ function reciboCarta(venta: Venta, empresa: EmpresaInfo): Blob {
   doc.setDrawColor(220, 220, 220).setFillColor(248, 250, 252).roundedRect(margen, y, ancho - margen * 2, 20, 2, 2, 'FD');
   doc.setTextColor(100, 100, 100).setFontSize(7.5).setFont('helvetica', 'bold');
   doc.text('CLIENTE', margen + 4, y + 5);
-  doc.text('MASCOTA', margen + 120, y + 5);
+  doc.text(etiquetaReferencia().toUpperCase(), margen + 120, y + 5);
   doc.setTextColor(20, 20, 20).setFontSize(9.5);
   doc.text(venta.clienteNombre || 'Cliente de mostrador', margen + 4, y + 10.5);
   doc.text(venta.mascotaNombre || '—', margen + 120, y + 10.5);
@@ -211,7 +212,7 @@ function dibujarTirilla(venta: Venta, empresa: EmpresaInfo, alto: number): { doc
     y += negrita ? 4.5 : 3.6;
   };
 
-  texto(empresa.nombreComercial || empresa.razonSocial || 'Veterinaria', { negrita: true, tamano: 10, alinear: 'center' });
+  texto(empresa.nombreComercial || empresa.razonSocial || 'Mi Empresa', { negrita: true, tamano: 10, alinear: 'center' });
   if (nitCompleto(empresa)) texto(nitCompleto(empresa), { alinear: 'center' });
   if (empresa.direccion) texto([empresa.direccion, empresa.ciudad].filter(Boolean).join(', '), { alinear: 'center' });
   if (empresa.telefono || empresa.whatsapp) texto(`Tel. ${empresa.telefono || empresa.whatsapp}`, { alinear: 'center' });
@@ -222,7 +223,7 @@ function dibujarTirilla(venta: Venta, empresa: EmpresaInfo, alto: number): { doc
   linea();
   texto(`Cliente: ${venta.clienteNombre || 'Cliente de mostrador'}`);
   if (venta.clienteDocumento) texto(`CC/NIT: ${venta.clienteDocumento}`);
-  if (venta.mascotaNombre) texto(`Mascota: ${venta.mascotaNombre}`);
+  if (venta.mascotaNombre) texto(`${etiquetaReferencia()}: ${venta.mascotaNombre}`);
   linea();
   for (const i of items) {
     texto(i.concepto, { negrita: true });
@@ -254,7 +255,7 @@ export function mensajeRecibo(venta: Venta, empresa: EmpresaInfo): string {
     `*${empresa.nombreComercial || empresa.razonSocial}*`,
     `Recibo de venta N.º ${venta.consecutivo} · ${formatFecha(venta.fecha)}`,
     venta.clienteNombre ? `Cliente: ${venta.clienteNombre}` : '',
-    venta.mascotaNombre ? `Mascota: ${venta.mascotaNombre}` : '',
+    venta.mascotaNombre ? `${etiquetaReferencia()}: ${venta.mascotaNombre}` : '',
     '',
     items,
     '',

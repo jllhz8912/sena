@@ -344,7 +344,7 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
       documentosOrdenados,
       categorias,
       centrosCosto,
-      `VetCompras_${fechaLocal()}.xlsx`
+      `SistemaControl_${fechaLocal()}.xlsx`
     );
     mostrarToast('success', 'Excel generado', 'Archivo .xlsx descargado con fórmulas de suma y formato en COP.');
   };
@@ -758,7 +758,7 @@ export const ListadoDocumentos: React.FC<ListadoDocumentosProps> = ({
                           {cat?.nombre || 'General'}
                         </span>
                         <span className="block text-[10px] text-slate-400 mt-0.5">
-                          {cc?.nombre || 'Clínica'}
+                          {cc?.nombre || 'General'}
                         </span>
                       </td>
 

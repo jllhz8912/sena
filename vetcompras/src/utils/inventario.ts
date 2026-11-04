@@ -4,7 +4,7 @@
  */
 import { CompraDocumento, MovimientoInventario, Producto, Venta } from '../types';
 
-export const MOTIVOS_BAJA = ['Daño o rotura', 'Pérdida o robo', 'Vencimiento', 'Consumo interno (clínica)', 'Muestra o donación', 'Otro'];
+export const MOTIVOS_BAJA = ['Daño o rotura', 'Pérdida o robo', 'Vencimiento', 'Consumo interno', 'Muestra o donación', 'Otro'];
 
 export function normalizarNombre(texto: string): string {
   return (texto || '')

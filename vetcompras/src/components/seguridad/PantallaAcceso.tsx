@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Stethoscope, Lock, User, Eye, EyeOff, Loader2, ShieldCheck, Building2, ArrowRight, KeyRound } from 'lucide-react';
+import { Store, Lock, User, Eye, EyeOff, Loader2, ShieldCheck, Building2, ArrowRight, KeyRound } from 'lucide-react';
 import { dataService, UsuarioActual } from '../../services/dataService';
 
 type Modo = 'configuracion' | 'ingreso' | 'cambio_clave';
@@ -111,7 +111,7 @@ export const PantallaAcceso: React.FC<PantallaAccesoProps> = ({ modo, mensaje, u
     }
     // Configuración inicial en dos pasos
     if (paso === 1) {
-      if (!razonSocial.trim()) return setError('Escriba el nombre de la veterinaria.');
+      if (!razonSocial.trim()) return setError('Escriba el nombre de la empresa.');
       setError(null);
       return setPaso(2);
     }
@@ -129,16 +129,16 @@ export const PantallaAcceso: React.FC<PantallaAccesoProps> = ({ modo, mensaje, u
   };
 
   const titulos: Record<Modo, { titulo: string; subtitulo: string }> = {
-    ingreso: { titulo: 'Ingresar a VetCompras', subtitulo: 'Escriba su usuario y contraseña.' },
+    ingreso: { titulo: 'Ingresar a Sistema de Control', subtitulo: 'Escriba su usuario y contraseña.' },
     cambio_clave: {
       titulo: 'Cree su contraseña personal',
       subtitulo: 'Por seguridad, cambie la contraseña temporal que le asignaron antes de continuar.',
     },
     configuracion: {
-      titulo: paso === 1 ? 'Bienvenido a VetCompras' : 'Cree el usuario administrador',
+      titulo: paso === 1 ? 'Bienvenido a Sistema de Control' : 'Cree el usuario administrador',
       subtitulo:
         paso === 1
-          ? 'Primer uso: escriba los datos básicos de la veterinaria. Podrá completarlos después en Configuración.'
+          ? 'Primer uso: escriba los datos básicos de la empresa. Podrá completarlos después en Configuración.'
           : 'Esta persona podrá crear otros usuarios, restaurar respaldos y cambiar la configuración. Guarde bien la contraseña.',
     },
   };
@@ -151,7 +151,7 @@ export const PantallaAcceso: React.FC<PantallaAccesoProps> = ({ modo, mensaje, u
       >
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-600/30">
-            {modo === 'cambio_clave' ? <KeyRound className="w-6 h-6" /> : <Stethoscope className="w-6 h-6" />}
+            {modo === 'cambio_clave' ? <KeyRound className="w-6 h-6" /> : <Store className="w-6 h-6" />}
           </div>
           <div>
             <h1 className="text-lg font-bold text-slate-900 dark:text-white">{titulos[modo].titulo}</h1>
@@ -192,7 +192,7 @@ export const PantallaAcceso: React.FC<PantallaAccesoProps> = ({ modo, mensaje, u
 
         {modo === 'configuracion' && paso === 1 && (
           <>
-            <Campo icono={Building2} etiqueta="Nombre o razón social de la veterinaria">
+            <Campo icono={Building2} etiqueta="Nombre o razón social de la empresa">
               <input value={razonSocial} onChange={(e) => setRazonSocial(e.target.value)} autoFocus className={claseInput} />
             </Campo>
             <Campo icono={ShieldCheck} etiqueta="NIT (opcional)">
@@ -250,7 +250,7 @@ export const PantallaAcceso: React.FC<PantallaAccesoProps> = ({ modo, mensaje, u
         </div>
 
         <p className="text-[11px] text-center text-slate-400">
-          VetCompras {dataService.version()}
+          Sistema de Control 2.0 · v{dataService.version()}
           {dataService.etapa() === 'prueba' && <strong className="text-amber-600"> · versión de prueba: use datos de ensayo</strong>}
         </p>
 

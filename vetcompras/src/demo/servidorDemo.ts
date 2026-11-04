@@ -96,8 +96,8 @@ function datosIniciales(): Datos {
       movimientosInventario: [],
       fichasPrecio: [],
     },
-    // La demostración muestra la marca de Los Criollos Vet con datos de contacto de ejemplo
-    empresa: { ...clonar(EMPRESA_DEFECTO), razonSocial: 'LOS CRIOLLOS VET', nombreComercial: 'Los Criollos Vet', slogan: 'Clínica veterinaria · Med. Rojas', colorPrimario: '#9330b3', colorSecundario: '#244568', nit: '', dv: '', direccion: '', ciudad: '', departamento: '', telefono: '', whatsapp: '', email: '', sitioWeb: '', matriculaMercantil: '' },
+    // Empresa ficticia de ejemplo: cada cliente configura su propia marca
+    empresa: { ...clonar(EMPRESA_DEFECTO), razonSocial: 'EMPRESA DEMO S.A.S.', nombreComercial: 'Empresa Demo', slogan: 'Datos de ejemplo · Sistema de Control 2.0', nit: '', dv: '', etiquetaReferencia: 'Referencia' },
   };
 }
 
@@ -240,12 +240,25 @@ function crearRespaldo(motivo: string) {
   return nombre;
 }
 
+/** Tope de la demostración: es para conocer el programa, no para operar un negocio. */
+export const LIMITE_DEMO = 60;
+function limiteDemo(c: Coleccion, nuevos: number) {
+  if ((c === 'ventas' || c === 'documentos') && nuevos > 0 && estado.colecciones[c].length + nuevos > LIMITE_DEMO) {
+    throw new ErrorHttp(
+      402,
+      `La demostración permite hasta ${LIMITE_DEMO} ${c === 'ventas' ? 'ventas' : 'compras y gastos'}. Para uso real instale Sistema de Control 2.0 con su licencia.`
+    );
+  }
+}
+
 // ------------------------------------------------------------------- rutas
 function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, query: URLSearchParams): unknown {
   const esSondeo = cabeceras.get('X-Sondeo') === '1';
   if (metodo !== 'GET' && cabeceras.get('X-VetCompras') !== '1') throw new ErrorHttp(403, 'Solicitud no permitida.');
 
   // ---- públicas
+  // La demostración no pide licencia, pero limita la cantidad de registros
+  if (metodo === 'GET' && ruta === '/licencia') return { activa: true, exigida: false, demo: true, equipo: 'DEMO', cliente: 'Demostración (sin licencia)' };
   if (metodo === 'GET' && ruta === '/alerta-copia') return estadoAlertaCopia(estado.alertaCopia, estado.ultimaCopia);
   if (metodo === 'POST' && ruta === '/alerta-copia/aceptar') {
     estado.alertaCopia = ahoraIso();
@@ -259,17 +272,17 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
     return {
       usuario: u ? usuarioPublico(u) : null,
       modoAcceso,
-      marca: { nombre: e.nombreComercial || e.razonSocial || 'Los Criollos Vet', slogan: e.slogan || '', logoUrl: e.logoUrl || '', colorPrimario: e.colorPrimario || '' },
+      marca: { nombre: e.nombreComercial || e.razonSocial || 'Mi Empresa', slogan: e.slogan || '', logoUrl: e.logoUrl || '', colorPrimario: e.colorPrimario || '' },
       requiereConfiguracion: modoAcceso === 'usuarios' && estado.usuarios.length === 0,
       minutosInactividad: MINUTOS_INACTIVIDAD,
-      version: '2.14.0-demo',
+      version: '2.0.0-demo',
     };
   }
   if (metodo === 'POST' && ruta === '/sesion/ingresar-libre') {
     if (modoAccesoDemo() !== 'libre') throw new ErrorHttp(403, 'Este equipo pide usuario y contraseña para ingresar.');
     let u = estado.usuarios.find((x) => x.rol === 'administrador' && x.activo);
     if (!u) {
-      u = { id: 'usr-' + Date.now(), usuario: 'veterinaria', nombre: 'Veterinaria', rol: 'administrador', clave: '', activo: true, debeCambiarClave: false, creadoEn: ahoraIso(), ultimoAcceso: null };
+      u = { id: 'usr-' + Date.now(), usuario: 'empresa', nombre: 'Empresa', rol: 'administrador', clave: '', activo: true, debeCambiarClave: false, creadoEn: ahoraIso(), ultimoAcceso: null };
       estado.usuarios.push(u);
     }
     u.debeCambiarClave = false;
@@ -375,7 +388,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
     return { ok: true };
   }
   if (metodo === 'GET' && ruta === '/estado') {
-    return { aplicacion: 'VetCompras', version: '2.1.0-demo', versionEsquema: 3, revision: String(estado.revision), carpetaDatos: yo.rol === 'administrador' ? 'C:\\Users\\Veterinaria\\VetCompras\\datos (demostración)' : '', geminiConfigurado: false };
+    return { aplicacion: 'Sistema de Control', version: '2.0.0-demo', versionEsquema: 3, revision: String(estado.revision), carpetaDatos: yo.rol === 'administrador' ? 'C:\\Users\\Usuario\\SistemaControl\\datos (demostración)' : '', geminiConfigurado: false };
   }
 
   // usuarios
@@ -449,7 +462,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
     if (metodo === 'GET') return estado.empresa;
     admin();
     estado.empresa = cuerpo;
-    auditar(yo.usuario, 'Datos de la veterinaria modificados', `${cuerpo?.razonSocial || ''} · NIT ${cuerpo?.nit || ''}`);
+    auditar(yo.usuario, 'Datos de la empresa modificados', `${cuerpo?.razonSocial || ''} · NIT ${cuerpo?.nit || ''}`);
     return { ok: true };
   }
 
@@ -472,19 +485,19 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
     throw new ErrorHttp(400, 'En la demostración no se cargan archivos. En la instalación real se elige el archivo .db o .json y queda listo para restaurar.');
   }
   if (ruta === '/respaldos/abrir-carpeta') {
-    return { abierta: false, carpeta: 'C:\\Users\\Veterinaria\\VetCompras\\datos\\respaldos (en la instalación real se abre el Explorador)' };
+    return { abierta: false, carpeta: 'C:\\Users\\Usuario\\SistemaControl\\datos\\respaldos (en la instalación real se abre el Explorador)' };
   }
   if (ruta === '/respaldos' && metodo === 'POST') {
     estado.ultimaCopia = { fecha: ahoraIso(), medio: 'copia manual' };
     const nombre = crearRespaldo('manual');
     auditar(yo.usuario, 'Respaldo manual creado', nombre);
     const externo = estado.carpetaExterna ? { fecha: ahoraIso(), ok: true, mensaje: `Copiado a ${estado.carpetaExterna} (simulado)` } : null;
-    return { ok: true, ruta: `C:\\Users\\Veterinaria\\VetCompras\\datos\\respaldos\\${nombre}`, externo };
+    return { ok: true, ruta: `C:\\Users\\Usuario\\SistemaControl\\datos\\respaldos\\${nombre}`, externo };
   }
   if (ruta === '/respaldos' && metodo === 'GET') {
     admin();
     return {
-      carpeta: 'C:\\Users\\Veterinaria\\VetCompras\\datos\\respaldos',
+      carpeta: 'C:\\Users\\Usuario\\SistemaControl\\datos\\respaldos',
       carpetaExterna: estado.carpetaExterna,
       ultimoRespaldoExterno: estado.carpetaExterna ? { fecha: estado.respaldos[0]?.fecha, ok: true, mensaje: `Copiado a ${estado.carpetaExterna} (simulado)` } : null,
       respaldos: estado.respaldos.map(({ nombre, fecha, tamano }) => ({ nombre, fecha, tamano })),
@@ -515,7 +528,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
     admin();
     if (metodo === 'GET') {
       auditar(yo.usuario, 'Exportación completa de datos (JSON)');
-      return { version: '2.0', aplicacion: 'VetCompras Colombia', fechaExportacion: ahoraIso(), empresa: estado.empresa, ...estado.colecciones };
+      return { version: '2.0', aplicacion: 'Sistema de Control', fechaExportacion: ahoraIso(), empresa: estado.empresa, ...estado.colecciones };
     }
     crearRespaldo('antes-de-importar');
     const conteo: Record<string, number> = {};
@@ -579,6 +592,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
 
   if (id === 'lote' && metodo === 'POST') {
     const { guardar: g = [], eliminar: e = [] } = cuerpo || {};
+    limiteDemo(c, g.filter((r: any) => !lista.some((x) => x.id === r.id)).length);
     if (e.length || c === 'categorias' || c === 'centrosCosto') admin();
     for (const r of g) upsert(c, r);
     const eliminados = e.map((x: string) => describir(c, lista.find((r) => r.id === x)));
@@ -597,6 +611,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
   if (id && metodo === 'PUT') {
     if (c === 'categorias' || c === 'centrosCosto') admin();
     const existia = lista.some((x) => x.id === id);
+    if (!existia) limiteDemo(c, 1);
     upsert(c, cuerpo);
     sincronizarInventario(c, [cuerpo]);
     auditar(yo.usuario, `${existia ? 'Modificó' : 'Creó'} ${NOMBRES[c]}`, describir(c, cuerpo), id);

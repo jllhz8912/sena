@@ -129,7 +129,7 @@ export async function extraerFacturaPdf({ pdfBase64, mimeType, categorias, centr
   const limpio = String(pdfBase64).replace(/^data:[^;]+;base64,/, '');
 
   const prompt = `Eres un contador y auditor tributario colombiano experto en facturación electrónica DIAN (UBL 2.1) y documentos equivalentes.
-Analiza este documento (factura electrónica, documento soporte, cuenta de cobro, tiquete POS, recibo o servicio público) recibido por una veterinaria.
+Analiza este documento (factura electrónica, documento soporte, cuenta de cobro, tiquete POS, recibo o servicio público) recibido por una empresa colombiana.
 Valores en pesos colombianos (COP) como números enteros, sin separadores de miles.
 
 Reglas:

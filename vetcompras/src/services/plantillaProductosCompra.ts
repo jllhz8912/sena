@@ -38,7 +38,7 @@ export function descargarPlantillaProductosCompra(): void {
   const libro = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(libro, hoja, 'Productos');
   XLSX.utils.book_append_sheet(libro, ayuda, 'Instrucciones');
-  guardarExcel(libro, 'Plantilla_Productos_Compra_VetCompras.xlsx');
+  guardarExcel(libro, 'Plantilla_Productos_Compra_SistemaControl.xlsx');
 }
 
 const clave = (t: string) =>

@@ -224,7 +224,7 @@ export const RevisionFacturaModal: React.FC<RevisionFacturaModalProps> = ({
   const handleAgregarLinea = () => {
     const nueva: LineaFactura = {
       id: 'lin-' + Date.now(),
-      descripcion: 'Nuevo insumo / producto veterinario',
+      descripcion: 'Nuevo insumo / producto',
       cantidad: 1,
       unidad: 'UND',
       valorUnitario: 0,
@@ -662,7 +662,7 @@ export const RevisionFacturaModal: React.FC<RevisionFacturaModalProps> = ({
                 </div>
                 <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-800 text-sm font-bold text-slate-900 dark:text-white">
                   <Calculator className="w-4 h-4 text-emerald-600" />
-                  <span>Clasificación Contable Veterinaria</span>
+                  <span>Clasificación Contable</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

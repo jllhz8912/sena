@@ -9,3 +9,6 @@ datos/
 !.env.example
 dist-demo/
 dist-portable/
+# Nunca subir la clave privada de licencias ni licencias emitidas
+*CLAVE-PRIVADA*
+*.lic

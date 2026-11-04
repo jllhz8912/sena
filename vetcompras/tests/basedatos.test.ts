@@ -106,13 +106,13 @@ describe('BaseDatosLocal', () => {
     expect(bd.obtener('documentos', 'xml')).toMatchObject({ total: 119000, saldoPendiente: 116500 });
     expect(bd.listarRespaldos().some((r) => r.nombre.includes('antes-de-actualizar-v2'))).toBe(true);
   });
-  it('migración v4: cambia la empresa de ejemplo por "Mi Veterinaria" y respeta datos reales', () => {
+  it('migración v4: cambia la empresa de ejemplo por "Mi Empresa" y respeta datos reales', () => {
     bd.guardarConfig('empresa', { ...EMPRESA_DEFECTO });
     bd.db.exec('PRAGMA user_version = 3');
     bd.cerrar();
     bd = new BaseDatosLocal(carpeta);
-    // v4 la deja neutra y v5 le pone la marca de Los Criollos Vet
-    expect(bd.obtenerConfig<any>('empresa')).toMatchObject({ razonSocial: 'LOS CRIOLLOS VET', nombreComercial: 'Los Criollos Vet', nit: '', colorPrimario: '#9330b3' });
+    // v4 la deja neutra; desde la 2.0 genérica la v5 ya no pone ninguna marca
+    expect(bd.obtenerConfig<any>('empresa')).toMatchObject({ razonSocial: 'Mi Empresa', nombreComercial: 'Mi Empresa', nit: '', logoUrl: '' });
 
     bd.guardarConfig('empresa', { razonSocial: 'Clínica Real SAS', nit: '900123456' });
     bd.db.exec('PRAGMA user_version = 3');
@@ -133,11 +133,22 @@ describe('BaseDatosLocal', () => {
     expect((bd.obtener('categorias', 'cat-propia') as any).subcategorias).toBeUndefined();
   });
 
-  it('migración v5: respeta un nombre real y un color elegido, y cambia el verde de fábrica', () => {
-    bd.guardarConfig('empresa', { razonSocial: 'Clínica Real SAS', colorPrimario: '#2563eb', colorSecundario: '#0f766e' });
+  it('migración v5 (reservada) no cambia la marca y v7 deja categorías de venta genéricas solo si no hay ventas', () => {
+    bd.guardarConfig('empresa', { razonSocial: 'Ferretería Real SAS', colorPrimario: '#059669' });
     bd.db.exec('PRAGMA user_version = 4');
     bd.cerrar();
     bd = new BaseDatosLocal(carpeta);
-    expect(bd.obtenerConfig<any>('empresa')).toMatchObject({ razonSocial: 'Clínica Real SAS', colorPrimario: '#2563eb', colorSecundario: '#244568' });
+    const e = bd.obtenerConfig<any>('empresa');
+    expect(e).toMatchObject({ razonSocial: 'Ferretería Real SAS', colorPrimario: '#059669', etiquetaReferencia: 'Referencia' });
+    expect(e.categoriasVenta.map((c: any) => c.label)).toEqual(['Productos', 'Servicios', 'Otros ingresos']);
+
+    // Quien ya tiene ventas conserva sus categorías y el dato "Mascota"
+    bd.guardarConfig('empresa', { razonSocial: 'Veterinaria Real' });
+    bd.guardar('ventas', { id: 'v1', consecutivo: 'VNT-1', fecha: '2026-01-01', categoria: 'vacunas', concepto: 'x', monto: 1 } as any);
+    bd.db.exec('PRAGMA user_version = 6');
+    bd.cerrar();
+    bd = new BaseDatosLocal(carpeta);
+    expect(bd.obtenerConfig<any>('empresa')).toEqual({ razonSocial: 'Veterinaria Real', etiquetaReferencia: 'Mascota' });
   });
+
 });

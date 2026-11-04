@@ -31,7 +31,7 @@ export const ModalDatosEmpresa: React.FC<ModalDatosEmpresaProps> = ({
   const handleGuardar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!empresa.razonSocial.trim() || !empresa.nit.trim()) {
-      mostrarToast('warning', 'Campos requeridos', 'Razón Social y NIT de la veterinaria son obligatorios.');
+      mostrarToast('warning', 'Campos requeridos', 'Razón Social y NIT de la empresa son obligatorios.');
       return;
     }
 
@@ -41,7 +41,7 @@ export const ModalDatosEmpresa: React.FC<ModalDatosEmpresaProps> = ({
       mostrarToast(
         'success',
         'Datos de la empresa guardados',
-        'La información de la clínica veterinaria ha sido actualizada exitosamente.'
+        'La información de la empresa ha sido actualizada exitosamente.'
       );
       if (onGuardado) onGuardado(empresa);
       onCerrar();
@@ -63,7 +63,7 @@ export const ModalDatosEmpresa: React.FC<ModalDatosEmpresaProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                Datos de la Empresa / Veterinaria
+                Datos de la Empresa
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Información tributaria y comercial que aparecerá en los reportes DIAN y exportaciones.
@@ -84,7 +84,7 @@ export const ModalDatosEmpresa: React.FC<ModalDatosEmpresaProps> = ({
           <div className="p-3.5 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-3 text-emerald-900 dark:text-emerald-300">
             <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
             <p className="text-[11px] leading-relaxed">
-              Estos datos corresponden a tu veterinaria como adquirente en las facturas electrónicas de compra y para la presentación de los <strong>Formularios 300 (IVA)</strong> y <strong>350 (Retenciones)</strong> ante la DIAN.
+              Estos datos corresponden a tu empresa como adquirente en las facturas electrónicas de compra y para la presentación de los <strong>Formularios 300 (IVA)</strong> y <strong>350 (Retenciones)</strong> ante la DIAN.
             </p>
           </div>
 
@@ -92,14 +92,14 @@ export const ModalDatosEmpresa: React.FC<ModalDatosEmpresaProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Razón Social de la Veterinaria *
+                Razón Social de la Empresa *
               </label>
               <input
                 type="text"
                 required
                 value={empresa.razonSocial}
                 onChange={(e) => handleChange('razonSocial', e.target.value)}
-                placeholder="Ej: CLÍNICA VETERINARIA HUELLITAS S.A.S."
+                placeholder="Ej: COMERCIALIZADORA EJEMPLO S.A.S."
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
               />
             </div>
@@ -112,7 +112,7 @@ export const ModalDatosEmpresa: React.FC<ModalDatosEmpresaProps> = ({
                 type="text"
                 value={empresa.nombreComercial || ''}
                 onChange={(e) => handleChange('nombreComercial', e.target.value)}
-                placeholder="Ej: Huellitas Hospital Veterinario 24H"
+                placeholder="Ej: Tienda Ejemplo"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium focus:ring-2 focus:ring-emerald-500"
               />
             </div>
@@ -122,7 +122,7 @@ export const ModalDatosEmpresa: React.FC<ModalDatosEmpresaProps> = ({
           <div className="grid grid-cols-12 gap-3">
             <div className="col-span-8 sm:col-span-9">
               <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                NIT de la Veterinaria *
+                NIT de la Empresa *
               </label>
               <input
                 type="text"
@@ -287,7 +287,7 @@ export const ModalDatosEmpresa: React.FC<ModalDatosEmpresaProps> = ({
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-600/25 transition-all active:scale-[0.98]"
             >
               <Save className="w-4 h-4" />
-              <span>{guardando ? 'Guardando...' : 'Guardar Datos de la Veterinaria'}</span>
+              <span>{guardando ? 'Guardando...' : 'Guardar Datos de la Empresa'}</span>
             </button>
           </div>
         </form>

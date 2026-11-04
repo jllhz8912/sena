@@ -238,7 +238,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             )}
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Consolidado anual de compras, insumos veterinarios, gastos operativos y declaraciones DIAN del año {anioSeleccionado}.
+            Consolidado anual de compras, insumos, gastos operativos y declaraciones DIAN del año {anioSeleccionado}.
           </p>
         </div>
 
@@ -325,13 +325,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
           <div className="space-y-1">
             <span className="text-xs font-bold text-emerald-400 tracking-wider uppercase">
-              Balance General de la Veterinaria • Año {anioSeleccionado}
+              Balance General de la Empresa • Año {anioSeleccionado}
             </span>
             <h3 className="text-xl sm:text-2xl font-black">
               Ingresos por Ventas vs. Compras y Gastos
             </h3>
             <p className="text-xs text-slate-300 max-w-xl">
-              Consolida las ventas de Pet Shop, Clínica, Baños, Purinas y Medicamentos frente a todas las facturas y compras operativas.
+              Consolida las ventas de productos y servicios frente a todas las facturas y compras operativas.
             </p>
           </div>
 
@@ -613,7 +613,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </section>
 
         <section className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4" aria-label="Centros de costo">
-          {encabezado(`Compras y gastos por centro de costo (${anioSeleccionado})`, 'Clínica, tienda, peluquería, administración…')}
+          {encabezado(`Compras y gastos por centro de costo (${anioSeleccionado})`, 'Áreas, sedes, líneas de negocio, administración…')}
           {centrosDelAnio.length ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {centrosDelAnio.map((c) => (

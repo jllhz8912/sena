@@ -4,33 +4,33 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Colores de Los Criollos Vet, tomados del logo. Toda la interfaz usa las clases
- * "emerald" y "teal"; aquí se redefinen para que tomen el morado y el verde azulado
- * del logo sin tocar cada pantalla.
- *   morado del aro #ad3dcf · morado de las letras #671066 · verde azulado de "VET" #498e91
+ * Colores del programa. Las pantallas usan las clases "emerald" (color principal) y
+ * "teal" (secundario). El principal se recalcula en tiempo de ejecución con el color que
+ * cada empresa elige en Configuración (src/utils/tema.ts); estos son los valores de
+ * arranque: azul corporativo y verde azulado neutro.
  */
 @theme {
-  --color-emerald-50: #faf5fc;
-  --color-emerald-100: #f3e6f8;
-  --color-emerald-200: #e7ccf1;
-  --color-emerald-300: #d6a5e6;
-  --color-emerald-400: #c172d9;
-  --color-emerald-500: #ad3dcf;
-  --color-emerald-600: #9330b3;
-  --color-emerald-700: #7a2793;
-  --color-emerald-800: #671066;
-  --color-emerald-900: #4f0d4e;
-  --color-emerald-950: #330833;
+  --color-emerald-50: #eff6ff;
+  --color-emerald-100: #dbeafe;
+  --color-emerald-200: #bfdbfe;
+  --color-emerald-300: #93c5fd;
+  --color-emerald-400: #60a5fa;
+  --color-emerald-500: #3b82f6;
+  --color-emerald-600: #2563eb;
+  --color-emerald-700: #1d4ed8;
+  --color-emerald-800: #1e40af;
+  --color-emerald-900: #1e3a8a;
+  --color-emerald-950: #172554;
 
-  --color-teal-50: #f1f8f8;
-  --color-teal-100: #dceeee;
-  --color-teal-200: #bcdfe0;
-  --color-teal-300: #8ec6c8;
-  --color-teal-400: #63a9ac;
-  --color-teal-500: #498e91;
-  --color-teal-600: #3c7679;
-  --color-teal-700: #335f62;
-  --color-teal-800: #2c4e50;
-  --color-teal-900: #264244;
-  --color-teal-950: #142a2b;
+  --color-teal-50: #f0fdfa;
+  --color-teal-100: #ccfbf1;
+  --color-teal-200: #99f6e4;
+  --color-teal-300: #5eead4;
+  --color-teal-400: #2dd4bf;
+  --color-teal-500: #14b8a6;
+  --color-teal-600: #0d9488;
+  --color-teal-700: #0f766e;
+  --color-teal-800: #115e59;
+  --color-teal-900: #134e4a;
+  --color-teal-950: #042f2e;
 }

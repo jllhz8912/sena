@@ -36,7 +36,7 @@ export function sincronizarInventario(bd: BaseDatosLocal, coleccion: Coleccion, 
     }
   } catch (err) {
     // El inventario es informativo: un error aquí nunca debe impedir guardar la compra o la venta
-    console.error('[VetCompras] No se pudo actualizar el inventario:', err);
+    console.error('[Sistema de Control] No se pudo actualizar el inventario:', err);
   }
 }
 

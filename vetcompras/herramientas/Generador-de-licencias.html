@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Generador de licencias · Sistema de Control 2.0</title>
+<!--
+  Herramienta del VENDEDOR. No se entrega al cliente.
+  Firma licencias con la clave privada (archivo CLAVE-PRIVADA-Sistema-de-Control.json),
+  que se carga desde el computador en cada uso y nunca sale de este navegador.
+  Funciona sin internet en Chrome, Edge o Firefox actualizados.
+-->
+<style>
+  :root { --p:#2563eb; --o:#1e3a8a; --b:#e2e8f0; --t:#0f172a; --g:#475569; --f:#f8fafc; --ok:#047857; --mal:#be123c; }
+  @media (prefers-color-scheme: dark) { :root { --b:#334155; --t:#e2e8f0; --g:#94a3b8; --f:#0f172a; } body { background:#020617; } .tarjeta { background:#0f172a; } input, select, textarea { background:#1e293b; color:var(--t); } }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family: Inter, "Segoe UI", system-ui, sans-serif; background:#eef2f7; color:var(--t); font-size:14px; }
+  header { background:linear-gradient(135deg,var(--o),var(--p)); color:#fff; padding:20px 16px; }
+  header div { max-width:1080px; margin:0 auto; }
+  header h1 { margin:0; font-size:22px; } header p { margin:4px 0 0; opacity:.85; }
+  main { max-width:1080px; margin:0 auto; padding:16px; display:grid; gap:16px; grid-template-columns: 1fr; }
+  @media (min-width: 900px) { main { grid-template-columns: 1.1fr .9fr; } .ancho { grid-column: 1 / -1; } }
+  .tarjeta { background:#fff; border:1px solid var(--b); border-radius:16px; padding:18px; }
+  h2 { font-size:15px; margin:0 0 12px; display:flex; gap:8px; align-items:center; }
+  h2 span.n { background:var(--p); color:#fff; border-radius:50%; width:22px; height:22px; display:inline-flex; align-items:center; justify-content:center; font-size:12px; }
+  label { display:block; font-size:12px; font-weight:600; color:var(--g); margin:10px 0 4px; }
+  input, select, textarea { width:100%; padding:9px 11px; border:1px solid var(--b); border-radius:10px; font:inherit; }
+  textarea { font-family: ui-monospace, Consolas, monospace; font-size:12px; word-break:break-all; }
+  .fila { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+  button { font:inherit; font-weight:700; border-radius:10px; padding:9px 14px; border:1px solid var(--b); background:#fff; color:var(--t); cursor:pointer; }
+  button.pri { background:var(--p); border-color:var(--p); color:#fff; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .acciones { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .estado { margin-top:10px; font-size:13px; font-weight:600; }
+  .ok { color:var(--ok); } .mal { color:var(--mal); }
+  .aviso { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; border-radius:12px; padding:10px 12px; font-size:12.5px; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  th, td { text-align:left; padding:7px 6px; border-bottom:1px solid var(--b); vertical-align:top; }
+  th { color:var(--g); font-weight:600; }
+  .mono { font-family: ui-monospace, Consolas, monospace; }
+  .tabla { overflow-x:auto; }
+</style>
+</head>
+<body>
+<header><div>
+  <h1>Generador de licencias</h1>
+  <p>Aplicativo Sistema de Control 2.0 · herramienta del vendedor (uso interno)</p>
+</div></header>
+
+<main>
+  <section class="tarjeta">
+    <h2><span class="n">1</span> Cargue su clave privada</h2>
+    <p class="aviso">Use el archivo <b>CLAVE-PRIVADA-Sistema-de-Control.json</b>. Guárdelo fuera de este computador (USB cifrada o gestor de contraseñas) y nunca lo envíe a clientes: quien lo tenga puede emitir licencias.</p>
+    <label for="archivo-clave">Archivo de clave privada</label>
+    <input type="file" id="archivo-clave" accept=".json">
+    <p class="estado" id="estado-clave">Sin clave cargada.</p>
+
+    <h2 style="margin-top:18px"><span class="n">2</span> Datos de la licencia</h2>
+    <label for="equipo">Código de equipo (lo muestra el programa del cliente)</label>
+    <input id="equipo" class="mono" placeholder="3F9A-21C0-7B44-E1D2" autocomplete="off">
+    <div class="fila">
+      <div><label for="cliente">Cliente (razón social o nombre)</label><input id="cliente" placeholder="Ferretería La 14 S.A.S."></div>
+      <div><label for="documento">NIT o cédula</label><input id="documento" placeholder="900123456-7"></div>
+    </div>
+    <div class="fila">
+      <div><label for="edicion">Edición / plan</label>
+        <select id="edicion"><option>Estándar</option><option>Profesional</option><option>Empresarial</option><option>Prueba</option></select></div>
+      <div><label for="vence">Vence (vacío = perpetua)</label><input id="vence" type="date"></div>
+    </div>
+    <div class="fila">
+      <div><label for="numero">Número de licencia</label><input id="numero" class="mono"></div>
+      <div><label for="contacto">Contacto / observaciones (solo para su registro)</label><input id="contacto"></div>
+    </div>
+    <div class="acciones"><button class="pri" id="generar" disabled>Generar licencia</button></div>
+    <p class="estado" id="estado-generar"></p>
+  </section>
+
+  <section class="tarjeta">
+    <h2><span class="n">3</span> Entregue la licencia</h2>
+    <label for="resultado">Clave de licencia</label>
+    <textarea id="resultado" rows="7" readonly placeholder="Aquí aparece la clave SC2-…"></textarea>
+    <div class="acciones">
+      <button id="copiar" disabled>Copiar clave</button>
+      <button id="descargar" disabled>Descargar archivo .lic</button>
+      <button id="copiar-mensaje" disabled>Copiar mensaje para el cliente</button>
+    </div>
+    <p class="estado" id="estado-entrega"></p>
+
+    <h2 style="margin-top:18px">Verificar una clave</h2>
+    <label for="verificar-clave">Pegue una clave para ver a quién y a qué equipo corresponde</label>
+    <textarea id="verificar-clave" rows="4"></textarea>
+    <div class="acciones"><button id="verificar">Verificar</button></div>
+    <p class="estado" id="estado-verificar"></p>
+  </section>
+
+  <section class="tarjeta ancho">
+    <h2>Registro de licencias emitidas (en este navegador)</h2>
+    <div class="acciones" style="margin-top:0;margin-bottom:10px">
+      <button id="exportar">Exportar a Excel (CSV)</button>
+      <button id="respaldo">Descargar respaldo (.json)</button>
+      <button type="button" id="btn-importar">Importar respaldo</button><input type="file" id="importar" accept=".json" hidden>
+    </div>
+    <div class="tabla"><table><thead><tr><th>N.º</th><th>Fecha</th><th>Cliente</th><th>Documento</th><th>Equipo</th><th>Edición</th><th>Vence</th><th>Contacto</th></tr></thead><tbody id="registro"></tbody></table></div>
+    <p class="estado" style="color:var(--g);font-weight:500">El registro queda guardado en este navegador. Descargue el respaldo con frecuencia: si borra los datos del navegador, se pierde.</p>
+  </section>
+</main>
+
+<script>
+"use strict";
+// Clave PÚBLICA esperada (la misma que trae el programa). Sirve para comprobar que la privada cargada es la correcta.
+const PUBLICA_X = "WkWhF0dUANGAKOxEEbgc3lheWNOeEpJ9AFGlcB64OLA";
+const $ = (id) => document.getElementById(id);
+let llavePrivada = null, llavePublica = null, ultima = null;
+
+const b64url = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const desdeB64url = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
+const hoyIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const normalizarEquipo = (t) => (String(t).toUpperCase().replace(/[^0-9A-F]/g, "").match(/.{1,4}/g) || []).join("-");
+const estado = (id, texto, clase) => { const e = $(id); e.textContent = texto; e.className = "estado " + (clase || ""); };
+
+function leerRegistro() { try { return JSON.parse(localStorage.getItem("sc2-licencias") || "[]"); } catch { return []; } }
+function guardarRegistro(r) { try { localStorage.setItem("sc2-licencias", JSON.stringify(r)); } catch { estado("estado-generar", "No se pudo guardar el registro en este navegador.", "mal"); } }
+function siguienteNumero() {
+  const anio = new Date().getFullYear();
+  const usados = leerRegistro().map((x) => x.numero).filter((n) => n && n.startsWith(`L-${anio}-`)).map((n) => Number(n.split("-")[2]) || 0);
+  return `L-${anio}-${String((usados.length ? Math.max(...usados) : 0) + 1).padStart(4, "0")}`;
+}
+function pintarRegistro() {
+  const filas = leerRegistro().slice().reverse();
+  $("registro").innerHTML = filas.length ? "" : '<tr><td colspan="8" style="color:var(--g)">Aún no ha emitido licencias en este navegador.</td></tr>';
+  for (const r of filas) {
+    const tr = document.createElement("tr");
+    for (const v of [r.numero, r.fecha, r.cliente, r.documento, r.equipo, r.edicion, r.vence || "Perpetua", r.contacto]) {
+      const td = document.createElement("td"); td.textContent = v || ""; tr.append(td);
+    }
+    tr.children[4].className = "mono";
+    $("registro").append(tr);
+  }
+}
+
+$("archivo-clave").addEventListener("change", async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const datos = JSON.parse(await f.text());
+    const jwk = datos.jwk || datos;
+    if (jwk.kty !== "OKP" || jwk.crv !== "Ed25519" || !jwk.d) throw new Error("El archivo no es una clave privada Ed25519.");
+    if (jwk.x !== PUBLICA_X) throw new Error("Esta clave privada no corresponde a la que reconoce el programa.");
+    llavePrivada = await crypto.subtle.importKey("jwk", { kty: "OKP", crv: "Ed25519", d: jwk.d, x: jwk.x }, { name: "Ed25519" }, false, ["sign"]);
+    $("generar").disabled = false;
+    estado("estado-clave", "Clave privada correcta. Ya puede generar licencias.", "ok");
+  } catch (err) {
+    llavePrivada = null; $("generar").disabled = true;
+    estado("estado-clave", (err && err.message && !/subtle|Unrecognized|NotSupported/i.test(err.message)) ? err.message : "Este navegador no admite firmas Ed25519. Use Chrome, Edge o Firefox actualizados.", "mal");
+  }
+});
+
+$("generar").addEventListener("click", async () => {
+  const equipo = normalizarEquipo($("equipo").value);
+  const cliente = $("cliente").value.trim();
+  if (!/^[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}$/.test(equipo)) return estado("estado-generar", "El código de equipo debe tener 16 caracteres (0-9 y A-F).", "mal");
+  if (!cliente) return estado("estado-generar", "Escriba el nombre del cliente.", "mal");
+  const vence = $("vence").value;
+  if (vence && vence < hoyIso()) return estado("estado-generar", "La fecha de vencimiento ya pasó.", "mal");
+  const numero = $("numero").value.trim() || siguienteNumero();
+  const datos = { v: 1, p: "sistema-control-2", c: cliente };
+  if ($("documento").value.trim()) datos.d = $("documento").value.trim();
+  Object.assign(datos, { e: equipo, ed: $("edicion").value, f: hoyIso() });
+  if (vence) datos.x = vence;
+  datos.n = numero;
+  const cuerpo = new TextEncoder().encode(JSON.stringify(datos));
+  const firma = await crypto.subtle.sign({ name: "Ed25519" }, llavePrivada, cuerpo);
+  const clave = "SC2-" + b64url(cuerpo) + "." + b64url(firma);
+  ultima = { clave, numero, cliente, equipo };
+  $("resultado").value = clave;
+  for (const b of ["copiar", "descargar", "copiar-mensaje"]) $(b).disabled = false;
+  const r = leerRegistro();
+  r.push({ numero, fecha: hoyIso(), cliente, documento: datos.d || "", equipo, edicion: datos.ed, vence: vence || "", contacto: $("contacto").value.trim(), clave });
+  guardarRegistro(r); pintarRegistro();
+  $("numero").value = siguienteNumero();
+  estado("estado-generar", `Licencia ${numero} generada para ${cliente} (equipo ${equipo}).`, "ok");
+});
+
+async function copiar(texto, id) {
+  try { await navigator.clipboard.writeText(texto); estado(id, "Copiado.", "ok"); }
+  catch { $("resultado").select(); document.execCommand("copy"); estado(id, "Copiado.", "ok"); }
+}
+$("copiar").addEventListener("click", () => ultima && copiar(ultima.clave, "estado-entrega"));
+$("copiar-mensaje").addEventListener("click", () => ultima && copiar(
+  `Licencia de Sistema de Control 2.0\nCliente: ${ultima.cliente}\nEquipo: ${ultima.equipo}\nN.º ${ultima.numero}\n\nPara activarla: abra el programa, pegue esta clave en "Activación de la licencia" y pulse Activar.\n\n${ultima.clave}`,
+  "estado-entrega"));
+$("descargar").addEventListener("click", () => {
+  if (!ultima) return;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([ultima.clave + "\n"], { type: "text/plain" }));
+  a.download = `licencia-${ultima.numero}-${ultima.equipo}.lic`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+$("verificar").addEventListener("click", async () => {
+  try {
+    const t = $("verificar-clave").value.replace(/\s+/g, "");
+    if (!t.startsWith("SC2-")) throw new Error("La clave debe empezar por SC2-.");
+    const [cuerpo, firma] = t.slice(4).split(".");
+    llavePublica ||= await crypto.subtle.importKey("jwk", { kty: "OKP", crv: "Ed25519", x: PUBLICA_X }, { name: "Ed25519" }, false, ["verify"]);
+    const bytes = desdeB64url(cuerpo);
+    const valida = await crypto.subtle.verify({ name: "Ed25519" }, llavePublica, desdeB64url(firma), bytes);
+    const d = JSON.parse(new TextDecoder().decode(bytes));
+    estado("estado-verificar", `${valida ? "Firma auténtica" : "FIRMA INVÁLIDA (alterada o de otro vendedor)"} · ${d.c} · ${d.d || "sin documento"} · equipo ${d.e} · ${d.ed || ""} · emitida ${d.f}${d.x ? " · vence " + d.x : " · perpetua"}${d.n ? " · " + d.n : ""}`, valida ? "ok" : "mal");
+  } catch (err) { estado("estado-verificar", err.message || "Clave dañada.", "mal"); }
+});
+
+const descargar = (nombre, texto, tipo) => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([texto], { type: tipo })); a.download = nombre; a.click(); };
+$("exportar").addEventListener("click", () => {
+  const cols = ["numero", "fecha", "cliente", "documento", "equipo", "edicion", "vence", "contacto", "clave"];
+  const csv = "﻿" + [cols.join(";"), ...leerRegistro().map((r) => cols.map((c) => `"${String(r[c] || "").replace(/"/g, '""')}"`).join(";"))].join("\r\n");
+  descargar(`registro-licencias-${hoyIso()}.csv`, csv, "text/csv");
+});
+$("respaldo").addEventListener("click", () => descargar(`registro-licencias-${hoyIso()}.json`, JSON.stringify(leerRegistro(), null, 2), "application/json"));
+$("btn-importar").addEventListener("click", () => $("importar").click());
+$("importar").addEventListener("change", async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const nuevos = JSON.parse(await f.text());
+    if (!Array.isArray(nuevos)) throw 0;
+    const r = leerRegistro(); const vistos = new Set(r.map((x) => x.clave));
+    for (const n of nuevos) if (n && n.clave && !vistos.has(n.clave)) r.push(n);
+    guardarRegistro(r); pintarRegistro();
+  } catch { alert("El archivo no es un respaldo del registro de licencias."); }
+  e.target.value = "";
+});
+
+$("numero").value = siguienteNumero();
+pintarRegistro();
+</script>
+</body>
+</html>

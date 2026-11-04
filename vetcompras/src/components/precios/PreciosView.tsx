@@ -567,7 +567,7 @@ export const PreciosView: React.FC<{ onFacturar: (items: VentaItem[]) => void }>
     const ws = XLSX.utils.aoa_to_sheet(datos);
     ws['!cols'] = datos[0].map((_, i) => ({ wch: i === 1 ? 34 : 13 }));
     XLSX.utils.book_append_sheet(wb, ws, 'Precios de venta');
-    guardarExcel(wb, `VetCompras_Precios_${fechaLocal()}.xlsx`);
+    guardarExcel(wb, `SistemaControl_Precios_${fechaLocal()}.xlsx`);
   };
 
   if (cargando) {

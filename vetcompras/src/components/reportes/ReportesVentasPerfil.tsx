@@ -6,6 +6,7 @@ import { Periodo, rangoPeriodo } from '../../utils/paneles';
 import { AGRUPACIONES_VENTAS, AgrupacionVentas, agruparVentas, filtrarVentas } from '../../utils/reportesPerfil';
 import { SelectorPeriodo } from '../dashboard/PanelVentas';
 import { ColumnaReporte, TablaReporte } from './TablaReporte';
+import { etiquetaReferencia } from '../../utils/etiquetas';
 
 interface Props {
   ventas: Venta[];
@@ -85,7 +86,7 @@ export const ReportesVentasPerfil: React.FC<Props> = ({ ventas, onEditarVenta })
         <div className="flex flex-wrap gap-2">
           <div className="relative flex-1 min-w-[220px]">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input id="rv-texto" value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Buscar recibo, cliente, mascota o producto…" className={input + ' w-full pl-9'} />
+            <input id="rv-texto" value={texto} onChange={(e) => setTexto(e.target.value)} placeholder={`Buscar recibo, cliente, ${etiquetaReferencia().toLowerCase()} o producto…`} className={input + ' w-full pl-9'} />
           </div>
           <select id="rv-categoria" value={categoria} onChange={(e) => setCategoria(e.target.value)} className={input} aria-label="Categoría">
             <option value="">Todas las categorías</option>

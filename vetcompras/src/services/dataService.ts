@@ -1,14 +1,16 @@
+import { aplicarColorMarca } from '../utils/tema';
 import { CompraDocumento, Proveedor, Categoria, CentroCosto, RegistroPago, EmpresaInfo, Venta, Producto, MovimientoInventario, FichaPrecio, CategoriaVentaConfig } from '../types';
 import { EMPRESA_DEFECTO } from '../data/defaults';
 import { aplicarCategoriasVenta, fechaLocal } from '../utils/formatters';
 import type { EstadoAlertaCopia } from '../utils/alertaCopia';
 import { modulosDe, type PerfilAcceso } from '../utils/perfiles';
+import { fijarEtiquetaReferencia } from '../utils/etiquetas';
 
 const CLAVE_PERFIL = 'vetcompras_perfil';
 let perfilActivo: PerfilAcceso | null = null;
 
 /**
- * Capa de acceso a datos de VetCompras.
+ * Capa de acceso a datos de Sistema de Control.
  *
  * Toda la información vive en la base de datos SQLite del PC donde está
  * instalado el servidor local (ver server/basedatos.ts). El navegador solo
@@ -84,11 +86,11 @@ async function api<T = any>(ruta: string, opciones: RequestInit & { sondeo?: boo
       },
     });
   } catch {
-    throw new Error('No hay conexión con el servidor local de VetCompras. Verifique que el programa esté abierto.');
+    throw new Error('No hay conexión con el servidor local de Sistema de Control. Verifique que el programa esté abierto.');
   }
   const cuerpo = await respuesta.json().catch(() => ({}));
   if (!respuesta.ok) {
-    if (cuerpo?.sesionVencida || cuerpo?.debeCambiarClave) {
+    if (cuerpo?.sesionVencida || cuerpo?.debeCambiarClave || cuerpo?.codigo === 'LICENCIA') {
       window.dispatchEvent(new CustomEvent(EVENTO_SESION, { detail: cuerpo }));
     }
     throw new Error(cuerpo?.error || `Error ${respuesta.status} del servidor local.`);
@@ -129,11 +131,15 @@ function leerEmpresaEnCache(): EmpresaInfo {
 }
 
 let empresaActual: EmpresaInfo = leerEmpresaEnCache();
+aplicarColorMarca(empresaActual.colorPrimario);
+fijarEtiquetaReferencia(empresaActual.etiquetaReferencia);
 aplicarCategoriasVenta(empresaActual.categoriasVenta);
 let inicializacion: Promise<void> | null = null;
 
 function fijarEmpresa(datos: EmpresaInfo) {
   empresaActual = datos;
+  aplicarColorMarca(datos.colorPrimario);
+  fijarEtiquetaReferencia(datos.etiquetaReferencia);
   aplicarCategoriasVenta(datos.categoriasVenta);
   try {
     localStorage.setItem(CLAVE_CACHE_EMPRESA, JSON.stringify(datos));
@@ -158,7 +164,39 @@ export interface EstadoServidor {
   copias?: EstadoCopias;
 }
 
+export interface EstadoLicencia {
+  activa: boolean;
+  exigida?: boolean;
+  equipo: string;
+  motivo?: string;
+  cliente?: string;
+  documento?: string;
+  edicion?: string;
+  emitida?: string;
+  vence?: string;
+  numero?: string;
+  demo?: boolean;
+}
+
+let licenciaActual: EstadoLicencia | null = null;
+
 export const dataService = {
+  // ================= LICENCIA DEL EQUIPO =================
+
+  async consultarLicencia(): Promise<EstadoLicencia> {
+    licenciaActual = await api<EstadoLicencia>('/licencia');
+    return licenciaActual;
+  },
+
+  async activarLicencia(clave: string): Promise<EstadoLicencia> {
+    licenciaActual = await api<EstadoLicencia>('/licencia', { method: 'POST', body: JSON.stringify({ clave }) });
+    return licenciaActual;
+  },
+
+  licencia(): EstadoLicencia | null {
+    return licenciaActual;
+  },
+
   // ================= SESIÓN Y USUARIOS =================
 
   usuarioActual(): UsuarioActual | null {
@@ -287,7 +325,7 @@ export const dataService = {
 
   /**
    * Avisa cuando cambian los datos en el servidor (por ejemplo desde otro PC
-   * de la veterinaria). Devuelve la función para cancelar la suscripción.
+   * de la empresa). Devuelve la función para cancelar la suscripción.
    */
   suscribirCambiosEnVivo(onCambio: () => void): () => void {
     let ultimaRevision: string | null = null;
@@ -737,7 +775,7 @@ export const dataService = {
         body: archivo,
       });
     } catch {
-      throw new Error('No hay conexión con el servidor local de VetCompras.');
+      throw new Error('No hay conexión con el servidor local de Sistema de Control.');
     }
     const cuerpo = await respuesta.json().catch(() => ({}));
     if (!respuesta.ok) throw new Error(cuerpo?.error || 'No se pudo cargar el archivo.');
@@ -789,7 +827,7 @@ export const dataService = {
   },
 
   guardarDatosEmpresa(datos: EmpresaInfo): Promise<void> {
-    // Las pantallas de datos de la veterinaria no editan las categorías de venta:
+    // Las pantallas de datos de la empresa no editan las categorías de venta:
     // se conservan las vigentes aunque el formulario traiga una copia anterior
     return guardarEmpresa({ ...datos, categoriasVenta: empresaActual.categoriasVenta });
   },

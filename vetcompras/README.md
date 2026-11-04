@@ -1,19 +1,44 @@
-# VetCompras 2.0 — instalación local
+# Aplicativo Sistema de Control 2.0 — instalación local
 
-Control de compras, gastos, ventas e informes tributarios (IVA F300, retenciones F350)
-para veterinarias en Colombia. **Se instala en el PC de la veterinaria y toda la
-información queda guardada en ese mismo equipo**: no depende de servicios en la nube.
+Control de ventas, compras, gastos, inventario e informes tributarios (IVA F300,
+retenciones F350) para empresas en Colombia. Producto genérico: cada empresa configura su
+razón social, logo, color, categorías y catálogos. **Se instala en el PC de la empresa y
+toda la información queda guardada en ese mismo equipo**: no depende de servicios en la nube.
+(Basado en VetCompras 2.14; una instalación existente de VetCompras conserva su carpeta de datos.)
+
+## Licencias (para el vendedor)
+
+Cada instalación exige una licencia **ligada al equipo**:
+
+1. El cliente instala y abre el programa; la pantalla *Activación de la licencia* muestra su
+   **código de equipo** (16 caracteres, p. ej. `3F9A-21C0-7B44-E1D2`), calculado con el
+   identificador de Windows (MachineGuid).
+2. El vendedor abre `herramientas/Generador-de-licencias.html`, carga su archivo
+   `CLAVE-PRIVADA-Sistema-de-Control.json`, escribe cliente, NIT, código de equipo, edición y
+   vencimiento opcional, y entrega la clave (`SC2-…`) o el archivo `.lic`. También existe
+   `scripts/generarLicencia.mjs` para hacerlo por consola.
+3. El cliente pega la clave o carga el `.lic` y pulsa **Activar**.
+
+La clave está firmada con Ed25519: el programa solo trae la clave **pública**
+(`server/clavePublica.ts`), así que puede verificar licencias pero no crearlas. Copiar la
+licencia a otro PC no sirve (el código de equipo no coincide) y alterarla invalida la firma.
+**La clave privada nunca va al repositorio** (`.gitignore` la excluye): si se pierde no se pueden
+emitir más licencias para estas versiones; si se filtra, cualquiera podría emitirlas y habría que
+cambiar el par de claves (las licencias anteriores dejarían de servir).
+
+La demostración en un solo archivo HTML no pide licencia, pero permite hasta 60 ventas y 60
+compras.
 
 ## Dónde quedan los datos
 
 | Qué | Dónde (Windows) |
 |---|---|
-| Base de datos (facturas, ventas, proveedores, configuración, PDF/XML anexos) | `C:\Users\<usuario>\VetCompras\datos\vetcompras.db` |
-| Respaldos automáticos | `C:\Users\<usuario>\VetCompras\datos\respaldos\` |
+| Base de datos (facturas, ventas, proveedores, configuración, PDF/XML anexos) | `C:\Users\<usuario>\SistemaControl\datos\vetcompras.db` |
+| Respaldos automáticos | `C:\Users\<usuario>\SistemaControl\datos\respaldos\` |
 | Copias hechas al actualizar | `C:\Users\<usuario>\VetCompras\copias-antes-de-actualizar\` |
 
 La carpeta de datos está **fuera** de la carpeta del programa, así que reinstalar o
-actualizar el programa no la toca. Se puede cambiar con `VETCOMPRAS_DATOS` en el `.env`.
+actualizar el programa no la toca. Se puede cambiar con `SISTEMA_CONTROL_DATOS` en el `.env`.
 
 Respaldos que el sistema hace solo:
 

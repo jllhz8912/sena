@@ -1,19 +1,25 @@
-import { LOGO_MARCA } from './logoMarca';
+import { COLOR_POR_DEFECTO } from '../utils/tema';
 
 /**
- * Identidad fija de la veterinaria. El logo viene con el programa: si en
- * Configuración no se carga otro, se usa este en la pantalla de inicio, el menú
- * y los recibos.
+ * Producto genérico: no trae logo ni nombre de ningún negocio. Cada cliente carga
+ * en Configuración su razón social, logo y color; mientras no lo haga se usan estos
+ * valores neutros.
  */
-export const MARCA = {
-  nombre: 'Los Criollos Vet',
-  razonSocial: 'LOS CRIOLLOS VET',
-  slogan: 'Clínica veterinaria · Med. Rojas',
-  logo: LOGO_MARCA,
-  /** Morado del logo (botones, recibos) */
-  colorPrimario: '#9330b3',
-  /** Azul marino del borde del logo */
-  colorSecundario: '#244568',
+export const PRODUCTO = {
+  nombre: 'Sistema de Control',
+  nombreCompleto: 'Aplicativo Sistema de Control 2.0',
+  version: '2.0',
+  descripcion: 'Ventas, compras, gastos, inventario y reportes',
 };
 
-export const logoDe = (empresa?: { logoUrl?: string } | null): string => empresa?.logoUrl || MARCA.logo;
+export const MARCA = {
+  nombre: 'Mi Empresa',
+  razonSocial: '',
+  slogan: 'Configure el nombre y el logo de su empresa en Configuración',
+  /** Sin logo por defecto: se muestra un icono genérico */
+  logo: '',
+  colorPrimario: COLOR_POR_DEFECTO,
+  colorSecundario: '#0f766e',
+};
+
+export const logoDe = (empresa?: { logoUrl?: string } | null): string => empresa?.logoUrl || '';

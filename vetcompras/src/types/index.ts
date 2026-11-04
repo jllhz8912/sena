@@ -262,6 +262,8 @@ export interface EmpresaInfo {
   resolucionLegal?: string; // Régimen o documento equivalente
   /** Categorías de venta editadas en Catálogos (sin valor: las de fábrica) */
   categoriasVenta?: CategoriaVentaConfig[];
+  /** Nombre del dato adicional de cada venta (p. ej. Mascota, Placa, Paciente). Por defecto: Referencia */
+  etiquetaReferencia?: string;
 }
 
 export interface CategoriaVentaConfig {

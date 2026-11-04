@@ -40,7 +40,7 @@ describe('alerta semanal en el servidor local', () => {
     bd = new BaseDatosLocal(carpeta);
     const app = express();
     app.use(express.json());
-    app.use('/api', crearApi(bd));
+    app.use('/api', crearApi(bd, { licencia: { exigir: false } }));
     servidor = app.listen(0);
     await new Promise((r) => servidor.once('listening', r));
     base = `http://127.0.0.1:${(servidor.address() as AddressInfo).port}/api`;

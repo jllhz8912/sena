@@ -24,7 +24,6 @@ import path from 'node:path';
 import {
   CATEGORIAS_DEFECTO,
   CENTROS_COSTO_DEFECTO,
-  PROVEEDORES_DEFECTO,
   EMPRESA_DEFECTO,
 } from '../src/data/defaults';
 
@@ -87,7 +86,6 @@ const MIGRACIONES: Migracion[] = [
       );
       for (const c of CATEGORIAS_DEFECTO) insertar.run('categorias', c.id, JSON.stringify(c), ahora, ahora);
       for (const cc of CENTROS_COSTO_DEFECTO) insertar.run('centrosCosto', cc.id, JSON.stringify(cc), ahora, ahora);
-      for (const p of PROVEEDORES_DEFECTO) insertar.run('proveedores', p.id, JSON.stringify(p), ahora, ahora);
       db.prepare('INSERT INTO configuracion (clave, valor) VALUES (?, ?)').run(
         'empresa',
         JSON.stringify(EMPRESA_DEFECTO)
@@ -165,7 +163,7 @@ const MIGRACIONES: Migracion[] = [
   },
   {
     version: 4,
-    descripcion: 'Empresa: reemplaza los datos de ejemplo por "Mi Veterinaria" (pantalla de inicio)',
+    descripcion: 'Empresa: reemplaza los datos de ejemplo por "Mi Empresa" (pantalla de inicio)',
     aplicar: (db) => {
       const fila = db.prepare("SELECT valor FROM configuracion WHERE clave = 'empresa'").get() as { valor: string } | undefined;
       if (!fila) return;
@@ -174,7 +172,7 @@ const MIGRACIONES: Migracion[] = [
       if (empresa.razonSocial !== EMPRESA_DEFECTO.razonSocial || empresa.nit !== EMPRESA_DEFECTO.nit) return;
       const neutra = {
         ...empresa,
-        razonSocial: 'Mi Veterinaria', nombreComercial: 'Mi Veterinaria', nit: '', dv: '', direccion: '', ciudad: '',
+        razonSocial: 'Mi Empresa', nombreComercial: 'Mi Empresa', nit: '', dv: '', direccion: '', ciudad: '',
         departamento: '', telefono: '', email: '', whatsapp: '', sitioWeb: '', slogan: '', logoUrl: '',
         matriculaMercantil: '', regimenTributario: '', resolucionLegal: '',
       };
@@ -183,22 +181,10 @@ const MIGRACIONES: Migracion[] = [
   },
   {
     version: 5,
-    descripcion: 'Marca: nombre y colores de Los Criollos Vet (el logo viene con el programa)',
-    aplicar: (db) => {
-      const fila = db.prepare("SELECT valor FROM configuracion WHERE clave = 'empresa'").get() as { valor: string } | undefined;
-      if (!fila) return;
-      const empresa = JSON.parse(fila.valor);
-      // Valores fijos (no constantes que cambien después): una migración publicada no se modifica
-      if (!empresa.razonSocial || empresa.razonSocial === 'Mi Veterinaria') {
-        empresa.razonSocial = 'LOS CRIOLLOS VET';
-        empresa.nombreComercial = 'Los Criollos Vet';
-        if (!empresa.slogan) empresa.slogan = 'Clínica veterinaria · Med. Rojas';
-      }
-      // Solo cambia los colores si seguían los verdes de fábrica
-      if (!empresa.colorPrimario || empresa.colorPrimario.toLowerCase() === '#059669') empresa.colorPrimario = '#9330b3';
-      if (!empresa.colorSecundario || empresa.colorSecundario.toLowerCase() === '#0f766e') empresa.colorSecundario = '#244568';
-      db.prepare("UPDATE configuracion SET valor = ? WHERE clave = 'empresa'").run(JSON.stringify(empresa));
-    },
+    // Hasta la 2.14 ponía la marca de un cliente. Desde Sistema de Control 2.0 el programa es genérico
+    // y la marca la configura cada empresa; el número se conserva para no alterar el orden.
+    descripcion: 'Reservada (marca genérica: cada empresa configura nombre, logo y color)',
+    aplicar: () => undefined,
   },
   {
     version: 6,
@@ -206,9 +192,9 @@ const MIGRACIONES: Migracion[] = [
     aplicar: (db) => {
       // Copia fija de las subcategorías de la 2.14: una migración publicada no cambia aunque cambien los valores de fábrica
       const porCategoria: Record<string, [string, string][]> = {
-        'cat-mercancia': [['medicamentos', 'Medicamentos'], ['alimentos', 'Alimentos y concentrados'], ['vacunas', 'Vacunas y biológicos'], ['antiparasitarios', 'Antiparasitarios'], ['accesorios', 'Accesorios y pet shop'], ['insumos_clinicos', 'Insumos clínicos y quirúrgicos'], ['peluqueria', 'Productos de peluquería y aseo animal']],
-        'cat-servicios': [['energia', 'Energía eléctrica'], ['acueducto', 'Acueducto y alcantarillado'], ['gas', 'Gas natural'], ['internet', 'Internet y telefonía'], ['residuos', 'Recolección de residuos biológicos'], ['aseo', 'Aseo (recolección de basuras)']],
-        'cat-arriendo': [['local', 'Local / clínica'], ['bodega', 'Bodega'], ['consultorio', 'Consultorio'], ['parqueadero', 'Parqueadero'], ['administracion', 'Cuota de administración']],
+        'cat-mercancia': [['mercancia_general', 'Mercancía general para reventa'], ['materias_primas', 'Materias primas e insumos'], ['empaques', 'Empaques y material de presentación'], ['repuestos', 'Repuestos y accesorios'], ['importada', 'Mercancía importada']],
+        'cat-servicios': [['energia', 'Energía eléctrica'], ['acueducto', 'Acueducto y alcantarillado'], ['gas', 'Gas natural'], ['internet', 'Internet y telefonía'], ['residuos', 'Recolección de residuos especiales'], ['aseo', 'Aseo (recolección de basuras)']],
+        'cat-arriendo': [['local', 'Local comercial / sede'], ['bodega', 'Bodega'], ['oficina', 'Oficina'], ['parqueadero', 'Parqueadero'], ['administracion', 'Cuota de administración']],
         'cat-personal': [['salarios', 'Salarios'], ['honorarios', 'Honorarios'], ['prestaciones', 'Prestaciones sociales'], ['seguridad_social', 'Seguridad social y parafiscales'], ['dotacion', 'Dotación']],
         'cat-varios': [['aseo_cafeteria', 'Aseo y cafetería'], ['papeleria', 'Papelería'], ['mantenimiento', 'Mantenimiento y reparaciones'], ['publicidad', 'Publicidad'], ['transporte', 'Transporte y domicilios'], ['impuestos', 'Impuestos, tasas y licencias'], ['bancarios', 'Gastos bancarios'], ['otros', 'Otros']],
       };
@@ -222,12 +208,42 @@ const MIGRACIONES: Migracion[] = [
       }
     },
   },
+  {
+    version: 7,
+    descripcion: 'Producto genérico: categorías de venta neutras en instalaciones nuevas y nombre del dato adicional de la venta',
+    aplicar: (db) => {
+      const fila = db.prepare("SELECT valor FROM configuracion WHERE clave = 'empresa'").get() as { valor: string } | undefined;
+      if (!fila) return;
+      const empresa = JSON.parse(fila.valor);
+      const ventas = (db.prepare("SELECT COUNT(*) AS n FROM registros WHERE coleccion = 'ventas'").get() as { n: number }).n;
+      // Quien ya vendía con las categorías de la versión anterior las conserva (y el dato "Mascota")
+      if (ventas > 0) {
+        if (!empresa.etiquetaReferencia) empresa.etiquetaReferencia = 'Mascota';
+      } else {
+        if (!Array.isArray(empresa.categoriasVenta) || !empresa.categoriasVenta.length) {
+          // Copia fija: una migración publicada no cambia aunque cambien los valores de fábrica
+          empresa.categoriasVenta = [
+            { id: 'productos', label: 'Productos', tipo: 'producto', activo: true, subcategorias: [{ value: 'general', label: 'Línea general' }, { value: 'varios', label: 'Varios' }] },
+            { id: 'servicios', label: 'Servicios', tipo: 'servicio', activo: true, subcategorias: [{ value: 'general', label: 'Servicio general' }, { value: 'varios', label: 'Varios' }] },
+            { id: 'otros_ingresos', label: 'Otros ingresos', tipo: 'servicio', activo: true, subcategorias: [{ value: 'varios', label: 'Varios' }] },
+          ];
+        }
+        if (!empresa.etiquetaReferencia) empresa.etiquetaReferencia = 'Referencia';
+      }
+      db.prepare("UPDATE configuracion SET valor = ? WHERE clave = 'empresa'").run(JSON.stringify(empresa));
+    },
+  },
 ];
 
 export const VERSION_ESQUEMA = MIGRACIONES[MIGRACIONES.length - 1].version;
 
 export function carpetaDatosPorDefecto(): string {
-  return process.env.VETCOMPRAS_DATOS || path.join(os.homedir(), 'VetCompras', 'datos');
+  const configurada = process.env.SISTEMA_CONTROL_DATOS || process.env.VETCOMPRAS_DATOS;
+  if (configurada) return configurada;
+  // Instalaciones anteriores (VetCompras 2.x) conservan su carpeta de datos
+  const anterior = path.join(os.homedir(), 'VetCompras', 'datos');
+  if (fs.existsSync(path.join(anterior, 'vetcompras.db'))) return anterior;
+  return path.join(os.homedir(), 'SistemaControl', 'datos');
 }
 
 function marcaDeTiempo(): string {
@@ -272,7 +288,7 @@ export class BaseDatosLocal {
     if (actual > VERSION_ESQUEMA) {
       throw new Error(
         `La base de datos (versión ${actual}) es más nueva que este programa (versión ${VERSION_ESQUEMA}). ` +
-          'Instale la versión más reciente de VetCompras; no se modificó ningún dato.'
+          'Instale la versión más reciente de Sistema de Control; no se modificó ningún dato.'
       );
     }
     const pendientes = MIGRACIONES.filter((m) => m.version > actual);
@@ -287,7 +303,7 @@ export class BaseDatosLocal {
         m.aplicar(this.db);
         this.db.exec(`PRAGMA user_version = ${m.version}`);
       });
-      console.log(`[VetCompras] Migración ${m.version} aplicada: ${m.descripcion}`);
+      console.log(`[Sistema de Control] Migración ${m.version} aplicada: ${m.descripcion}`);
     }
   }
 
@@ -342,7 +358,7 @@ export class BaseDatosLocal {
     try {
       const { user_version } = prueba.prepare('PRAGMA user_version').get() as { user_version: number };
       const tabla = prueba.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'registros'").get();
-      if (!tabla) throw new Error('El archivo no es un respaldo de VetCompras.');
+      if (!tabla) throw new Error('El archivo no es un respaldo de Sistema de Control.');
       if (user_version > VERSION_ESQUEMA) throw new Error('El respaldo es de una versión más nueva del programa.');
     } finally {
       prueba.close();
@@ -388,7 +404,7 @@ export class BaseDatosLocal {
    */
   cargarRespaldo(contenido: Buffer): string {
     if (contenido.length < 100 || contenido.subarray(0, 16).toString('latin1') !== 'SQLite format 3\u0000') {
-      throw Object.assign(new Error('El archivo no es una copia de seguridad de VetCompras (.db).'), { status: 400 });
+      throw Object.assign(new Error('El archivo no es una copia de seguridad de Sistema de Control (.db).'), { status: 400 });
     }
     const nombre = `vetcompras-${marcaDeTiempo()}-cargado.db`;
     const destino = path.join(this.carpetaRespaldos, nombre);
@@ -398,8 +414,8 @@ export class BaseDatosLocal {
       try {
         const tabla = prueba.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'registros'").get();
         const { user_version } = prueba.prepare('PRAGMA user_version').get() as { user_version: number };
-        if (!tabla) throw new Error('El archivo no contiene datos de VetCompras.');
-        if (user_version > VERSION_ESQUEMA) throw new Error('La copia es de una versión más nueva del programa. Actualice VetCompras primero.');
+        if (!tabla) throw new Error('El archivo no contiene datos de Sistema de Control.');
+        if (user_version > VERSION_ESQUEMA) throw new Error('La copia es de una versión más nueva del programa. Actualice Sistema de Control primero.');
       } finally {
         prueba.close();
       }
@@ -451,7 +467,7 @@ export class BaseDatosLocal {
       this.registrarCopiaSeguridad('copia automática en carpeta externa');
     } catch (err: any) {
       this.ultimoRespaldoExterno = { fecha, ok: false, mensaje: `No se pudo copiar a ${carpeta}: ${err?.message}` };
-      console.warn('[VetCompras]', this.ultimoRespaldoExterno.mensaje);
+      console.warn('[Sistema de Control]', this.ultimoRespaldoExterno.mensaje);
     }
   }
 
@@ -610,7 +626,7 @@ export class BaseDatosLocal {
   exportarTodo() {
     const respaldo: Record<string, unknown> = {
       version: '2.0',
-      aplicacion: 'VetCompras Colombia',
+      aplicacion: 'Sistema de Control',
       versionEsquema: this.versionEsquema(),
       fechaExportacion: new Date().toISOString(),
       empresa: this.obtenerConfig('empresa'),

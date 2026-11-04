@@ -29,14 +29,14 @@ interface ConfiguracionViewProps {
 }
 
 const PRESET_COLORES = [
-  { nombre: 'Morado Los Criollos', hex: '#9330b3', desc: 'Color del logo' },
-  { nombre: 'Azul Los Criollos', hex: '#244568', desc: 'Borde del logo' },
-  { nombre: 'Esmeralda Clínico', hex: '#059669', desc: 'Verde fresco y médico' },
-  { nombre: 'Azul Veterinario', hex: '#2563eb', desc: 'Profesional y confiable' },
-  { nombre: 'Turquesa Salud', hex: '#0d9488', desc: 'Cuidado animal e higiene' },
-  { nombre: 'Índigo Quirúrgico', hex: '#4f46e5', desc: 'Especialidades clínicas' },
-  { nombre: 'Violeta PetShop', hex: '#7c3aed', desc: 'Moderno y estilizado' },
-  { nombre: 'Rosa / Magenta', hex: '#e11d48', desc: 'Cariño y estética de mascotas' },
+  { nombre: 'Azul marino', hex: '#1e3a8a', desc: 'Formal y serio' },
+  { nombre: 'Morado', hex: '#9333ea', desc: 'Distintivo' },
+  { nombre: 'Esmeralda', hex: '#059669', desc: 'Natural y confiable' },
+  { nombre: 'Azul corporativo', hex: '#2563eb', desc: 'Profesional y confiable' },
+  { nombre: 'Turquesa', hex: '#0d9488', desc: 'Fresco y limpio' },
+  { nombre: 'Índigo', hex: '#4f46e5', desc: 'Sobrio y moderno' },
+  { nombre: 'Violeta', hex: '#7c3aed', desc: 'Creativo' },
+  { nombre: 'Rosa / Magenta', hex: '#e11d48', desc: 'Cálido y llamativo' },
   { nombre: 'Naranja Cálido', hex: '#ea580c', desc: 'Cercano y amigable' },
   { nombre: 'Grafito Neutro', hex: '#334155', desc: 'Elegante y minimalista' },
 ];
@@ -95,14 +95,14 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
   // Descarta lo editado y vuelve a los datos guardados (antes ponía datos ficticios de ejemplo)
   const handleRestaurarDefecto = () => {
     setEmpresa(dataService.obtenerDatosEmpresa());
-    mostrarToast('info', 'Cambios descartados', 'Se recargaron los datos guardados de la veterinaria.');
+    mostrarToast('info', 'Cambios descartados', 'Se recargaron los datos guardados de la empresa.');
   };
 
   const handleGuardar = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!empresa.razonSocial.trim() || !empresa.nit.trim()) {
-      mostrarToast('warning', 'Campos obligatorios', 'La Razón Social y el NIT de la veterinaria son indispensables.');
+      mostrarToast('warning', 'Campos obligatorios', 'La Razón Social y el NIT de la empresa son indispensables.');
       return;
     }
 
@@ -112,7 +112,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
       mostrarToast(
         'success',
         'Configuración guardada',
-        'Los datos de la clínica, logo y colores se guardaron en este equipo.'
+        'Los datos de la empresa, logo y colores se guardaron en este equipo.'
       );
       if (onDatosActualizados) {
         onDatosActualizados();
@@ -139,7 +139,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
           </div>
           <div>
             <h2 className="font-black text-lg sm:text-xl text-slate-900 dark:text-white">
-              Configuración de la Veterinaria y Marca
+              Configuración de la Empresa y Marca
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Personalice el logo, colores corporativos, datos comerciales y formato de comprobantes de venta
@@ -183,7 +183,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
           }`}
         >
           <Building2 className="w-4 h-4" />
-          <span>1. Datos de la Veterinaria</span>
+          <span>1. Datos de la Empresa</span>
         </button>
 
         <button
@@ -222,7 +222,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
             <div>
               <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-emerald-600" />
-                <span>Información Legal y Comercial de la Veterinaria</span>
+                <span>Información Legal y Comercial de la Empresa</span>
               </h3>
               <p className="text-xs text-slate-500">
                 Estos datos aparecen en el encabezado de sus reportes de utilidad y en los comprobantes de venta para clientes.
@@ -239,7 +239,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
                   required
                   value={empresa.razonSocial}
                   onChange={(e) => handleChange('razonSocial', e.target.value)}
-                  placeholder="Ej: CLÍNICA VETERINARIA SAN ROQUE S.A.S."
+                  placeholder="Ej: COMERCIALIZADORA EJEMPLO S.A.S."
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold text-slate-900 dark:text-white"
                 />
               </div>
@@ -351,7 +351,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400">
                   <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>WhatsApp de la Veterinaria (Para envío de recibos)</span>
+                  <span>WhatsApp de la Empresa (Para envío de recibos)</span>
                 </label>
                 <input
                   type="text"
@@ -371,7 +371,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
                   type="email"
                   value={empresa.email}
                   onChange={(e) => handleChange('email', e.target.value)}
-                  placeholder="contacto@veterinaria.com"
+                  placeholder="contacto@miempresa.com"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                 />
               </div>
@@ -390,14 +390,14 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
                 <span>Identidad Visual: Logo y Colores Corporativos</span>
               </h3>
               <p className="text-xs text-slate-500">
-                Cargue el logo de su veterinaria y elija el color que identificará sus recibos, botones y barra de navegación.
+                Cargue el logo de su empresa y elija el color que identificará sus recibos, botones y barra de navegación.
               </p>
             </div>
 
             {/* Subida de Logo */}
             <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-4">
               <span className="font-bold text-xs text-slate-800 dark:text-slate-200 block">
-                Logo de la Veterinaria
+                Logo de la Empresa
               </span>
 
               <div className="flex flex-col sm:flex-row items-center gap-5">
@@ -406,7 +406,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
                   {logoDe(empresa) ? (
                     <img
                       src={logoDe(empresa)}
-                      alt="Logo de la clínica"
+                      alt="Logo de la empresa"
                       className="w-full h-full object-contain"
                     />
                   ) : (
@@ -443,7 +443,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
                         className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 font-semibold text-xs border border-rose-200 dark:border-rose-800 hover:bg-rose-100"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        <span>Volver al logo de {MARCA.nombre}</span>
+                        <span>Quitar logo</span>
                       </button>
                     )}
                   </div>
@@ -458,7 +458,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
             {/* Selector de Color Corporativo */}
             <div className="space-y-3">
               <label className="block font-bold text-xs text-slate-800 dark:text-slate-200">
-                Color Primario de la Clínica
+                Color Primario de la Empresa
               </label>
 
               {/* Presets Rápidos */}
@@ -514,13 +514,13 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Eslogan o Lema de la Clínica
+                  Eslogan o Lema de la Empresa
                 </label>
                 <input
                   type="text"
                   value={empresa.slogan || ''}
                   onChange={(e) => handleChange('slogan', e.target.value)}
-                  placeholder="Ej: Pasión y cuidado por tus mascotas"
+                  placeholder="Ej: Calidad y servicio a su alcance"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                 />
               </div>
@@ -553,7 +553,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
                 <span>Configuración de Documentos de Venta y Comprobantes para Clientes</span>
               </h3>
               <p className="text-xs text-slate-500">
-                Personalice los títulos, textos legales y notas de pie de página que se imprimen y se envían por WhatsApp a los propietarios de mascotas.
+                Personalice los títulos, textos legales y notas de pie de página que se imprimen y se envían por WhatsApp a los clientes.
               </p>
             </div>
 
@@ -564,13 +564,31 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
                 </label>
                 <input
                   type="text"
-                  value={empresa.tituloDocumentoVenta || 'COMPROBANTE DE VENTA Y SERVICIOS'}
+                  value={empresa.tituloDocumentoVenta || 'COMPROBANTE DE VENTA'}
                   onChange={(e) => handleChange('tituloDocumentoVenta', e.target.value)}
-                  placeholder="Ej: COMPROBANTE DE VENTA Y SERVICIOS VETERINARIOS"
+                  placeholder="Ej: COMPROBANTE DE VENTA"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold"
                 />
                 <span className="text-[11px] text-slate-400 block mt-1">
                   Aparece destacado en la parte superior del recibo en formato carta y tirilla.
+                </span>
+              </div>
+
+              <div>
+                <label htmlFor="config-etiqueta-referencia" className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Nombre del dato adicional de cada venta
+                </label>
+                <input
+                  id="config-etiqueta-referencia"
+                  type="text"
+                  value={empresa.etiquetaReferencia ?? 'Referencia'}
+                  onChange={(e) => handleChange('etiquetaReferencia', e.target.value)}
+                  placeholder="Ej: Referencia, Mascota, Placa del vehículo, Paciente, Mesa"
+                  maxLength={30}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold"
+                />
+                <span className="text-[11px] text-slate-400 block mt-1">
+                  Es un campo libre de la venta que sale en el recibo y en los reportes. Adáptelo a su negocio.
                 </span>
               </div>
 
@@ -582,7 +600,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
                   rows={3}
                   value={empresa.textoPieRecibo || ''}
                   onChange={(e) => handleChange('textoPieRecibo', e.target.value)}
-                  placeholder="Ej: ¡Gracias por confiar en el bienestar de su mascota! Medicamentos y alimentos abiertos no tienen cambio."
+                  placeholder="Ej: ¡Gracias por su compra! Conserve este comprobante."
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                 />
               </div>

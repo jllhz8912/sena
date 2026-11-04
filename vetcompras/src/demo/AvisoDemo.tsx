@@ -52,7 +52,7 @@ export const AvisoDemo: React.FC = () => {
         >
           <FlaskConical className="w-4 h-4 shrink-0" />
           <span className="flex-1">
-            Demostración de VetCompras: los datos son de ejemplo y quedan solo
+            Demostración de Sistema de Control 2.0 (sin licencia, hasta 60 ventas y 60 compras): datos de ejemplo guardados solo
             en este navegador
           </span>
           {abierto ? (

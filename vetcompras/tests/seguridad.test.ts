@@ -40,7 +40,7 @@ beforeEach(async () => {
   bd.guardarConfig('modoAcceso', { modo: 'usuarios' });
   const app = express();
   app.use(express.json());
-  app.use('/api', crearApi(bd));
+  app.use('/api', crearApi(bd, { licencia: { exigir: false } }));
   servidor = app.listen(0);
   await new Promise((r) => servidor.once('listening', r));
   base = `http://127.0.0.1:${(servidor.address() as AddressInfo).port}`;
@@ -260,7 +260,7 @@ describe('ingreso sin contraseña (pantalla de inicio)', () => {
     const r0 = await c('/sesion');
     expect(r0.cuerpo.modoAcceso).toBe('libre');
     expect(r0.cuerpo.requiereConfiguracion).toBe(false);
-    expect(r0.cuerpo.marca.nombre).toBe('Los Criollos Vet');
+    expect(r0.cuerpo.marca.nombre).toBe('Mi Empresa');
     expect((await c('/documentos')).status).toBe(401);
 
     const r = await c('/sesion/ingresar-libre', { method: 'POST' });

@@ -66,7 +66,7 @@ async function ocr(lienzos: HTMLCanvasElement[]): Promise<string[] | null> {
       await trabajador.terminate();
     }
   } catch (err) {
-    console.warn('[VetCompras] OCR no disponible:', err);
+    console.warn('[Sistema de Control] OCR no disponible:', err);
     return null;
   }
 }

@@ -57,14 +57,14 @@ export const CatalogosView: React.FC<CatalogosViewProps> = ({
   const handleGuardarEmpresa = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!empresa.razonSocial.trim() || !empresa.nit.trim()) {
-      mostrarToast('warning', 'Campos obligatorios', 'La Razón Social y el NIT de la veterinaria son requeridos.');
+      mostrarToast('warning', 'Campos obligatorios', 'La Razón Social y el NIT de la empresa son requeridos.');
       return;
     }
 
     try {
       setGuardandoEmpresa(true);
       await dataService.guardarDatosEmpresa(empresa);
-      mostrarToast('success', 'Datos guardados', 'La información de la clínica veterinaria se actualizó con éxito.');
+      mostrarToast('success', 'Datos guardados', 'La información de la empresa se actualizó con éxito.');
       onDatosActualizados();
     } catch (err: any) {
       mostrarToast('error', 'Error al guardar', err?.message);
@@ -117,7 +117,7 @@ export const CatalogosView: React.FC<CatalogosViewProps> = ({
             { id: 'categorias', icono: Tag, texto: `Categorías de compras y gastos (${categorias.length})` },
             { id: 'centros', icono: FolderTree, texto: `Centros de Costo (${centrosCosto.length})` },
             { id: 'proveedores', icono: Building, texto: `Proveedores (${proveedores.length})` },
-            { id: 'empresa', icono: Building2, texto: 'Datos de la Veterinaria' },
+            { id: 'empresa', icono: Building2, texto: 'Datos de la Empresa' },
           ] as { id: Pestana; icono: React.ComponentType<{ className?: string }>; texto: string }[]
         ).map(({ id, icono: Icono, texto }) => (
           <button
@@ -308,7 +308,7 @@ export const CatalogosView: React.FC<CatalogosViewProps> = ({
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <p className="text-xs text-slate-500">
-              Distribución de costos por áreas operativas de la clínica (Clínica, Tienda, Peluquería, Administración).
+              Distribución de costos por áreas operativas (sedes, líneas de negocio, administración).
             </p>
             <button
               onClick={() => setModalCentro({ abierto: true })}
@@ -416,14 +416,14 @@ export const CatalogosView: React.FC<CatalogosViewProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Razón Social de la Veterinaria *
+                  Razón Social de la Empresa *
                 </label>
                 <input
                   type="text"
                   required
                   value={empresa.razonSocial}
                   onChange={(e) => setEmpresa({ ...empresa, razonSocial: e.target.value })}
-                  placeholder="Ej: CLÍNICA VETERINARIA HUELLITAS S.A.S."
+                  placeholder="Ej: COMERCIALIZADORA EJEMPLO S.A.S."
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -436,7 +436,7 @@ export const CatalogosView: React.FC<CatalogosViewProps> = ({
                   type="text"
                   value={empresa.nombreComercial || ''}
                   onChange={(e) => setEmpresa({ ...empresa, nombreComercial: e.target.value })}
-                  placeholder="Ej: Huellitas Hospital Veterinario 24H"
+                  placeholder="Ej: Tienda Ejemplo"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -535,7 +535,7 @@ export const CatalogosView: React.FC<CatalogosViewProps> = ({
                   type="email"
                   value={empresa.email}
                   onChange={(e) => setEmpresa({ ...empresa, email: e.target.value })}
-                  placeholder="facturacion@veterinaria.com"
+                  placeholder="facturacion@miempresa.com"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                 />
               </div>
@@ -598,7 +598,7 @@ export const CatalogosView: React.FC<CatalogosViewProps> = ({
                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all active:scale-[0.98]"
               >
                 <Save className="w-4 h-4" />
-                <span>{guardandoEmpresa ? 'Guardando...' : 'Guardar Datos de la Veterinaria'}</span>
+                <span>{guardandoEmpresa ? 'Guardando...' : 'Guardar Datos de la Empresa'}</span>
               </button>
             </div>
           </form>
@@ -702,7 +702,7 @@ const ModalFormProveedor: React.FC<{
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 max-w-lg w-full shadow-2xl space-y-4">
         <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
           <h3 className="font-bold text-base text-slate-900 dark:text-white">
-            {proveedor ? 'Editar Proveedor' : 'Nuevo Proveedor Veterinario'}
+            {proveedor ? 'Editar Proveedor' : 'Nuevo Proveedor'}
           </h3>
           <button onClick={onCerrar} className="p-1 rounded-lg text-slate-400 hover:text-slate-600">
             <X className="w-5 h-5" />
@@ -1027,7 +1027,7 @@ const ModalFormCentro: React.FC<{
                 required
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
-                placeholder="Ej: Laboratorio Clínico"
+                placeholder="Ej: Sede principal"
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold"
               />
             </div>
@@ -1039,7 +1039,7 @@ const ModalFormCentro: React.FC<{
               rows={2}
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
-              placeholder="Actividades veterinarias asignadas a este centro..."
+              placeholder="Actividades asignadas a este centro..."
               className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
             />
           </div>

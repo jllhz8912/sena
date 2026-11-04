@@ -20,18 +20,18 @@ export const ConfigurarEmpresaModal: React.FC<ConfigurarEmpresaModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!empresa.razonSocial.trim()) {
-      mostrarToast('error', 'Campo requerido', 'Ingresa la razón social o nombre de la veterinaria.');
+      mostrarToast('error', 'Campo requerido', 'Ingresa la razón social o nombre de la empresa.');
       return;
     }
     if (!empresa.nit.trim()) {
-      mostrarToast('error', 'Campo requerido', 'Ingresa el NIT o cédula de la veterinaria.');
+      mostrarToast('error', 'Campo requerido', 'Ingresa el NIT o cédula de la empresa.');
       return;
     }
 
     try {
       setGuardando(true);
       await dataService.guardarDatosEmpresa(empresa);
-      mostrarToast('success', 'Datos guardados', 'Los datos de la empresa veterinaria se han actualizado.');
+      mostrarToast('success', 'Datos guardados', 'Los datos de la empresa se han actualizado.');
       onEmpresaActualizada();
       onCerrar();
     } catch (err: any) {
@@ -53,7 +53,7 @@ export const ConfigurarEmpresaModal: React.FC<ConfigurarEmpresaModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                Datos de la Empresa / Veterinaria
+                Datos de la Empresa
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Información del adquirente para facturas electrónicas, reportes y certificados DIAN.
@@ -81,7 +81,7 @@ export const ConfigurarEmpresaModal: React.FC<ConfigurarEmpresaModalProps> = ({
                 required
                 value={empresa.razonSocial}
                 onChange={(e) => setEmpresa({ ...empresa, razonSocial: e.target.value })}
-                placeholder="Ej: CLÍNICA VETERINARIA SAN ROQUE S.A.S."
+                placeholder="Ej: COMERCIALIZADORA EJEMPLO S.A.S."
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold focus:ring-2 focus:ring-emerald-500"
               />
             </div>
@@ -160,7 +160,7 @@ export const ConfigurarEmpresaModal: React.FC<ConfigurarEmpresaModalProps> = ({
 
           <div>
             <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Dirección de la Sede Clínica
+              Dirección de la Sede
             </label>
             <input
               type="text"
@@ -257,7 +257,7 @@ export const ConfigurarEmpresaModal: React.FC<ConfigurarEmpresaModalProps> = ({
               className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-md shadow-emerald-600/20"
             >
               <Save className="w-4 h-4" />
-              <span>Guardar Datos de la Veterinaria</span>
+              <span>Guardar Datos de la Empresa</span>
             </button>
           </div>
         </form>

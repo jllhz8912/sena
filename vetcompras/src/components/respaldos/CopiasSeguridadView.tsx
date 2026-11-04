@@ -283,7 +283,7 @@ export const CopiasSeguridadView: React.FC<{ onSesionTerminada: () => void; onDa
               <input
                 value={carpetaExterna}
                 onChange={(e) => setCarpetaExterna(e.target.value)}
-                placeholder="Ej. D:\Respaldos VetCompras"
+                placeholder="Ej. D:\Respaldos Sistema de Control"
                 className={claseInput}
               />
               <button
@@ -355,10 +355,10 @@ export const CopiasSeguridadView: React.FC<{ onSesionTerminada: () => void; onDa
 
           <div className={claseTarjeta}>
             <h3 className="font-bold text-sm flex items-center gap-2">
-              <Power className="w-4 h-4 text-rose-600" /> Apagar VetCompras en este PC
+              <Power className="w-4 h-4 text-rose-600" /> Apagar Sistema de Control en este PC
             </h3>
             <p className="text-xs text-slate-600 dark:text-slate-300">
-              Detiene el programa, por ejemplo antes de actualizarlo. Para volver a usarlo, abra el icono VetCompras.
+              Detiene el programa, por ejemplo antes de actualizarlo. Para volver a usarlo, abra el icono Sistema de Control.
             </p>
             <button onClick={() => setConfirmarApagado(true)} className="px-4 py-2 rounded-xl border border-rose-400 text-rose-700 text-sm font-semibold">
               Apagar
@@ -371,7 +371,7 @@ export const CopiasSeguridadView: React.FC<{ onSesionTerminada: () => void; onDa
             </h3>
             <p className="text-xs text-slate-600 dark:text-slate-300">
               Borra compras, ventas, proveedores y catálogos. Antes le pregunta si desea hacer una copia de seguridad. Se conservan los
-              datos y el logo de la veterinaria, la bitácora y las copias.
+              datos y el logo de la empresa, la bitácora y las copias.
             </p>
             <button
               onClick={() => setBorrarTodoAbierto(true)}
@@ -387,7 +387,7 @@ export const CopiasSeguridadView: React.FC<{ onSesionTerminada: () => void; onDa
         abierto={borrarTodoAbierto}
         titulo="Borrar toda la información"
         borra={['Compras, gastos y anexos', 'Ventas y recibos', 'Inventario (productos y movimientos)', 'Fichas de precios', 'Proveedores', 'Catálogos (vuelven a los de fábrica)', 'Observaciones de prueba']}
-        conserva={['Datos y logo de la veterinaria', 'Forma de ingreso', 'Bitácora', 'Copias de seguridad']}
+        conserva={['Datos y logo de la empresa', 'Forma de ingreso', 'Bitácora', 'Copias de seguridad']}
         textoBoton="Borrar todo"
         palabraConfirmacion="BORRAR"
         onEjecutar={async () => {
@@ -423,14 +423,14 @@ export const CopiasSeguridadView: React.FC<{ onSesionTerminada: () => void; onDa
       />
       <ModalConfirmacion
         abierto={confirmarApagado}
-        titulo="¿Apagar VetCompras?"
+        titulo="¿Apagar Sistema de Control?"
         mensaje="Nadie podrá usar el sistema (tampoco desde otros equipos de la red) hasta que se vuelva a abrir."
         textoConfirmar="Sí, apagar"
         tipo="advertencia"
         enConfirmar={async () => {
           await dataService.apagarServidor().catch(() => undefined);
           document.body.innerHTML =
-            '<div style="font-family:sans-serif;padding:48px;text-align:center"><h2>VetCompras se apagó.</h2><p>Puede cerrar esta pestaña.</p></div>';
+            '<div style="font-family:sans-serif;padding:48px;text-align:center"><h2>Sistema de Control se apagó.</h2><p>Puede cerrar esta pestaña.</p></div>';
         }}
         enCancelar={() => setConfirmarApagado(false)}
       />

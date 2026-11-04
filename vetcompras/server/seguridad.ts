@@ -245,7 +245,7 @@ export class Seguridad {
   // ------------------------------------------------------------ modo de acceso
   /**
    * 'libre' (por defecto): pantalla de inicio con botón "Ingresar", sin usuario ni
-   * contraseña; todo queda a nombre de la veterinaria (administrador).
+   * contraseña; todo queda a nombre de la empresa (administrador).
    * 'usuarios': cada persona ingresa con usuario y contraseña, con roles.
    */
   modoAcceso(): 'libre' | 'usuarios' {
@@ -263,7 +263,7 @@ export class Seguridad {
     if (!fila) {
       // Usuario interno: la contraseña es aleatoria y nadie la conoce
       const clave = 'A1' + crypto.randomBytes(18).toString('base64url');
-      const id = this.crearUsuario({ usuario: 'veterinaria', nombre: 'Veterinaria', rol: 'administrador', clave });
+      const id = this.crearUsuario({ usuario: 'empresa', nombre: 'Empresa', rol: 'administrador', clave });
       fila = this.db.prepare('SELECT * FROM usuarios WHERE id = ?').get(id) as unknown as FilaUsuario;
     }
     this.db.prepare('UPDATE usuarios SET debe_cambiar_clave = 0 WHERE id = ?').run(fila.id);

@@ -39,7 +39,7 @@ bd.auditar({ usuario: 'recuperacion', accion: 'Acceso de emergencia generado des
 bd.cerrar();
 
 console.log('\n============================================================');
-console.log('  ACCESO DE EMERGENCIA DE VETCOMPRAS');
+console.log('  ACCESO DE EMERGENCIA DE SISTEMA DE CONTROL');
 console.log('  Usuario:              recuperacion');
 console.log(`  Contraseña temporal:  ${temporal}`);
 console.log('  Al ingresar se le pedirá crear una contraseña nueva.');

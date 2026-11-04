@@ -13,11 +13,12 @@ import { RegistroManualModal } from './components/registro/RegistroManualModal';
 import { ModalRegistroVenta } from './components/ventas/ModalRegistroVenta';
 import { BotonFlotanteNuevo } from './components/common/BotonFlotanteNuevo';
 import { CompraDocumento, Categoria, CentroCosto, Proveedor, Venta, VentaItem } from './types';
-import { dataService, EVENTO_SESION, EstadoSesion, UsuarioActual } from './services/dataService';
+import { dataService, EVENTO_SESION, EstadoSesion, UsuarioActual, type EstadoLicencia } from './services/dataService';
 import { PantallaAcceso } from './components/seguridad/PantallaAcceso';
 import { PantallaInicio } from './components/seguridad/PantallaInicio';
 import { EVENTO_IR_A_COPIAS, pedidoIrACopias } from './components/respaldos/AlertaCopiaSemanal';
 import { MARCA } from './data/marca';
+import { PantallaActivacion } from './components/licencia/PantallaActivacion';
 import { SeguridadView } from './components/seguridad/SeguridadView';
 import { InventarioView } from './components/inventario/InventarioView';
 import { PreciosView } from './components/precios/PreciosView';
@@ -161,7 +162,7 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
         .catch(() => undefined)
         .finally(() => setCopiasConsultadas(true));
     } catch (error: any) {
-      console.error('Error cargando datos de VetCompras:', error);
+      console.error('Error cargando datos de Sistema de Control:', error);
       setErrorCarga(error?.message || 'No fue posible leer la base de datos local.');
     } finally {
       setCargando(false);
@@ -216,7 +217,7 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
     mostrarToast('warning', 'Pagos próximos a vencer', texto, 12000);
     try {
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-        new Notification('VetCompras: pagos por vencer', { body: texto });
+        new Notification('Sistema de Control: pagos por vencer', { body: texto });
       }
     } catch {
       // Avisos de Windows no disponibles
@@ -232,7 +233,7 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
     panel_compras: 'Panel de Compras y Gastos',
     reportes_ventas: 'Reportes de Ventas',
     reportes_compras: 'Reportes de Compras y Gastos',
-    ventas: 'Módulo de Ventas de la Veterinaria',
+    ventas: 'Módulo de Ventas',
     compras: 'Registro de Compras y Gastos',
     cuentas_pagar: 'Cuentas por Pagar a Proveedores',
     inventario: 'Inventario de Productos',
@@ -242,7 +243,7 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
     registro_manual: 'Registro Manual de Documento',
     reportes: 'Reportería e Informes Tributarios (DIAN)',
     catalogos: 'Catálogos: productos, servicios, gastos, categorías y proveedores',
-    configuracion: 'Configuración de la Veterinaria y Marca',
+    configuracion: 'Configuración de la Empresa y Marca',
     seguridad: dataService.modoAcceso() === 'libre' ? 'Perfiles, Ingreso y Bitácora' : 'Perfiles, Usuarios y Bitácora',
     copias: 'Copias de Seguridad',
   };
@@ -308,7 +309,7 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
               <p className="font-bold">No se pudo cargar la información</p>
               <p className="text-sm">{errorCarga}</p>
               <p className="text-xs">
-                Abra VetCompras con el acceso directo "Iniciar VetCompras" y deje esa ventana abierta mientras usa el sistema.
+                Abra el programa con el icono "Sistema de Control" y deje esa ventana abierta mientras usa el sistema.
               </p>
               <button
                 onClick={() => {
@@ -556,6 +557,7 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
 type EstadoAcceso =
   | { tipo: 'cargando' }
   | { tipo: 'sin_servidor'; error: string }
+  | { tipo: 'licencia'; licencia: EstadoLicencia }
   | { tipo: 'configuracion' }
   | { tipo: 'inicio'; marca: NonNullable<EstadoSesion['marca']>; mensaje?: string }
   | { tipo: 'ingreso'; mensaje?: string }
@@ -570,6 +572,8 @@ function PuertaDeAcceso() {
 
   const consultar = useCallback(async (mensaje?: string) => {
     try {
+      const licencia = await dataService.consultarLicencia();
+      if (licencia.exigida !== false && !licencia.activa) return setEstado({ tipo: 'licencia', licencia });
       const sesion = await dataService.obtenerSesion();
       if (sesion.requiereConfiguracion) setEstado({ tipo: 'configuracion' });
       else if (!sesion.usuario && sesion.modoAcceso === 'libre') {
@@ -589,7 +593,9 @@ function PuertaDeAcceso() {
     consultar();
     const alCambiarSesion = (e: Event) => {
       const detalle = (e as CustomEvent).detail || {};
-      if (detalle.sesionVencida) {
+      if (detalle.codigo === 'LICENCIA') {
+        consultar();
+      } else if (detalle.sesionVencida) {
         consultar(
           dataService.modoAcceso() === 'libre'
             ? 'Se volvió a la pantalla de inicio por inactividad.'
@@ -605,7 +611,7 @@ function PuertaDeAcceso() {
 
   const alIngresar = async (usuario: UsuarioActual) => {
     if (usuario.debeCambiarClave) return setEstado({ tipo: 'cambio_clave', usuario });
-    // Cargar los datos de la veterinaria antes de mostrar el menú (nombre, logo)
+    // Cargar los datos de la empresa antes de mostrar el menú (nombre, logo)
     await dataService.init().catch(() => undefined);
     setEstado({ tipo: 'listo', usuario });
   };
@@ -621,15 +627,17 @@ function PuertaDeAcceso() {
       return (
         <div className="h-screen flex items-center justify-center p-4">
           <div className="max-w-md p-6 rounded-2xl border border-rose-200 bg-rose-50 text-rose-900 space-y-3">
-            <p className="font-bold">VetCompras no está abierto en este PC</p>
+            <p className="font-bold">Sistema de Control no está abierto en este PC</p>
             <p className="text-sm">{estado.error}</p>
-            <p className="text-xs">Abra el icono “VetCompras” del escritorio y vuelva a intentar.</p>
+            <p className="text-xs">Abra el icono “Sistema de Control” del escritorio y vuelva a intentar.</p>
             <button onClick={() => consultar()} className="px-4 py-2 rounded-xl bg-rose-600 text-white text-sm font-semibold">
               Reintentar
             </button>
           </div>
         </div>
       );
+    case 'licencia':
+      return <PantallaActivacion estado={estado.licencia} onActivada={() => consultar()} />;
     case 'configuracion':
       return <PantallaAcceso key="configuracion" modo="configuracion" onListo={alIngresar} />;
     case 'inicio':

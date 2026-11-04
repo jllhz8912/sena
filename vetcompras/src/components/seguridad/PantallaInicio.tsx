@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowRight, Loader2, Stethoscope } from 'lucide-react';
+import { ArrowRight, Loader2, Store } from 'lucide-react';
 import { dataService, EstadoSesion, UsuarioActual } from '../../services/dataService';
-import { MARCA } from '../../data/marca';
+import { MARCA, PRODUCTO } from '../../data/marca';
+import { aplicarColorMarca } from '../../utils/tema';
 
 interface PantallaInicioProps {
   marca: NonNullable<EstadoSesion['marca']>;
@@ -9,7 +10,7 @@ interface PantallaInicioProps {
   onListo: (usuario: UsuarioActual) => void | Promise<void>;
 }
 
-/** Pantalla de bienvenida: logo y nombre de la veterinaria, y un botón grande para ingresar. */
+/** Pantalla de bienvenida: logo y nombre de la empresa, y un botón grande para ingresar. */
 export const PantallaInicio: React.FC<PantallaInicioProps> = ({ marca, mensaje, onListo }) => {
   const [entrando, setEntrando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +42,8 @@ export const PantallaInicio: React.FC<PantallaInicioProps> = ({ marca, mensaje, 
 
   const color = marca.colorPrimario || MARCA.colorPrimario;
   const logo = marca.logoUrl || MARCA.logo;
+  useEffect(() => aplicarColorMarca(color), [color]);
+  const licencia = dataService.licencia();
 
   return (
     <div
@@ -56,7 +59,7 @@ export const PantallaInicio: React.FC<PantallaInicioProps> = ({ marca, mensaje, 
           />
         ) : (
           <div className="w-40 h-40 sm:w-48 sm:h-48 rounded-[2.5rem] flex items-center justify-center text-white shadow-xl" style={{ backgroundColor: color }}>
-            <Stethoscope className="w-20 h-20 sm:w-24 sm:h-24" strokeWidth={1.5} />
+            <Store className="w-20 h-20 sm:w-24 sm:h-24" strokeWidth={1.5} />
           </div>
         )}
 
@@ -86,7 +89,7 @@ export const PantallaInicio: React.FC<PantallaInicioProps> = ({ marca, mensaje, 
         </button>
 
         <p className="text-xs text-slate-400">
-          VetCompras {dataService.version()}
+          {PRODUCTO.nombreCompleto} · v{dataService.version()}{licencia?.demo ? ' · versión de demostración' : licencia?.cliente ? ` · Licenciado a ${licencia.cliente}` : ''}
           {dataService.etapa() === 'prueba' && <strong className="text-amber-600"> · versión de prueba: use datos de ensayo</strong>}
         </p>
       </div>

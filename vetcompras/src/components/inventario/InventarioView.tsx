@@ -356,7 +356,7 @@ function descargarPlantilla() {
   ws['!cols'] = [{ wch: 10 }, { wch: 32 }, { wch: 16 }, { wch: 8 }, { wch: 9 }, { wch: 14 }, { wch: 13 }, { wch: 12 }, { wch: 9 }, { wch: 22 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
-  guardarExcel(wb, 'VetCompras_Plantilla_Inventario.xlsx');
+  guardarExcel(wb, 'SistemaControl_Plantilla_Inventario.xlsx');
 }
 
 // ------------------------------------------------------------------- vista
@@ -516,7 +516,7 @@ export const InventarioView: React.FC<InventarioViewProps> = ({ onIrACompras }) 
     h1['!cols'] = [{ wch: 10 }, { wch: 34 }, { wch: 14 }, { wch: 7 }, { wch: 9 }, { wch: 9 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 14 }, { wch: 15 }, { wch: 12 }, { wch: 10 }];
     XLSX.utils.book_append_sheet(wb, h1, 'Existencias');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(kardex), 'Movimientos (kárdex)');
-    guardarExcel(wb, `VetCompras_Inventario_${fechaLocal()}.xlsx`);
+    guardarExcel(wb, `SistemaControl_Inventario_${fechaLocal()}.xlsx`);
   };
 
   const eliminar = async () => {

@@ -65,6 +65,7 @@ import { exportarReporteIvaExcel, exportarReporteRetencionesExcel } from '../../
 import { resumenIvaPeriodo, retencionesPorTercero } from '../../utils/dian';
 import { useToast } from '../../context/ToastContext';
 import { ModalDatosEmpresa } from '../catalogos/ModalDatosEmpresa';
+import { etiquetaReferencia } from '../../utils/etiquetas';
 
 interface ReportesViewProps {
   documentos: CompraDocumento[];
@@ -113,7 +114,7 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
   const [filtroCategoriaCompra, setFiltroCategoriaCompra] = useState<string>('todas');
   const [busquedaTexto, setBusquedaTexto] = useState<string>('');
 
-  // Datos de la empresa veterinaria
+  // Datos de la empresa
   const [empresaInfo, setEmpresaInfo] = useState<EmpresaInfo>(() => dataService.obtenerDatosEmpresa());
   const [modalEmpresaAbierto, setModalEmpresaAbierto] = useState(false);
 
@@ -577,7 +578,7 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
       ventasEnPeriodo,
       docsEnPeriodo,
       categorias,
-      `VetCompras_Informe_${periodoTexto.replace(/[\s\(\)\:\/]+/g, '_')}.xlsx`
+      `SistemaControl_Informe_${periodoTexto.replace(/[\s\(\)\:\/]+/g, '_')}.xlsx`
     );
     mostrarToast('success', 'Reporte Excel generado', 'Archivo descargado con Utilidad, Ventas por Categoría y Compras.');
   };
@@ -585,7 +586,7 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
   const nombrePeriodo = periodoTexto.replace(/[\s\(\)\:\/]+/g, '_');
 
   const handleExportarIva300 = () => {
-    exportarReporteIvaExcel(resumenIvaPeriodo(docsEnPeriodo, periodoTexto), docsEnPeriodo, `VetCompras_IVA_Form300_${nombrePeriodo}.xlsx`);
+    exportarReporteIvaExcel(resumenIvaPeriodo(docsEnPeriodo, periodoTexto), docsEnPeriodo, `SistemaControl_IVA_Form300_${nombrePeriodo}.xlsx`);
     mostrarToast('success', 'IVA · Formulario 300', 'Excel con el IVA descontable por tarifa y el detalle de facturas del período.');
   };
 
@@ -595,7 +596,7 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
       mostrarToast('info', 'Sin retenciones', 'En este período no hay compras con retención en la fuente, ReteIVA ni ReteICA.');
       return;
     }
-    exportarReporteRetencionesExcel(terceros, periodoTexto, `VetCompras_Retenciones_Form350_${nombrePeriodo}.xlsx`);
+    exportarReporteRetencionesExcel(terceros, periodoTexto, `SistemaControl_Retenciones_Form350_${nombrePeriodo}.xlsx`);
     mostrarToast('success', 'Retenciones · Formulario 350', 'Excel con las retenciones practicadas por proveedor en el período.');
   };
 
@@ -605,7 +606,7 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
       proveedores,
       categorias,
       centrosCosto,
-      `VetCompras_Base_Completa_${fechaLocal()}.xlsx`
+      `SistemaControl_Base_Completa_${fechaLocal()}.xlsx`
     );
     mostrarToast('success', 'Base de datos exportada', 'Excel completo generado con todas las compras y proveedores.');
   };
@@ -1123,7 +1124,7 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
                 <div className="flex items-center gap-2">
                   <Activity className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                   <h5 className="font-bold text-xs sm:text-sm text-indigo-950 dark:text-indigo-200">
-                    Subdivisión de Tratamientos Clínicos (7 Tipos)
+                    Subdivisión por subcategoría
                   </h5>
                 </div>
                 <div className="text-[11px] text-indigo-700 dark:text-indigo-400 font-medium">
@@ -1240,7 +1241,7 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Buscar venta, cliente, mascota..."
+                  placeholder={`Buscar venta, cliente, ${etiquetaReferencia().toLowerCase()}...`}
                   value={busquedaTexto}
                   onChange={(e) => setBusquedaTexto(e.target.value)}
                   className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs bg-slate-50 dark:bg-slate-800"
@@ -1256,7 +1257,7 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
                     <th className="py-3 px-4">Fecha</th>
                     <th className="py-3 px-4">Categoría</th>
                     <th className="py-3 px-4">Concepto / Producto</th>
-                    <th className="py-3 px-4">Cliente / Mascota</th>
+                    <th className="py-3 px-4">Cliente / {etiquetaReferencia()}</th>
                     <th className="py-3 px-4">Medio Pago</th>
                     <th className="py-3 px-4 text-right">Monto (COP)</th>
                   </tr>
@@ -1760,14 +1761,14 @@ export const ReportesView: React.FC<ReportesViewProps> = ({
         </div>
       )}
 
-      {/* Modal para editar los datos de la empresa veterinaria */}
+      {/* Modal para editar los datos de la empresa */}
       {modalEmpresaAbierto && (
         <ModalDatosEmpresa
           abierto={modalEmpresaAbierto}
           onCerrar={() => setModalEmpresaAbierto(false)}
           onGuardado={(actualizado) => {
             setEmpresaInfo(actualizado);
-            mostrarToast('success', 'Datos de la empresa actualizados', 'La información de la clínica veterinaria fue guardada.');
+            mostrarToast('success', 'Datos de la empresa actualizados', 'La información de la empresa fue guardada.');
           }}
         />
       )}

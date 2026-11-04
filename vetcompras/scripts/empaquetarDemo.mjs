@@ -11,7 +11,7 @@ import path from 'node:path';
 
 const argumentos = process.argv.slice(2);
 const documento = argumentos.includes('--documento');
-const salida = argumentos.find((a) => !a.startsWith('--')) || 'dist-demo/vetcompras-demo.html';
+const salida = argumentos.find((a) => !a.startsWith('--')) || 'dist-demo/sistema-control-demo.html';
 const assets = path.join('dist-demo', 'assets');
 const archivos = fs.readdirSync(assets);
 const css = archivos.filter((f) => f.endsWith('.css')).map((f) => fs.readFileSync(path.join(assets, f), 'utf8')).join('\n');
@@ -27,12 +27,12 @@ js = js.replace(/[^\x00-\x7f]/g, (c) => {
 });
 
 const contenido = `<meta charset="utf-8">
-<title>VetCompras Demo</title>
+<title>Sistema de Control 2.0 - Demostración</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>
-/* Demostración de VetCompras: misma interfaz del sistema instalado, servidor simulado en el navegador */
+/* Demostración de Sistema de Control 2.0: misma interfaz del sistema instalado, servidor simulado en el navegador */
 :root { --fondo: #f8fafc; --texto: #0f172a; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fondo: #020617; --texto: #f1f5f9; color-scheme: dark; } }
 :root[data-theme="dark"] { --fondo: #020617; --texto: #f1f5f9; color-scheme: dark; }

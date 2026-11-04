@@ -149,7 +149,7 @@ const PanelUsuarios: React.FC = () => {
         </div>
         <div className="text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 space-y-1">
           <p>
-            <strong>Administrador:</strong> todo, incluido borrar registros, configurar la veterinaria, catálogos, usuarios y respaldos.
+            <strong>Administrador:</strong> todo, incluido borrar registros, configurar la empresa, catálogos, usuarios y respaldos.
           </p>
           <p>
             <strong>Auxiliar:</strong> registra y edita compras, facturas y ventas, y consulta reportes. No puede borrar ni cambiar la configuración.
@@ -304,7 +304,7 @@ const PanelFormaIngreso: React.FC<{ onCambio: () => void }> = ({ onCambio }) => 
           <h3 className="font-bold text-sm">Forma de ingreso: {libre ? 'sin contraseña' : 'con usuario y contraseña'}</h3>
           <p className="text-xs text-slate-500">
             {libre
-              ? 'Al abrir VetCompras se ve el logo de la veterinaria y un botón grande “Ingresar”. Cualquiera que use este PC entra con todos los permisos.'
+              ? 'Al abrir el programa se ve el logo de la empresa y un botón grande “Ingresar”. Cualquiera que use este PC entra con todos los permisos.'
               : 'Cada persona ingresa con su usuario y contraseña y queda registrada en la bitácora.'}
           </p>
         </div>
