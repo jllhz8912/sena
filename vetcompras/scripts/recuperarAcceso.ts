@@ -36,6 +36,16 @@ if (existe) {
   seg.crearUsuario({ usuario: 'recuperacion', nombre: 'Recuperación de acceso', rol: 'administrador', clave: temporal }, true);
 }
 bd.auditar({ usuario: 'recuperacion', accion: 'Acceso de emergencia generado desde el PC servidor' });
+
+// También quita el PIN del perfil Administración (por si fue ese el que se olvidó)
+const perfiles = bd.obtenerConfig<{ perfiles: { id: string; pin?: string }[]; version?: number }>('perfilesAcceso');
+let pinQuitado = false;
+if (perfiles?.perfiles?.some((p) => p.id === 'administracion' && p.pin)) {
+  perfiles.perfiles = perfiles.perfiles.map((p) => (p.id === 'administracion' ? { ...p, pin: undefined } : p));
+  bd.guardarConfig('perfilesAcceso', perfiles);
+  bd.auditar({ usuario: 'recuperacion', accion: 'PIN del perfil Administración quitado desde el PC servidor' });
+  pinQuitado = true;
+}
 bd.cerrar();
 
 console.log('\n============================================================');
@@ -45,4 +55,5 @@ console.log(`  Contraseña temporal:  ${temporal}`);
 console.log('  Al ingresar se le pedirá crear una contraseña nueva.');
 console.log('  Luego, en "Seguridad y Respaldos" restablezca la contraseña');
 console.log('  del administrador habitual y desactive "recuperacion".');
+if (pinQuitado) console.log('  Se quitó el PIN del perfil Administración: póngale uno nuevo en Perfiles y Bitácora.');
 console.log('============================================================\n');
