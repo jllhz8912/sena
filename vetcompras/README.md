@@ -57,10 +57,10 @@ momento o exportar un archivo JSON completo para llevarlo a otro equipo o a una 
 `npm run build:portable -- <ruta-a-node.exe>` genera `dist-portable/VetCompras-<versión>-portable-windows.zip`
 (≈32 MB) con Node.js incluido. Se descomprime en una USB o en el disco y:
 
-- **Instalar en este PC.bat**: copia el programa a `%LOCALAPPDATA%\VetCompras\programa`, crea el icono del
+- **Instalar en este PC.cmd**: copia el programa a `%LOCALAPPDATA%\VetCompras\programa`, crea el icono del
   escritorio y (opcional) el arranque con Windows. Los datos quedan en `C:\Users\<usuario>\VetCompras\datos`.
   Para actualizar se repite con el zip nuevo: los datos no se tocan y la base se migra sola.
-- **Usar desde la USB.bat**: ejecuta el sistema desde la USB con los datos en la carpeta `datos` de la misma USB.
+- **Usar desde la USB.cmd**: ejecuta el sistema desde la USB con los datos en la carpeta `datos` de la misma USB.
 
 El node.exe debe ser el oficial de nodejs.org (win-x64, 22.13 o superior); verifique su SHA-256 con `SHASUMS256.txt`.
 
@@ -143,7 +143,7 @@ tienen el programa compilado; **nunca se edita el programa instalado**. El ciclo
 4. **Empaquetar**:
    - Para probadores: `npm run build && node scripts/empaquetarPortable.mjs <node.exe> --prueba`
    - Versión final: `npm run build:portable -- <node.exe>`
-5. **Instalar**: en el PC, "Instalar en este PC.bat" del zip nuevo; en la USB, descomprimir
+5. **Instalar**: en el PC, "Instalar en este PC.cmd" del zip nuevo; en la USB, descomprimir
    encima. Los datos no se tocan; al abrir se hace una copia y la base se migra sola.
 
 Si algo sale mal tras actualizar: en **Copias de Seguridad** se restaura la copia

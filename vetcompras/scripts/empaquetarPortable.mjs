@@ -45,9 +45,7 @@ const comun = {
   external: ['vite'],
   banner: { js: "import { createRequire as __vcRequire } from 'node:module'; const require = __vcRequire(import.meta.url);" },
   logLevel: 'warning',
-  // Código compacto: dificulta modificar el programa (la licencia se verifica en el servidor)
-  minify: true,
-  legalComments: 'none',
+  // Código legible (sin ofuscar): el código compactado hace que algunos antivirus marquen el paquete
 };
 await build({ ...comun, entryPoints: ['server.ts'], outfile: path.join(salida, 'servidor.mjs') });
 await build({ ...comun, entryPoints: ['scripts/recuperarAcceso.ts'], outfile: path.join(salida, 'recuperar.mjs') });
@@ -63,95 +61,55 @@ if (esPrueba) fs.writeFileSync(path.join(salida, 'ETAPA_PRUEBA'), 'Paquete de pr
 const crlf = (t) => t.replace(/\r?\n/g, '\r\n');
 const escribir = (nombre, texto) => fs.writeFileSync(path.join(salida, nombre), crlf(texto));
 
-// 3. Lanzador sin ventana. Con /usb los datos quedan en la carpeta "datos" junto al programa.
+// 3. Lanzadores en archivos .cmd sencillos y legibles. Sin VBScript, sin PowerShell y sin
+//    arranque automático oculto: esos patrones hacen que los antivirus marquen el paquete.
+//    El servidor queda en una ventana minimizada con su nombre; cerrarla cierra el programa.
 escribir(
-  'SistemaControl.vbs',
-  `' Abre Sistema de Control sin ventana negra. Si ya está abierto, solo abre el navegador.
-' Uso: SistemaControl.vbs        -> datos en C:\\Users\\<usuario>\\SistemaControl\\datos
-'      SistemaControl.vbs /usb       -> datos en la carpeta "datos" junto a este archivo
-Option Explicit
-Dim shell, fso, carpeta, puerto, url, i, enUsb, entorno, abrirNavegador, a
-
-Set shell = CreateObject("WScript.Shell")
-Set fso = CreateObject("Scripting.FileSystemObject")
-carpeta = fso.GetParentFolderName(WScript.ScriptFullName)
-shell.CurrentDirectory = carpeta
-enUsb = False
-abrirNavegador = True
-For Each a In WScript.Arguments
-  If LCase(a) = "/usb" Then enUsb = True
-  If LCase(a) = "/sinnavegador" Then abrirNavegador = False
-Next
-
-puerto = LeerPuerto()
-url = "http://localhost:" & puerto
-
-If Not EstaFuncionando() Then
-  Set entorno = shell.Environment("Process")
-  entorno("VETCOMPRAS_LOG") = carpeta & "\\registro.log"
-  If enUsb Then
-    If fso.FileExists(carpeta & "\\ETAPA_PRUEBA") Then
-      entorno("SISTEMA_CONTROL_DATOS") = carpeta & "\\datos-prueba"
-    Else
-      entorno("SISTEMA_CONTROL_DATOS") = carpeta & "\\datos"
-    End If
-  End If
-  shell.Run """" & carpeta & "\\node\\node.exe"" """ & carpeta & "\\servidor.mjs""", 0, False
-  For i = 1 To 60
-    WScript.Sleep 500
-    If EstaFuncionando() Then Exit For
-  Next
-  If Not EstaFuncionando() Then
-    MsgBox "Sistema de Control no pudo iniciar." & vbCrLf & "Revise el archivo registro.log en " & carpeta, vbCritical, "Sistema de Control"
-    WScript.Quit 1
-  End If
-End If
-If abrirNavegador Then shell.Run url
-
-Function EstaFuncionando()
-  Dim http
-  EstaFuncionando = False
-  On Error Resume Next
-  Set http = CreateObject("MSXML2.ServerXMLHTTP.6.0")
-  http.setTimeouts 1000, 1000, 1000, 1000
-  http.Open "GET", url & "/api/licencia", False
-  http.Send
-  If Err.Number = 0 Then
-    If http.Status = 200 Then EstaFuncionando = True
-  End If
-  On Error GoTo 0
-End Function
-
-Function LeerPuerto()
-  Dim archivo, linea
-  LeerPuerto = "3000"
-  If fso.FileExists(carpeta & "\\.env") Then
-    Set archivo = fso.OpenTextFile(carpeta & "\\.env", 1)
-    Do Until archivo.AtEndOfStream
-      linea = Trim(archivo.ReadLine)
-      If LCase(Left(linea, 7)) = "puerto=" Then LeerPuerto = Trim(Mid(linea, 8))
-    Loop
-    archivo.Close
-  End If
-End Function
+  'Abrir Sistema de Control.cmd',
+  `@echo off
+rem Abre Sistema de Control. Si ya esta abierto, solo abre el navegador.
+rem   Abrir Sistema de Control.cmd         datos en %USERPROFILE%\\SistemaControl\\datos
+rem   Abrir Sistema de Control.cmd /usb    datos en la carpeta "datos" junto a este archivo
+if not "%SC_MINIMIZADO%"=="1" (
+  set SC_MINIMIZADO=1
+  start "Sistema de Control - servidor" /min cmd /c ""%~f0" %*"
+  exit /b
+)
+cd /d "%~dp0"
+set ABRIR_NAVEGADOR=1
+set VETCOMPRAS_LOG=%~dp0registro.log
+if /i "%~1"=="/usb" (
+  if exist "%~dp0ETAPA_PRUEBA" (set "SISTEMA_CONTROL_DATOS=%~dp0datos-prueba") else (set "SISTEMA_CONTROL_DATOS=%~dp0datos")
+)
+echo ============================================================
+echo   SISTEMA DE CONTROL 2.0 esta funcionando.
+echo   Deje esta ventana minimizada mientras usa el programa.
+echo   Al cerrarla, el programa se detiene.
+echo ============================================================
+"%~dp0node\\node.exe" "%~dp0servidor.mjs"
+if errorlevel 1 (
+  echo.
+  echo No fue posible iniciar. Revise el archivo registro.log de esta carpeta.
+  pause
+)
 `
 );
 
 escribir(
-  'Usar desde la USB.bat',
+  'Usar desde la USB.cmd',
   `@echo off
 rem Abre Sistema de Control con los datos guardados en esta misma USB (carpeta "datos").
-start "" wscript.exe "%~dp0SistemaControl.vbs" /usb
+call "%~dp0Abrir Sistema de Control.cmd" /usb
 `
 );
 
 escribir(
-  'Instalar en este PC.bat',
+  'Instalar en este PC.cmd',
   `@echo off
 chcp 65001 >nul
 title Instalar Sistema de Control 2.0 en este PC
-set ORIGEN=%~dp0
-set DESTINO=%LOCALAPPDATA%\\SistemaControl\\programa
+set "ORIGEN=%~dp0"
+set "DESTINO=%LOCALAPPDATA%\\SistemaControl\\programa"
 
 echo ============================================================
 echo   INSTALAR SISTEMA DE CONTROL 2.0 EN ESTE PC
@@ -160,58 +118,60 @@ if exist "%ORIGEN%ETAPA_PRUEBA" (
   echo   VERSION DE PRUEBA - datos de ensayo en: %USERPROFILE%\\SistemaControl\\datos-prueba
 ) else (
   echo   Datos:    %USERPROFILE%\\SistemaControl\\datos
-echo   Al abrirlo por primera vez se pide la LICENCIA de este equipo.
 )
+echo   Al abrirlo por primera vez se pide la LICENCIA de este equipo.
 echo   Si ya estaba instalado, se actualiza y los datos se conservan.
 echo ============================================================
 pause
 
-rem Detener el programa si está abierto (para poder reemplazar archivos)
-powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }" >nul 2>nul
+rem Cerrar el programa si esta abierto (para poder reemplazar archivos)
+taskkill /fi "WINDOWTITLE eq Sistema de Control - servidor*" /t /f >nul 2>nul
 
 if exist "%DESTINO%\\ETAPA_PRUEBA" del /q "%DESTINO%\\ETAPA_PRUEBA"
-robocopy "%ORIGEN%." "%DESTINO%" /E /NFL /NDL /NJH /NJS /XD datos datos-prueba /XF registro.log "Usar desde la USB.bat" >nul
+robocopy "%ORIGEN%." "%DESTINO%" /E /NFL /NDL /NJH /NJS /XD datos datos-prueba /XF registro.log "Usar desde la USB.cmd" "Instalar en este PC.cmd" >nul
+rem Lanzadores de versiones anteriores
+if exist "%DESTINO%\\SistemaControl.vbs" del /q "%DESTINO%\\SistemaControl.vbs"
+if exist "%APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Sistema de Control.lnk" del /q "%APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Sistema de Control.lnk"
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$s=(New-Object -ComObject WScript.Shell).CreateShortcut([Environment]::GetFolderPath('Desktop')+'\\Sistema de Control.lnk');" ^
-  "$s.TargetPath='wscript.exe';$s.Arguments='\\"%DESTINO%\\SistemaControl.vbs\\"';$s.WorkingDirectory='%DESTINO%';$s.IconLocation='shell32.dll,43';$s.Save()"
-
-set /p AUTO="Desea que Sistema de Control arranque solo al encender el PC? (S/N): "
-if /i "%AUTO%"=="S" (
-  powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-    "$s=(New-Object -ComObject WScript.Shell).CreateShortcut([Environment]::GetFolderPath('Startup')+'\\Sistema de Control.lnk');" ^
-    "$s.TargetPath='wscript.exe';$s.Arguments='\\"%DESTINO%\\SistemaControl.vbs\\" /sinNavegador';$s.WorkingDirectory='%DESTINO%';$s.Save()"
-)
+rem Acceso en el escritorio (un .cmd que llama al programa instalado)
+set "ESCRITORIO=%USERPROFILE%\\Desktop"
+for /f "tokens=2,*" %%a in ('reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders" /v Desktop 2^>nul ^| find "REG_"') do call set "ESCRITORIO=%%b"
+if exist "%ESCRITORIO%\\Sistema de Control.lnk" del /q "%ESCRITORIO%\\Sistema de Control.lnk"
+(
+  echo @echo off
+  echo call "%DESTINO%\\Abrir Sistema de Control.cmd"
+) > "%ESCRITORIO%\\Sistema de Control.cmd"
 
 if exist "%ORIGEN%datos\\vetcompras.db" (
   echo.
   echo Esta USB tiene datos propios en la carpeta "datos".
-  echo Para pasarlos a este PC: abra Sistema de Control en la USB, Datos y Respaldo,
-  echo "Exportar respaldo completo", y luego importelo en la version instalada.
+  echo Para pasarlos a este PC: en Copias de Seguridad de la USB use "Copiar y descargar"
+  echo y luego "Cargar una copia de seguridad" en la version instalada.
 )
 
 echo.
-echo LISTO. Abra Sistema de Control con el icono del escritorio.
+echo LISTO. Abra "Sistema de Control" desde el escritorio.
 pause
 `
 );
 
 escribir(
-  'Detener Sistema de Control.bat',
+  'Detener Sistema de Control.cmd',
   `@echo off
-powershell -NoProfile -Command "$c = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if ($c) { $c | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }; Write-Host 'Sistema de Control se detuvo.' } else { Write-Host 'Sistema de Control no estaba abierto.' }"
+taskkill /fi "WINDOWTITLE eq Sistema de Control - servidor*" /t /f >nul 2>nul
+echo Sistema de Control quedo cerrado.
 timeout /t 3 >nul
 `
 );
 
 escribir(
-  'Recuperar acceso.bat',
+  'Recuperar acceso.cmd',
   `@echo off
 chcp 65001 >nul
-echo Crea un acceso de emergencia de administrador (si olvidó la contraseña).
-echo Si usa Sistema de Control desde la USB, escriba U; si está instalado en este PC, escriba P.
+echo Crea un acceso de emergencia de administrador y quita el PIN del perfil Administracion.
+echo Si usa Sistema de Control desde la USB, escriba U; si esta instalado en este PC, escriba P.
 set /p MODO="(U/P): "
-if /i "%MODO%"=="U" set SISTEMA_CONTROL_DATOS=%~dp0datos
+if /i "%MODO%"=="U" set "SISTEMA_CONTROL_DATOS=%~dp0datos"
 "%~dp0node\\node.exe" "%~dp0recuperar.mjs"
 pause
 `
@@ -226,8 +186,9 @@ No necesita instalar nada más: Node.js ya viene incluido (carpeta "node").
 
 OPCION A - INSTALAR EN UN PC (recomendado)
   1. Copie esta carpeta al PC (o a una USB).
-  2. Doble clic en "Instalar en este PC.bat".
-  3. Use el icono "Sistema de Control" del escritorio.
+  2. Doble clic en "Instalar en este PC.cmd".
+  3. Use "Sistema de Control" en el escritorio. El programa queda en una ventana
+     minimizada llamada "Sistema de Control - servidor": no la cierre mientras trabaja.
   Los datos quedan en C:\\Users\\<usuario>\\SistemaControl\\${esPrueba ? 'datos-prueba' : 'datos'} (con respaldos diarios).
 
 LICENCIA (primera vez)
@@ -239,7 +200,7 @@ LICENCIA (primera vez)
 
 OPCION B - USAR DESDE LA USB
   1. Copie esta carpeta a la USB.
-  2. Doble clic en "Usar desde la USB.bat".
+  2. Doble clic en "Usar desde la USB.cmd".
   Los datos quedan en la carpeta "${esPrueba ? 'datos-prueba' : 'datos'}" de la USB.
   La licencia sigue ligada al computador: en otro PC el programa pedirá otra licencia.
   IMPORTANTE: si la USB se pierde o se daña, se pierden los datos. Configure en
@@ -252,7 +213,7 @@ PRIMEROS PASOS
   - Catálogos: categorías de venta, productos, servicios y gastos de su negocio.
 
 ACTUALIZAR A UNA VERSION NUEVA (sin perder datos ni licencia)
-  - Instalado en el PC: descomprima el zip nuevo y ejecute otra vez "Instalar en este PC.bat".
+  - Instalado en el PC: descomprima el zip nuevo y ejecute otra vez "Instalar en este PC.cmd".
   - En la USB: descomprima el zip nuevo ENCIMA de la carpeta de la USB y acepte reemplazar.
   Al abrir, el sistema hace una copia de seguridad y adapta la base de datos solo.
 ${esPrueba ? `
@@ -260,7 +221,11 @@ VERSION DE PRUEBA
   - Los datos de ensayo quedan en "datos-prueba", separados de los reales.
   - Use el botón amarillo "Observación" para reportar errores, sugerencias o dudas.
 ` : ''}
-Para cerrar el programa: "Detener Sistema de Control.bat" o Copias de Seguridad > Apagar.
+Para cerrar el programa: cierre la ventana "Sistema de Control - servidor",
+use "Detener Sistema de Control.cmd" o Copias de Seguridad > Apagar.
+
+ARRANQUE AUTOMATICO (opcional): copie el acceso "Sistema de Control" del escritorio
+en la carpeta que abre Windows + R > shell:startup.
 Si algo falla, revise el archivo registro.log de esta carpeta.
 
 Software protegido por derechos de autor. Su uso está sujeto a la licencia otorgada

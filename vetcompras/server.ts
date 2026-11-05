@@ -20,6 +20,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
+import { spawn } from 'node:child_process';
 import { BaseDatosLocal } from './server/basedatos';
 import { crearApi } from './server/api';
 
@@ -105,15 +106,23 @@ async function iniciar() {
     app.get(/^(?!\/api).*/, (_req, res) => res.sendFile(path.join(dist, 'index.html')));
   }
 
+  const url = `http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PUERTO}`;
   servidor = app.listen(PUERTO, HOST, () => {
-    const url = `http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PUERTO}`;
     console.log(`[Sistema de Control] Listo. Abra ${url} en el navegador.`);
     if (HOST === '0.0.0.0') console.log('[Sistema de Control] Compartido en la red local (use la IP de este PC).');
+    if (process.env.ABRIR_NAVEGADOR === '1') abrirNavegador(url);
   });
 
   servidor.on('error', (err: NodeJS.ErrnoException) => {
     if (err.code === 'EADDRINUSE') {
       console.error(`[Sistema de Control] El puerto ${PUERTO} ya está en uso: probablemente el programa ya está abierto.`);
+      // El lanzador pidió abrir el programa: si ya estaba abierto, solo se abre el navegador
+      if (process.env.ABRIR_NAVEGADOR === '1') {
+        abrirNavegador(url);
+        bd.cerrar();
+        setTimeout(() => process.exit(0), 1500);
+        return;
+      }
     } else {
       console.error('[Sistema de Control] Error del servidor:', err);
     }
@@ -122,6 +131,19 @@ async function iniciar() {
   });
   process.on('SIGINT', cerrar);
   process.on('SIGTERM', cerrar);
+}
+
+/** Abre la dirección en el navegador predeterminado (lo pide el lanzador de Windows). */
+function abrirNavegador(url: string) {
+  try {
+    const [cmd, args] =
+      process.platform === 'win32' ? ['explorer.exe', [url]] : process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
+    const hijo = spawn(cmd, args as string[], { detached: true, stdio: 'ignore', windowsHide: true });
+    hijo.on('error', (err) => console.error('[Sistema de Control] No se pudo abrir el navegador:', err.message));
+    hijo.unref();
+  } catch (err) {
+    console.error('[Sistema de Control] No se pudo abrir el navegador:', err);
+  }
 }
 
 iniciar().catch((err) => {

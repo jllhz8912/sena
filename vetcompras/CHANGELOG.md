@@ -23,6 +23,11 @@ Primera versión comercial y genérica (basada en VetCompras 2.14).
   VetCompras, se sigue usando su carpeta y sus datos).
 - La demostración en un solo archivo no pide licencia, pero permite hasta 60 ventas y 60
   compras.
+- Instalador sin VBScript ni PowerShell (algunos antivirus lo bloqueaban como sospechoso):
+  lanzadores `.cmd` legibles, el servidor queda en una ventana minimizada "Sistema de Control -
+  servidor" y abre el navegador solo. El arranque automático al encender el PC ahora es opcional
+  y manual (carpeta shell:startup).
+- "Recuperar acceso" también quita el PIN olvidado del perfil Administración.
 
 ## 2.14.0
 - **Subcategorías en las categorías de compras y gastos** (Catálogos → Categorías de compras y
