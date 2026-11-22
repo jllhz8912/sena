@@ -5,6 +5,7 @@
 | Archivo | Para qué |
 |---|---|
 | `SistemaControl-2.0.0-portable-windows.zip` | Instalador para Windows. No necesita internet: abre en su propia ventana y guarda todo en el PC. Pide activar la licencia del equipo al abrir. Datos en `C:\Users\<usuario>\SistemaControl\datos`. |
+| `Video-Instalacion-desde-cero-Sistema-de-Control-2.0.mp4` | Video de 3½ min: instalar, activar la licencia, marca de la empresa, PIN y primera copia. |
 | `Guia-de-instalacion-Sistema-de-Control-2.0.pdf` | Guía de instalación paso a paso con pantallazos (14 páginas): instalar, activar, dejar listo y lista final. |
 | `Manual-de-Usuario-Sistema-de-Control-2.0.pdf` | Manual detallado (74 páginas, 67 pantallazos): instalación, licencia, marca y cada módulo. |
 | `Videos-Usuario-Sistema-de-Control-2.0.zip` | 15 videos: instalación, activación y cada módulo, con LEAME. |
@@ -26,6 +27,7 @@ Instalación: extraer el zip → doble clic en "Instalar en este PC.cmd" → "Si
 SHA-256:
 - SistemaControl-2.0.0-portable-windows.zip: `57e005368c1251e31046e54d580231cccceaa022839a49ce01dd892f58811dd0`
 - Guia-de-instalacion-Sistema-de-Control-2.0.pdf: `447908db09cf595e80349e0d8d235cd14d3cb65776b1953c4debfa1ed3e8700a`
+- Video-Instalacion-desde-cero-Sistema-de-Control-2.0.mp4: `554e942b68ce7846f8d76ab0f9b165b43316f984634cd426e96b09944e54f1f8`
 - Manual-de-Usuario-Sistema-de-Control-2.0.pdf: `9247a95dd4af15f6acae5aad7bf68c62155fd4275214b5edd3e2462c334927de`
 - Videos-Usuario-Sistema-de-Control-2.0.zip: `6560c226ce0b749518b5a7e77c314f4e0e765e79af17b7988aa1abb6c8827470`
 - Plantilla_Compras_SistemaControl.xlsx: `f4006949f7de2d16ab5668fe4e3ba264d29eeefab48b56b524c516b0b4e129f0`
