@@ -3,6 +3,7 @@ import { instalarServidorDemo } from './servidorDemo';
 import { AvisoDemo } from './AvisoDemo';
 import { configurarGuardadoArchivos } from '../services/reciboPdf';
 import App from '../App';
+import '../fuentes';
 import '../index.css';
 import { AlertaCopiaSemanal } from '../components/respaldos/AlertaCopiaSemanal';
 

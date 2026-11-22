@@ -1,6 +1,7 @@
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import { AlertaCopiaSemanal } from './components/respaldos/AlertaCopiaSemanal';
+import './fuentes';
 import './index.css';
 
 createRoot(document.getElementById('root')!).render(

@@ -10,6 +10,10 @@
  * arranque: azul corporativo y verde azulado neutro.
  */
 @theme {
+  /* Letras incluidas en el programa (src/fuentes.ts): se ven igual sin internet */
+  --font-sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', Consolas, ui-monospace, monospace;
+
   --color-emerald-50: #eff6ff;
   --color-emerald-100: #dbeafe;
   --color-emerald-200: #bfdbfe;

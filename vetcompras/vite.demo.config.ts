@@ -13,6 +13,8 @@ export default defineConfig({
     outDir: 'dist-demo',
     emptyOutDir: true,
     chunkSizeWarningLimit: 4000,
+    // La demostración es un solo archivo: las letras van incrustadas
+    assetsInlineLimit: 100_000_000,
     rolldownOptions: { input: 'demo.html', output: { codeSplitting: false } },
   },
 });

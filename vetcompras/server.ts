@@ -58,8 +58,9 @@ async function iniciar() {
           // wasm-unsafe-eval: el lector de texto de facturas escaneadas (OCR) usa WebAssembly
           "script-src 'self' 'wasm-unsafe-eval'",
           "worker-src 'self'",
-          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-          "font-src 'self' https://fonts.gstatic.com",
+          "style-src 'self' 'unsafe-inline'",
+          // Letras incluidas en el programa: nada se descarga de internet
+          "font-src 'self' data:",
           "img-src 'self' data: blob:",
           "frame-src 'self' data: blob:",
           "object-src 'self' data: blob:",
@@ -133,14 +134,33 @@ async function iniciar() {
   process.on('SIGTERM', cerrar);
 }
 
-/** Abre la dirección en el navegador predeterminado (lo pide el lanzador de Windows). */
+/**
+ * Abre el programa. En Windows, en su propia ventana (modo aplicación de Edge o Chrome:
+ * sin barra de direcciones ni pestañas). Si no encuentra ninguno, usa el navegador
+ * predeterminado. Con APP_VENTANA=0 en .env se abre siempre como pestaña normal.
+ */
 function abrirNavegador(url: string) {
-  try {
-    const [cmd, args] =
-      process.platform === 'win32' ? ['explorer.exe', [url]] : process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
-    const hijo = spawn(cmd, args as string[], { detached: true, stdio: 'ignore', windowsHide: true });
-    hijo.on('error', (err) => console.error('[Sistema de Control] No se pudo abrir el navegador:', err.message));
+  const lanzar = (cmd: string, args: string[]) => {
+    const hijo = spawn(cmd, args, { detached: true, stdio: 'ignore', windowsHide: true });
+    hijo.on('error', (err) => console.error('[Sistema de Control] No se pudo abrir la ventana:', err.message));
     hijo.unref();
+  };
+  try {
+    if (process.platform === 'win32') {
+      const ventana = process.env.APP_VENTANA !== '0';
+      const e = process.env;
+      const candidatos = [
+        path.join(e['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+        path.join(e.ProgramFiles || 'C:\\Program Files', 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+        path.join(e.ProgramFiles || 'C:\\Program Files', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+        path.join(e['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'Google', 'Chrome', 'Application', 'chrome.exe'),
+        e.LOCALAPPDATA ? path.join(e.LOCALAPPDATA, 'Google', 'Chrome', 'Application', 'chrome.exe') : '',
+      ].filter(Boolean);
+      const navegador = ventana ? candidatos.find((c) => fs.existsSync(c)) : undefined;
+      if (navegador) return lanzar(navegador, [`--app=${url}`, '--window-size=1366,850']);
+      return lanzar('explorer.exe', [url]);
+    }
+    lanzar(process.platform === 'darwin' ? 'open' : 'xdg-open', [url]);
   } catch (err) {
     console.error('[Sistema de Control] No se pudo abrir el navegador:', err);
   }

@@ -28,6 +28,11 @@ Primera versión comercial y genérica (basada en VetCompras 2.14).
   servidor" y abre el navegador solo. El arranque automático al encender el PC ahora es opcional
   y manual (carpeta shell:startup).
 - "Recuperar acceso" también quita el PIN olvidado del perfil Administración.
+- Sin dependencia de internet: las letras vienen incluidas en el programa y nada se descarga
+  de la web. El programa abre en su propia ventana (Edge o Chrome en modo aplicación; con
+  `APP_VENTANA=0` en .env, como pestaña normal).
+- Guardado reforzado: cada registro se escribe en el disco antes de confirmarse en pantalla
+  (sobrevive a un apagón o cierre forzado) y al cerrar se consolida todo en el archivo de datos.
 
 ## 2.14.0
 - **Subcategorías en las categorías de compras y gastos** (Catálogos → Categorías de compras y

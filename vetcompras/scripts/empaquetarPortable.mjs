@@ -187,8 +187,10 @@ No necesita instalar nada más: Node.js ya viene incluido (carpeta "node").
 OPCION A - INSTALAR EN UN PC (recomendado)
   1. Copie esta carpeta al PC (o a una USB).
   2. Doble clic en "Instalar en este PC.cmd".
-  3. Use "Sistema de Control" en el escritorio. El programa queda en una ventana
-     minimizada llamada "Sistema de Control - servidor": no la cierre mientras trabaja.
+  3. Use "Sistema de Control" en el escritorio. El programa abre en su propia ventana
+     (con Edge o Chrome, sin barra de direcciones) y deja minimizada otra ventana
+     llamada "Sistema de Control - servidor": no la cierre mientras trabaja.
+  NO NECESITA INTERNET: todo funciona y se guarda en este PC.
   Los datos quedan en C:\\Users\\<usuario>\\SistemaControl\\${esPrueba ? 'datos-prueba' : 'datos'} (con respaldos diarios).
 
 LICENCIA (primera vez)

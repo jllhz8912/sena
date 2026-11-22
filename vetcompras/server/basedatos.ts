@@ -273,7 +273,9 @@ export class BaseDatosLocal {
 
   private abrir(existia: boolean): void {
     this.db = new DatabaseSync(this.rutaArchivo);
-    this.db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
+    // synchronous = FULL: cada registro guardado se escribe en el disco antes de responder,
+    // así un apagón o un cierre forzado no pierde lo que ya se confirmó en pantalla.
+    this.db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
     this.migrar(existia);
   }
 
@@ -684,6 +686,12 @@ export class BaseDatosLocal {
   }
 
   cerrar(): void {
+    // Lleva al archivo principal todo lo que aún está en el diario (WAL) antes de cerrar
+    try {
+      this.db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+    } catch {
+      /* si falla, SQLite lo recupera al abrir */
+    }
     this.db.close();
   }
 }
