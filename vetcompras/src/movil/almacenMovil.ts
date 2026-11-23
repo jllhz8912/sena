@@ -10,7 +10,81 @@
  *  - Copia visible:               Documentos/SistemaControl/  (sobrevive si se
  *    desinstala la app; se ve en el administrador de archivos del celular)
  */
-import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
+import { Capacitor } from '@capacitor/core';
+import { Directory, Encoding, Filesystem as FilesystemNativo } from '@capacitor/filesystem';
+
+/**
+ * Fuera del celular (vista previa web de la prueba) los archivos se simulan en el
+ * almacenamiento del navegador, o en memoria si el navegador no lo permite.
+ */
+const memoria = new Map<string, string>();
+const clave = (o: { path: string; directory?: string }) => `sc-archivo:${o.directory || ''}:${o.path}`;
+const web = {
+  get(k: string) {
+    try {
+      const v = localStorage.getItem(k);
+      if (v !== null) return v;
+    } catch {
+      /* sin almacenamiento */
+    }
+    return memoria.get(k) ?? null;
+  },
+  set(k: string, v: string) {
+    memoria.set(k, v);
+    try {
+      localStorage.setItem(k, v);
+    } catch {
+      /* queda en memoria */
+    }
+  },
+  del(k: string) {
+    memoria.delete(k);
+    try {
+      localStorage.removeItem(k);
+    } catch {
+      /* nada */
+    }
+  },
+  keys(): string[] {
+    const ks = new Set(memoria.keys());
+    try {
+      for (let i = 0; i < localStorage.length; i++) ks.add(localStorage.key(i)!);
+    } catch {
+      /* nada */
+    }
+    return [...ks];
+  },
+};
+const FilesystemWeb = {
+  async readFile(o: any) {
+    const v = web.get(clave(o));
+    if (v === null) throw new Error('No existe');
+    return { data: v };
+  },
+  async writeFile(o: any) {
+    web.set(clave(o), String(o.data));
+    return { uri: 'web://' + o.path };
+  },
+  async deleteFile(o: any) {
+    web.del(clave(o));
+  },
+  async rename(o: any) {
+    const v = web.get(clave({ path: o.from, directory: o.directory }));
+    if (v === null) throw new Error('No existe');
+    web.set(clave({ path: o.to, directory: o.toDirectory ?? o.directory }), v);
+    web.del(clave({ path: o.from, directory: o.directory }));
+  },
+  async readdir(o: any) {
+    const pref = clave({ path: o.path + '/', directory: o.directory });
+    return {
+      files: web
+        .keys()
+        .filter((k) => k.startsWith(pref) && !k.slice(pref.length).includes('/'))
+        .map((k) => ({ name: k.slice(pref.length), size: (web.get(k) || '').length, mtime: Date.now() })),
+    };
+  },
+};
+const Filesystem: typeof FilesystemNativo = (Capacitor.isNativePlatform() ? FilesystemNativo : FilesystemWeb) as any;
 
 const CARPETA = 'sistemacontrol';
 const RESPALDOS = `${CARPETA}/respaldos`;

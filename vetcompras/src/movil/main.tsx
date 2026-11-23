@@ -50,7 +50,12 @@ async function entregarArchivo(nombre: string, datos: string, comoTexto: boolean
 }
 
 async function iniciar() {
-  const id = (await Device.getId()).identifier;
+  let id = 'web';
+  try {
+    id = (await Device.getId()).identifier;
+  } catch {
+    /* vista previa web sin almacenamiento: código fijo */
+  }
   const equipo = await codigoEquipo('android:' + id);
   let claveGuardada = await almacen.leerLicencia();
   let licencia: EstadoLicencia = PRUEBA
