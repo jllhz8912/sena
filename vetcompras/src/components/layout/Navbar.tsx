@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { esMovil, nombreEquipo } from '../../utils/plataforma';
 import {
   Plus,
   UploadCloud,
@@ -171,7 +172,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const handleRespaldoEnDisco = async () => {
     try {
       const ruta = await dataService.crearRespaldoEnDisco();
-      mostrarToast('success', 'Respaldo creado en este PC', ruta);
+      mostrarToast('success', `Respaldo creado en ${nombreEquipo()}`, ruta);
       setMenuDatosAbierto(false);
     } catch (err: any) {
       mostrarToast('error', 'No se pudo crear el respaldo', err?.message);
@@ -203,7 +204,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-30 px-4 sm:px-6 flex items-center justify-between">
+    <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-30 px-2 sm:px-6 flex items-center justify-between">
       {/* Page Title & Context */}
       <div className="flex items-center gap-2 sm:gap-3">
         {onAbrirMenuMovil && (
@@ -222,14 +223,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
           <span>Normativa DIAN Colombia</span>
         </div>
-        <div className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/60 text-teal-800 dark:text-teal-300 text-xs font-medium" title="Toda la información se guarda en la base de datos de este PC">
+        <div className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/60 text-teal-800 dark:text-teal-300 text-xs font-medium" title={`Toda la información se guarda en ${nombreEquipo()}`}>
           <HardDrive className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-          <span>Datos guardados en este PC</span>
+          <span>Datos guardados en {nombreEquipo()}</span>
         </div>
       </div>
 
       {/* Right Controls */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3">
         {/* Botón Datos de la Empresa Veterinaria */}
         <button
           onClick={() => esAdmin && setModalEmpresaAbierto(true)}
@@ -329,7 +330,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <HardDrive className="w-4 h-4 text-teal-600 shrink-0" />
                 <div>
-                  <p className="font-medium text-xs">Crear respaldo en este PC</p>
+                  <p className="font-medium text-xs">Crear respaldo en {nombreEquipo()}</p>
                   <p className="text-[11px] text-slate-400 break-all">
                     {carpetaDatos ? `Carpeta: ${carpetaDatos}` : 'Copia completa de la base de datos'}
                   </p>
@@ -345,7 +346,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <Download className="w-4 h-4 text-teal-600 shrink-0" />
                 <div>
                   <p className="font-medium text-xs">Exportar respaldo completo</p>
-                  <p className="text-[11px] text-slate-400">Archivo JSON para llevar a otro PC o memoria USB</p>
+                  <p className="text-[11px] text-slate-400">{esMovil() ? 'Archivo JSON para llevar al PC o a otro celular' : 'Archivo JSON para llevar a otro PC o memoria USB'}</p>
                 </div>
               </button>
 
@@ -448,7 +449,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Dark / Light Toggle */}
         <button
           onClick={toggleTheme}
-          className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          className="hidden sm:block p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
         >
           {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
@@ -456,7 +457,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Action Button: + Nuevo Registro (opciones según el perfil) */}
         {(puede('ventas') || puede('compras') || puede('cargar_factura')) && (
-        <div className="relative" ref={menuNuevoRef}>
+        <div className="relative hidden sm:block" ref={menuNuevoRef}>
           <button
             onClick={() => setMenuNuevoAbierto(!menuNuevoAbierto)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold text-sm shadow-md shadow-emerald-600/25 transition-all active:scale-[0.98]"

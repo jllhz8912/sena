@@ -16,7 +16,7 @@ const ARCHIVOS_OCR: Record<string, string> = {
   'ocr/lang/spa.traineddata.gz': 'node_modules/@tesseract.js-data/spa/4.0.0_best_int/spa.traineddata.gz',
 };
 
-function archivosOcr(): Plugin {
+export function archivosOcr(): Plugin {
   return {
     name: 'vetcompras-ocr',
     configureServer(server) {

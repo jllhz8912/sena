@@ -65,6 +65,12 @@ export interface Observacion {
 /** Evento global que la App escucha para volver a la pantalla de ingreso. */
 export const EVENTO_SESION = 'vetcompras:sesion';
 
+/** La app de celular entrega las copias con su propio mecanismo (compartir / Documentos). */
+let manejadorDescargaRespaldo: ((nombre: string) => Promise<void>) | null = null;
+export function configurarDescargaRespaldo(fn: ((nombre: string) => Promise<void>) | null): void {
+  manejadorDescargaRespaldo = fn;
+}
+
 let usuarioActual: UsuarioActual | null = null;
 let etapaActual: 'prueba' | 'produccion' = 'produccion';
 let versionActual = '';
@@ -682,6 +688,12 @@ export const dataService = {
 
   urlDescargaRespaldo(nombre: string): string {
     return `/api/respaldos/${encodeURIComponent(nombre)}/descargar`;
+  },
+
+  /** Entrega una copia al usuario: en el PC la descarga el navegador; en el celular se comparte. */
+  async descargarRespaldo(nombre: string): Promise<void> {
+    if (manejadorDescargaRespaldo) return manejadorDescargaRespaldo(nombre);
+    window.location.href = this.urlDescargaRespaldo(nombre);
   },
 
   async restaurarRespaldo(nombre: string): Promise<string> {

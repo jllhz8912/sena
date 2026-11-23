@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { esMovil, nombreEquipo } from '../../utils/plataforma';
 import {
   CircleDollarSign,
   Wrench,
@@ -267,7 +268,7 @@ export const VentasView: React.FC<VentasViewProps> = ({
             <h1 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
               Ventas de la Empresa
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800">
-                Guardado en este PC
+                Guardado en {nombreEquipo()}
               </span>
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">

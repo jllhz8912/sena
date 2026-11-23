@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { esMovil } from '../../utils/plataforma';
 import { CheckCircle2, ClipboardCopy, FileKey2, KeyRound, Loader2, ShieldCheck } from 'lucide-react';
 import { dataService, EstadoLicencia } from '../../services/dataService';
 import { PRODUCTO } from '../../data/marca';
@@ -34,7 +35,7 @@ export const PantallaActivacion: React.FC<Props> = ({ estado, onActivada }) => {
     setTimeout(() => setCopiado(null), 2500);
   };
 
-  const solicitud = `Solicitud de licencia - ${PRODUCTO.nombreCompleto}\nCódigo de equipo: ${estado.equipo}\nEmpresa: \nNIT o cédula: \nContacto: `;
+  const solicitud = `Solicitud de licencia - ${PRODUCTO.nombreCompleto}\nCódigo de equipo: ${estado.equipo}${esMovil() ? ' (celular Android)' : ''}\nEmpresa: \nNIT o cédula: \nContacto: `;
 
   const activar = async (valor = clave) => {
     if (!valor.trim()) return setError('Pegue la clave de licencia o cargue el archivo .lic que le envió su proveedor.');
@@ -73,7 +74,9 @@ export const PantallaActivacion: React.FC<Props> = ({ estado, onActivada }) => {
 
         <div className="p-6 sm:p-8 space-y-6">
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Este programa se activa una sola vez por equipo. La licencia queda ligada a este computador y no funciona si se copia a otro.
+            {esMovil()
+              ? 'La app se activa una sola vez por celular. La licencia queda ligada a este celular y no funciona en otro.'
+              : 'Este programa se activa una sola vez por equipo. La licencia queda ligada a este computador y no funciona si se copia a otro.'}
           </p>
 
           <section className="space-y-2">

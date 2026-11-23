@@ -19,6 +19,8 @@ import { dataService, EstadoCopias } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
 import { ModalConfirmacion } from '../common/ModalConfirmacion';
 import { ModalBorradoSeguro } from './ModalBorradoSeguro';
+import { esMovil } from '../../utils/plataforma';
+import { Share2, Smartphone } from 'lucide-react';
 
 type Respaldos = Awaited<ReturnType<typeof dataService.listarRespaldos>>;
 
@@ -61,6 +63,7 @@ export const CopiasSeguridadView: React.FC<{ onSesionTerminada: () => void; onDa
 }) => {
   const { mostrarToast } = useToast();
   const esAdmin = dataService.esAdministrador();
+  const movil = esMovil();
   const [estado, setEstado] = useState<EstadoCopias | null>(null);
   const [datos, setDatos] = useState<Respaldos | null>(null);
   const [carpetaExterna, setCarpetaExterna] = useState('');
@@ -103,8 +106,8 @@ export const CopiasSeguridadView: React.FC<{ onSesionTerminada: () => void; onDa
     ejecutar(async () => {
       const ruta = await dataService.crearRespaldoEnDisco();
       const nombre = ruta.split(/[\\/]/).pop()!;
-      mostrarToast('success', 'Copia de seguridad creada', descargar ? 'Elija dónde guardarla (por ejemplo, la USB).' : `Guardada en la carpeta de respaldos: ${nombre}`);
-      if (descargar) window.location.href = dataService.urlDescargaRespaldo(nombre);
+      mostrarToast('success', 'Copia de seguridad creada', descargar ? (movil ? 'Elija dónde enviarla: Drive, WhatsApp o correo.' : 'Elija dónde guardarla (por ejemplo, la USB).') : movil ? 'Guardada en el celular y en Documentos › SistemaControl.' : `Guardada en la carpeta de respaldos: ${nombre}`);
+      if (descargar) await dataService.descargarRespaldo(nombre);
     });
 
   const abrirCarpeta = () =>
@@ -183,8 +186,12 @@ export const CopiasSeguridadView: React.FC<{ onSesionTerminada: () => void; onDa
             <p className="font-bold text-slate-900 dark:text-white">{estado ? recordatorio.texto : 'Consultando…'}</p>
             <p className="text-xs text-slate-600 dark:text-slate-300">
               {recordatorio.vencido
-                ? 'Haga una copia ahora y, si puede, guárdela también en una USB o en otro disco.'
-                : 'Sus datos están respaldados. Mantenga la costumbre de copiar a una USB u otro disco.'}
+                ? movil
+                  ? 'Haga una copia ahora y compártala a Drive, WhatsApp o correo: si el celular se pierde, sus datos quedan a salvo.'
+                  : 'Haga una copia ahora y, si puede, guárdela también en una USB o en otro disco.'
+                : movil
+                  ? 'Sus datos están respaldados. Mantenga la costumbre de compartir la copia fuera del celular.'
+                  : 'Sus datos están respaldados. Mantenga la costumbre de copiar a una USB u otro disco.'}
             </p>
           </div>
         </div>
@@ -201,9 +208,9 @@ export const CopiasSeguridadView: React.FC<{ onSesionTerminada: () => void; onDa
               onClick={() => crearCopia(true)}
               disabled={trabajando}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-emerald-600 text-emerald-700 dark:text-emerald-300 text-sm font-semibold disabled:opacity-60"
-              title="Crea la copia y la descarga para guardarla en una USB u otro disco"
+              title={movil ? 'Crea la copia y la envía a Drive, WhatsApp o correo' : 'Crea la copia y la descarga para guardarla en una USB u otro disco'}
             >
-              <Download className="w-4 h-4" /> Copiar y descargar
+              {movil ? <Share2 className="w-4 h-4" /> : <Download className="w-4 h-4" />} {movil ? 'Copiar y compartir' : 'Copiar y descargar'}
             </button>
           )}
         </div>
@@ -227,9 +234,11 @@ export const CopiasSeguridadView: React.FC<{ onSesionTerminada: () => void; onDa
                 El sistema guarda aquí todas las copias (automáticas diarias y manuales):
               </p>
               <code className="block text-xs break-all bg-slate-50 dark:bg-slate-800 rounded-lg p-2">{datos.carpeta}</code>
-              <button onClick={abrirCarpeta} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold">
-                <FolderOpen className="w-4 h-4" /> Abrir carpeta
-              </button>
+              {!movil && (
+                <button onClick={abrirCarpeta} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold">
+                  <FolderOpen className="w-4 h-4" /> Abrir carpeta
+                </button>
+              )}
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                 <label htmlFor="recordatorio-dias" className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 mb-1">
                   <BellRing className="w-3.5 h-3.5" /> Recordarme hacer copia cada
@@ -254,14 +263,23 @@ export const CopiasSeguridadView: React.FC<{ onSesionTerminada: () => void; onDa
               <h3 className="font-bold text-sm flex items-center gap-2">
                 <Upload className="w-4 h-4 text-emerald-600" /> Cargar una copia de seguridad
               </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-300">
-                Traiga una copia guardada en una USB, el correo u otro PC. Se admite el archivo <strong>.db</strong> (copia completa) o el{' '}
-                <strong>.json</strong> exportado desde “Datos y Respaldo”.
-              </p>
-              <ul className="text-[11px] text-slate-500 list-disc pl-4 space-y-0.5">
-                <li>.db: queda en la lista de abajo; luego presione “Restaurar”.</li>
-                <li>.json: se combina con los datos actuales sin borrar nada.</li>
-              </ul>
+              {movil ? (
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  Elija un archivo <strong>.json</strong>: una copia de este celular (Documentos › SistemaControl, Drive o WhatsApp) o la exportada en el PC
+                  desde “Datos y Respaldo → Exportar respaldo completo”. Se combina con los datos actuales sin borrar nada.
+                </p>
+              ) : (
+                <>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                    Traiga una copia guardada en una USB, el correo u otro PC. Se admite el archivo <strong>.db</strong> (copia completa) o el{' '}
+                    <strong>.json</strong> exportado desde “Datos y Respaldo”.
+                  </p>
+                  <ul className="text-[11px] text-slate-500 list-disc pl-4 space-y-0.5">
+                    <li>.db: queda en la lista de abajo; luego presione “Restaurar”.</li>
+                    <li>.json: se combina con los datos actuales sin borrar nada.</li>
+                  </ul>
+                </>
+              )}
               <button
                 onClick={() => archivoRef.current?.click()}
                 disabled={trabajando}
@@ -269,10 +287,21 @@ export const CopiasSeguridadView: React.FC<{ onSesionTerminada: () => void; onDa
               >
                 <Upload className="w-4 h-4" /> Elegir archivo…
               </button>
-              <input ref={archivoRef} type="file" accept=".db,.json,application/json" className="hidden" onChange={alElegirArchivo} />
+              <input ref={archivoRef} type="file" accept={movil ? '.json,application/json' : '.db,.json,application/json'} className="hidden" onChange={alElegirArchivo} />
             </div>
 
-            {/* Copia externa automática */}
+            {/* Copia fuera del equipo */}
+            {movil ? (
+              <div className={claseTarjeta}>
+                <h3 className="font-bold text-sm flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-emerald-600" /> Copia fuera del celular
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  Cada copia queda también en <strong>Documentos › SistemaControl</strong> (se conserva aunque desinstale la app). Si el celular se pierde o
+                  se daña, solo se salva lo que haya compartido: use <strong>Compartir</strong> y envíela a Google Drive, a su correo o a un chat de WhatsApp.
+                </p>
+              </div>
+            ) : (
             <div className={claseTarjeta}>
               <h3 className="font-bold text-sm flex items-center gap-2">
                 <HardDrive className="w-4 h-4 text-emerald-600" /> Copia automática en otro lugar
@@ -300,6 +329,7 @@ export const CopiasSeguridadView: React.FC<{ onSesionTerminada: () => void; onDa
                 </p>
               )}
             </div>
+            )}
           </div>
 
           {/* Lista */}
@@ -324,14 +354,24 @@ export const CopiasSeguridadView: React.FC<{ onSesionTerminada: () => void; onDa
                       <td>{motivoRespaldo(r.nombre)}</td>
                       <td>{megas(r.tamano)}</td>
                       <td className="text-right space-x-2 whitespace-nowrap">
-                        <a
-                          href={dataService.urlDescargaRespaldo(r.nombre)}
-                          onClick={() => setTimeout(cargar, 1500)}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
-                          title="Guardar este archivo en una USB u otro disco"
-                        >
-                          <Download className="w-3.5 h-3.5" /> Descargar
-                        </a>
+                        {movil ? (
+                          <button
+                            onClick={() => ejecutar(() => dataService.descargarRespaldo(r.nombre))}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+                            title="Enviar esta copia a Drive, WhatsApp o correo"
+                          >
+                            <Share2 className="w-3.5 h-3.5" /> Compartir
+                          </button>
+                        ) : (
+                          <a
+                            href={dataService.urlDescargaRespaldo(r.nombre)}
+                            onClick={() => setTimeout(cargar, 1500)}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+                            title="Guardar este archivo en una USB u otro disco"
+                          >
+                            <Download className="w-3.5 h-3.5" /> Descargar
+                          </a>
+                        )}
                         <button
                           onClick={() => setARestaurar(r.nombre)}
                           className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-amber-400 text-amber-800 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40"
@@ -353,7 +393,7 @@ export const CopiasSeguridadView: React.FC<{ onSesionTerminada: () => void; onDa
             </div>
           </div>
 
-          <div className={claseTarjeta}>
+          {!movil && <div className={claseTarjeta}>
             <h3 className="font-bold text-sm flex items-center gap-2">
               <Power className="w-4 h-4 text-rose-600" /> Apagar Sistema de Control en este PC
             </h3>
@@ -363,7 +403,7 @@ export const CopiasSeguridadView: React.FC<{ onSesionTerminada: () => void; onDa
             <button onClick={() => setConfirmarApagado(true)} className="px-4 py-2 rounded-xl border border-rose-400 text-rose-700 text-sm font-semibold">
               Apagar
             </button>
-          </div>
+          </div>}
 
           <div className={claseTarjeta + ' border-rose-200 dark:border-rose-900'}>
             <h3 className="font-bold text-sm flex items-center gap-2 text-rose-700 dark:text-rose-400">

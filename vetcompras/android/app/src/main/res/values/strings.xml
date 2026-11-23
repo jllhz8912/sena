@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Sistema de Control</string>
+    <string name="title_activity_main">Sistema de Control</string>
+    <string name="package_name">com.sistemacontrol.movil</string>
+    <string name="custom_url_scheme">com.sistemacontrol.movil</string>
+</resources>

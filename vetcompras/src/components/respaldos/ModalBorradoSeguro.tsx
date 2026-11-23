@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { esMovil, nombreEquipo } from '../../utils/plataforma';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, CheckCircle2, DatabaseBackup, Download, Loader2, Trash2, X } from 'lucide-react';
 import { dataService } from '../../services/dataService';
@@ -58,7 +59,7 @@ export const ModalBorradoSeguro: React.FC<ModalBorradoSeguroProps> = ({
     try {
       const ruta = await dataService.crearRespaldoEnDisco();
       setCopia(ruta);
-      if (descargar) window.location.href = dataService.urlDescargaRespaldo(ruta.split(/[\\/]/).pop()!);
+      if (descargar) await dataService.descargarRespaldo(ruta.split(/[\\/]/).pop()!);
       setPaso('confirmar');
     } catch (e: any) {
       setError(`No se pudo hacer la copia: ${e?.message || 'error desconocido'}. No se borró nada.`);
@@ -144,7 +145,7 @@ export const ModalBorradoSeguro: React.FC<ModalBorradoSeguroProps> = ({
                 disabled={trabajando}
                 className="flex items-center justify-center gap-2 py-3 rounded-xl border border-emerald-600 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 disabled:opacity-60 text-sm font-bold"
               >
-                <Download className="w-4 h-4" /> Sí, y descargarla (USB)
+                <Download className="w-4 h-4" /> {esMovil() ? 'Sí, y compartirla' : 'Sí, y descargarla (USB)'}
               </button>
             </div>
             <div className="flex justify-between gap-2">

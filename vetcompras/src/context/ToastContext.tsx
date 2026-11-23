@@ -44,7 +44,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <ToastContext.Provider value={{ mostrarToast, eliminarToast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-md w-full px-4 pointer-events-none">
+      <div className="fixed bottom-24 md:bottom-4 right-0 md:right-4 z-50 flex flex-col gap-2 max-w-md w-full px-4 pointer-events-none">
         {toasts.map((toast) => {
           let bgClass = 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100';
           let icon = <Info className="w-5 h-5 text-sky-500 shrink-0" />;

@@ -1,0 +1,28 @@
+/*
+ * Ajustes solo para el celular: Android dibuja la app de borde a borde, así que
+ * se deja espacio para la barra de estado (arriba) y la barra de gestos (abajo).
+ * Capacitor publica esas medidas en --safe-area-inset-*.
+ */
+:root {
+  --sa-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --sa-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+}
+body {
+  padding-top: var(--sa-top);
+  -webkit-tap-highlight-color: transparent;
+}
+.safe-area-pb {
+  padding-bottom: calc(0.375rem + var(--sa-bottom)) !important;
+}
+.fixed.inset-0 {
+  top: var(--sa-top);
+  bottom: var(--sa-bottom);
+}
+/* Evita el zoom automático del celular al tocar un campo (letra mínima de 16px) */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

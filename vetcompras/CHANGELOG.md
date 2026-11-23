@@ -3,6 +3,23 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.0.0 Móvil — App para celulares Android
+Las mismas pantallas y módulos del PC, instalados dentro del celular (APK):
+- **Datos en el celular, sin internet**: cada operación se guarda al instante en la memoria
+  privada de la app con escritura segura (archivo nuevo → anterior → definitivo). La app no
+  pide permiso de internet.
+- **Copias de seguridad en el celular**: copia automática diaria y copias manuales, también
+  guardadas en *Documentos › SistemaControl* (sobreviven a desinstalar). "Copiar y compartir"
+  las envía a Drive, correo o WhatsApp; "Restaurar" vuelve a una copia guardando antes el
+  estado actual.
+- **Licencia por celular**: mismo formato, misma clave pública y mismo Generador del PC; el
+  código sale del identificador del dispositivo.
+- **PC ↔ celular**: la copia `.json` del celular se importa en el PC y la exportación `.json`
+  del PC se carga en el celular.
+- Recibos PDF, reportes y Excel se guardan en Documentos y se comparten con las apps del celular.
+- Ajustes de pantalla pequeña: barra inferior con nombres cortos, botón "+" sobre la barra,
+  cabecera compacta.
+
 ## 2.0.0 — Aplicativo Sistema de Control 2.0
 Primera versión comercial y genérica (basada en VetCompras 2.14).
 - **Licencia por equipo**: al instalar, el programa muestra el *código de equipo*; el

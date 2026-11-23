@@ -28,7 +28,7 @@ export const BotonFlotanteNuevo: React.FC<BotonFlotanteNuevoProps> = ({
   }, []);
 
   return (
-    <div ref={containerRef} className="fixed bottom-6 right-6 z-40 flex flex-col items-end">
+    <div ref={containerRef} className="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-40 flex flex-col items-end">
       {/* Opciones desplegables hacia arriba */}
       {abierto && (
         <div className="mb-3 space-y-2 flex flex-col items-end animate-in fade-in slide-in-from-bottom-3 duration-150">

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { esMovil, nombreEquipo } from '../../utils/plataforma';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, CloudUpload, HardDriveDownload, ShieldCheck } from 'lucide-react';
 import { dataService } from '../../services/dataService';
@@ -137,7 +138,7 @@ export const AlertaCopiaSemanal: React.FC = () => {
 
           <p id="alerta-copia-texto" className="text-base sm:text-lg font-medium text-red-50">
             Si el computador se daña, se pierde o se lo roban, la información de la empresa solo se recupera con una copia guardada fuera de
-            este PC. La última copia de seguridad <strong className="text-white underline">{haceDias(estado.diasSinCopia)}</strong>.
+            {nombreEquipo()}. La última copia de seguridad <strong className="text-white underline">{haceDias(estado.diasSinCopia)}</strong>.
           </p>
 
           <ol className="space-y-2.5 text-sm sm:text-base">

@@ -12,3 +12,9 @@ dist-portable/
 # Nunca subir la clave privada de licencias ni licencias emitidas
 *CLAVE-PRIVADA*
 *.lic
+
+# App de celular: compilado y firma del APK (la llave de firma nunca se sube)
+dist-movil/
+*.keystore
+*.jks
+firma-apk.properties

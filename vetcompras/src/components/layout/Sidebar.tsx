@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { esMovil, nombreEquipo } from '../../utils/plataforma';
 import {
   LayoutDashboard,
   ReceiptText,
@@ -59,6 +60,14 @@ interface SidebarProps {
   setMobileOpen: (open: boolean) => void;
   /** Módulos del perfil con que se ingresó (sin valor: todos) */
   modulos?: Set<string>;
+}
+
+/** Nombre corto para la barra inferior del celular (sin repetir "Panel"). */
+function etiquetaCorta(label: string): string {
+  if (label.startsWith('Dashboard')) return 'Inicio';
+  const panel = label.match(/^Panel de (\w+)/);
+  if (panel) return `P. ${panel[1]}`;
+  return label.replace('Módulo de ', '').split(' ')[0];
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -299,7 +308,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span>Extracción DIAN &amp; datos locales</span>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-              La información se guarda en este PC, con respaldos automáticos diarios.
+              La información se guarda en {nombreEquipo()}, con respaldos automáticos diarios.
             </p>
           </div>
         )}
@@ -397,7 +406,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }`}
             >
               <Icon className="w-5 h-5" />
-              <span className="truncate max-w-full">{item.label.replace('Módulo de ', '').split(' ')[0]}</span>
+              <span className="truncate max-w-full">{etiquetaCorta(item.label)}</span>
               {item.id === 'compras' && totalPendientes > 0 && <span className="absolute -top-1 right-1 w-2 h-2 rounded-full bg-rose-500" />}
             </button>
           );

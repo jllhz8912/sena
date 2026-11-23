@@ -52,6 +52,22 @@ Respaldos que el sistema hace solo:
 Además, desde **Datos y Respaldo** se puede crear un respaldo en el PC en cualquier
 momento o exportar un archivo JSON completo para llevarlo a otro equipo o a una USB.
 
+## Versión móvil (Android)
+La app de celular usa las mismas pantallas (`src/`) y un motor local que guarda todo en
+archivos del teléfono (`src/movil/`, `src/demo/servidorDemo.ts` en modo `movil`). Capacitor
+la empaqueta como APK (`android/`).
+
+```bash
+npm run build:movil          # compila dist-movil/
+npx cap sync android         # copia el compilado al proyecto Android
+cd android && ./gradlew assembleRelease   # APK firmado en app/build/outputs/apk/release/
+```
+- Requiere el SDK de Android (variable `ANDROID_HOME` o `android/local.properties`) y Java 21.
+- La firma se lee de `android/firma-apk.properties` (`storeFile`, `storePassword`, `keyAlias`,
+  `keyPassword`). Ese archivo y la llave `.jks` **nunca** se suben al repositorio.
+- En cada versión nueva suba `versionCode` en `android/app/build.gradle`.
+- Prueba rápida en el navegador: `npx vite preview --config vite.movil.config.ts`.
+
 ## Versión portable (USB o disco, sin instalar nada)
 
 `npm run build:portable -- <ruta-a-node.exe>` genera `dist-portable/VetCompras-<versión>-portable-windows.zip`

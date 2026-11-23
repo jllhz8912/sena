@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { esMovil, nombreEquipo } from '../../utils/plataforma';
 import { subcategoriasActivas } from '../../utils/subcategorias';
 import {
   X,
@@ -104,7 +105,7 @@ export const RevisionFacturaModal: React.FC<RevisionFacturaModalProps> = ({
           borradorInicial.metadatosExtraccion?.motor === 'gemini_flash'
             ? 'Extracción con Gemini AI'
             : borradorInicial.metadatosExtraccion?.motor === 'pdf_local'
-              ? 'Lectura del PDF en este PC (QR DIAN y texto)'
+              ? `Lectura del PDF en ${nombreEquipo()} (QR DIAN y texto)`
               : 'Extracción XML UBL 2.1',
       },
     ],

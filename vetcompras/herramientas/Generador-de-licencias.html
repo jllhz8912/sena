@@ -56,7 +56,7 @@
     <p class="estado" id="estado-clave">Sin clave cargada.</p>
 
     <h2 style="margin-top:18px"><span class="n">2</span> Datos de la licencia</h2>
-    <label for="equipo">Código de equipo (lo muestra el programa del cliente)</label>
+    <label for="equipo">Código de equipo: del PC o del celular (lo muestra el programa o la app del cliente)</label>
     <input id="equipo" class="mono" placeholder="3F9A-21C0-7B44-E1D2" autocomplete="off">
     <div class="fila">
       <div><label for="cliente">Cliente (razón social o nombre)</label><input id="cliente" placeholder="Ferretería La 14 S.A.S."></div>
@@ -186,7 +186,7 @@ async function copiar(texto, id) {
 }
 $("copiar").addEventListener("click", () => ultima && copiar(ultima.clave, "estado-entrega"));
 $("copiar-mensaje").addEventListener("click", () => ultima && copiar(
-  `Licencia de Sistema de Control 2.0\nCliente: ${ultima.cliente}\nEquipo: ${ultima.equipo}\nN.º ${ultima.numero}\n\nPara activarla: abra el programa, pegue esta clave en "Activación de la licencia" y pulse Activar.\n\n${ultima.clave}`,
+  `Licencia de Sistema de Control 2.0\nCliente: ${ultima.cliente}\nEquipo: ${ultima.equipo}\nN.º ${ultima.numero}\n\nPara activarla: abra el programa (o la app en el celular), pegue esta clave en "Activación de la licencia" y pulse Activar.\n\n${ultima.clave}`,
   "estado-entrega"));
 $("descargar").addEventListener("click", () => {
   if (!ultima) return;

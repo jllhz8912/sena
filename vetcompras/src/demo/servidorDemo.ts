@@ -76,11 +76,34 @@ export const CREDENCIALES_DEMO = [
 ];
 
 const CLAVE_ALMACEN = 'vetcompras_demo_v6';
+
+/**
+ * El mismo motor sirve a dos productos:
+ *  - 'demo': demostración en el navegador (localStorage, tope de registros, sin licencia).
+ *  - 'movil': la app de celular. Los datos se guardan en archivos del teléfono
+ *    (persistir), los respaldos van en archivos aparte (guardarRespaldo) y la
+ *    licencia y los respaldos los atiende src/movil antes de las rutas comunes.
+ */
+export interface OpcionesServidorLocal {
+  modo: 'demo' | 'movil';
+  version: string;
+  persistir?: (json: string) => Promise<void>;
+  guardarRespaldo?: (nombre: string, contenido: string) => Promise<void>;
+  antes?: (metodo: string, ruta: string, cuerpo: any, query: URLSearchParams) => Promise<{ respuesta: unknown } | null>;
+}
+let opciones: OpcionesServidorLocal = { modo: 'demo', version: '2.0.0-demo' };
+/** Escrituras a disco en curso: cada respuesta espera a que terminen (lo guardado queda guardado). */
+let escrituras: Promise<unknown> = Promise.resolve();
+const encolar = (tarea: () => Promise<unknown>) => {
+  escrituras = escrituras.then(tarea, tarea);
+  return escrituras;
+};
 const MINUTOS_INACTIVIDAD = 60;
 const clonar = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 const ahoraIso = () => new Date().toISOString();
 
 function marca(motivo: string) {
+  if (opciones.modo === 'movil') return `sistemacontrol-${ahoraIso().replace(/[:.]/g, '-').slice(0, 19)}-${motivo}.json`;
   return `vetcompras-${ahoraIso().replace(/[:.]/g, '-').slice(0, 19)}-${motivo}.db`;
 }
 
@@ -162,6 +185,12 @@ function cargar(): Estado {
 
 function guardar() {
   estado.revision++;
+  if (opciones.persistir) {
+    const json = JSON.stringify(estado);
+    const persistir = opciones.persistir;
+    encolar(() => persistir(json));
+    return;
+  }
   try {
     localStorage.setItem(CLAVE_ALMACEN, JSON.stringify(estado));
   } catch {
@@ -233,8 +262,14 @@ function describir(c: Coleccion, r: any): string {
 }
 
 function crearRespaldo(motivo: string) {
-  const datos: Datos = clonar({ colecciones: estado.colecciones, empresa: estado.empresa });
   const nombre = marca(motivo);
+  if (opciones.guardarRespaldo) {
+    const contenido = JSON.stringify(exportacion());
+    const guardarRespaldo = opciones.guardarRespaldo;
+    encolar(() => guardarRespaldo(nombre, contenido));
+    return nombre;
+  }
+  const datos: Datos = clonar({ colecciones: estado.colecciones, empresa: estado.empresa });
   estado.respaldos.unshift({ nombre, fecha: ahoraIso(), tamano: JSON.stringify(datos).length, datos });
   estado.respaldos = estado.respaldos.slice(0, 15);
   return nombre;
@@ -243,6 +278,7 @@ function crearRespaldo(motivo: string) {
 /** Tope de la demostración: es para conocer el programa, no para operar un negocio. */
 export const LIMITE_DEMO = 60;
 function limiteDemo(c: Coleccion, nuevos: number) {
+  if (opciones.modo === 'movil') return;
   if ((c === 'ventas' || c === 'documentos') && nuevos > 0 && estado.colecciones[c].length + nuevos > LIMITE_DEMO) {
     throw new ErrorHttp(
       402,
@@ -275,7 +311,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
       marca: { nombre: e.nombreComercial || e.razonSocial || 'Mi Empresa', slogan: e.slogan || '', logoUrl: e.logoUrl || '', colorPrimario: e.colorPrimario || '' },
       requiereConfiguracion: modoAcceso === 'usuarios' && estado.usuarios.length === 0,
       minutosInactividad: MINUTOS_INACTIVIDAD,
-      version: '2.0.0-demo',
+      version: opciones.version,
     };
   }
   if (metodo === 'POST' && ruta === '/sesion/ingresar-libre') {
@@ -388,7 +424,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
     return { ok: true };
   }
   if (metodo === 'GET' && ruta === '/estado') {
-    return { aplicacion: 'Sistema de Control', version: '2.0.0-demo', versionEsquema: 3, revision: String(estado.revision), carpetaDatos: yo.rol === 'administrador' ? 'C:\\Users\\Usuario\\SistemaControl\\datos (demostración)' : '', geminiConfigurado: false };
+    return { aplicacion: 'Sistema de Control', version: opciones.version, versionEsquema: 3, revision: String(estado.revision), carpetaDatos: yo.rol === 'administrador' ? (opciones.modo === 'movil' ? 'Memoria interna del celular (datos privados de la app)' : 'C:\\Users\\Usuario\\SistemaControl\\datos (demostración)') : '', geminiConfigurado: false };
   }
 
   // usuarios
@@ -528,7 +564,7 @@ function atender(metodo: string, ruta: string, cuerpo: any, cabeceras: Headers, 
     admin();
     if (metodo === 'GET') {
       auditar(yo.usuario, 'Exportación completa de datos (JSON)');
-      return { version: '2.0', aplicacion: 'Sistema de Control', fechaExportacion: ahoraIso(), empresa: estado.empresa, ...estado.colecciones };
+      return exportacion();
     }
     crearRespaldo('antes-de-importar');
     const conteo: Record<string, number> = {};
@@ -686,14 +722,19 @@ export function instalarServidorDemo() {
       cuerpo = {};
     }
     // Pequeña espera para que la interfaz se comporte como con un servidor real
-    await new Promise((r) => setTimeout(r, 60));
+    if (opciones.modo === 'demo') await new Promise((r) => setTimeout(r, 60));
     try {
-      const datos = atender(metodo, llamada.ruta, cuerpo, cabeceras, llamada.query);
+      if (metodo !== 'GET' && cabeceras.get('X-VetCompras') !== '1' && opciones.modo === 'movil') throw new ErrorHttp(403, 'Solicitud no permitida.');
+      const previo = opciones.antes ? await opciones.antes(metodo, llamada.ruta, cuerpo, llamada.query) : null;
+      const datos = previo ? previo.respuesta : atender(metodo, llamada.ruta, cuerpo, cabeceras, llamada.query);
       if (metodo !== 'GET' || llamada.ruta === '/sesion') guardar();
+      // En el celular la respuesta sale solo cuando el archivo quedó escrito
+      await escrituras;
       return new Response(JSON.stringify(datos ?? null), { status: 200, headers: { 'Content-Type': 'application/json' } });
     } catch (err: any) {
       const status = err instanceof ErrorHttp ? err.status : 500;
       if (metodo !== 'GET') guardar();
+      await escrituras.catch(() => undefined);
       return new Response(JSON.stringify({ error: err?.message || 'Error en la demostración.', ...(err?.extra || {}) }), {
         status,
         headers: { 'Content-Type': 'application/json' },
@@ -701,3 +742,62 @@ export function instalarServidorDemo() {
     }
   };
 }
+
+// ------------------------------------------------- uso desde la app de celular
+function exportacion() {
+  return { version: '2.0', aplicacion: 'Sistema de Control', fechaExportacion: ahoraIso(), empresa: estado.empresa, ...estado.colecciones };
+}
+
+export { ErrorHttp };
+
+/** Configura el motor para la app de celular y carga el estado guardado (o arranca en limpio). */
+export function iniciarServidorLocal(o: OpcionesServidorLocal, guardado: string | null) {
+  opciones = o;
+  let e: Estado | null = null;
+  if (guardado) {
+    try {
+      e = JSON.parse(guardado) as Estado;
+      for (const c of COLECCIONES) e.colecciones[c] ??= [];
+      e.respaldos = [];
+    } catch {
+      e = null;
+    }
+  }
+  if (!e) {
+    e = estadoInicial(false, 'libre');
+    // Instalación nueva: empresa genérica, sin datos de ejemplo
+    e.empresa = {
+      ...clonar(EMPRESA_DEFECTO),
+      etiquetaReferencia: 'Referencia',
+      // Las mismas categorías de venta neutras que una instalación nueva en el PC
+      categoriasVenta: [
+        { id: 'productos', label: 'Productos', tipo: 'producto', activo: true, subcategorias: [{ value: 'general', label: 'Línea general' }, { value: 'varios', label: 'Varios' }] },
+        { id: 'servicios', label: 'Servicios', tipo: 'servicio', activo: true, subcategorias: [{ value: 'general', label: 'Servicio general' }, { value: 'varios', label: 'Varios' }] },
+        { id: 'otros_ingresos', label: 'Otros ingresos', tipo: 'servicio', activo: true, subcategorias: [{ value: 'varios', label: 'Varios' }] },
+      ],
+    };
+    e.colecciones.proveedores = [];
+    e.auditoria = [{ fecha: ahoraIso(), usuario: '(sistema)', accion: 'Instalación nueva en el celular' }];
+  }
+  estado = e;
+  return estado.revision === 1 && !guardado;
+}
+
+export const servidorLocal = {
+  usuario: () => usuarioSesion(false),
+  auditar,
+  crearRespaldo,
+  exportacion,
+  guardar,
+  esperarEscrituras: () => escrituras,
+  ultimaCopia: (medio: string) => {
+    estado.ultimaCopia = { fecha: ahoraIso(), medio };
+  },
+  /** Reemplaza los datos por los de un respaldo (formato de exportación JSON). */
+  aplicarRespaldo(contenido: any) {
+    for (const c of COLECCIONES) estado.colecciones[c] = Array.isArray(contenido?.[c]) ? contenido[c] : [];
+    if (contenido?.empresa) estado.empresa = contenido.empresa;
+    recalcularInventarioDemo();
+    estado.sesion = null;
+  },
+};

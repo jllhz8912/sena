@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { esMovil, nombreEquipo } from '../../utils/plataforma';
 import {
   Users,
   DatabaseBackup,
@@ -304,7 +305,7 @@ const PanelFormaIngreso: React.FC<{ onCambio: () => void }> = ({ onCambio }) => 
           <h3 className="font-bold text-sm">Forma de ingreso: {libre ? 'sin contraseña' : 'con usuario y contraseña'}</h3>
           <p className="text-xs text-slate-500">
             {libre
-              ? 'Al abrir el programa se ve el logo de la empresa y un botón grande “Ingresar”. Cualquiera que use este PC entra con todos los permisos.'
+              ? 'Al abrir el programa se ve el logo de la empresa y un botón grande “Ingresar”. Cualquiera que use ' + nombreEquipo() + ' entra con todos los permisos.'
               : 'Cada persona ingresa con su usuario y contraseña y queda registrada en la bitácora.'}
           </p>
         </div>
@@ -361,7 +362,7 @@ const PanelFormaIngreso: React.FC<{ onCambio: () => void }> = ({ onCambio }) => 
         <ModalConfirmacion
           abierto
           titulo="¿Quitar la contraseña?"
-          mensaje="La pantalla de inicio mostrará solo el logo y el botón Ingresar, y quien abra el programa en este PC entrará con todos los permisos. Los usuarios creados se conservan por si vuelve a activar la contraseña."
+          mensaje={`La pantalla de inicio mostrará solo el logo y el botón Ingresar, y quien abra el programa en ${nombreEquipo()} entrará con todos los permisos. Los usuarios creados se conservan por si vuelve a activar la contraseña.`}
           textoConfirmar="Sí, ingresar sin contraseña"
           tipo="advertencia"
           enConfirmar={volverALibre}

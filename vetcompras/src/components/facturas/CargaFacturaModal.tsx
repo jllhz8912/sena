@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { esMovil, nombreEquipo } from '../../utils/plataforma';
 import {
   UploadCloud,
   FileText,
@@ -318,7 +319,7 @@ export const CargaFacturaModal: React.FC<CargaFacturaModalProps> = ({
                     Arrastra aquí tus facturas o haz clic para explorar
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    Formatos soportados: <strong>.XML</strong> (UBL 2.1 DIAN), <strong>.PDF</strong> o foto (se lee en este PC), <strong>.ZIP</strong> o <strong>.XLSX</strong>
+                    Formatos soportados: <strong>.XML</strong> (UBL 2.1 DIAN), <strong>.PDF</strong> o foto (se lee en {nombreEquipo()}), <strong>.ZIP</strong> o <strong>.XLSX</strong>
                   </p>
                 </div>
 
