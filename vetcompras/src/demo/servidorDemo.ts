@@ -21,6 +21,11 @@ import {
   SUBCATEGORIAS_COMPRA_DEFECTO,
 } from '../data/defaults';
 import type { Categoria } from '../types';
+import { fotoEjemplo } from '../components/movil/fotosEjemplo';
+import { normalizarNombre } from '../utils/inventario';
+import { itemsDeVenta } from '../utils/ventas';
+import { sirvePara } from '../utils/conceptos';
+import { CATEGORIAS_SERVICIO } from '../utils/formatters';
 import { movimientosAlEliminar, movimientosDeCompra, movimientosDeVenta } from '../utils/inventario';
 
 type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centrosCosto' | 'productos' | 'movimientosInventario' | 'fichasPrecio';
@@ -795,7 +800,46 @@ export function iniciarServidorLocal(o: OpcionesServidorLocal, guardado: string 
   }
   estado = e;
   if (!guardado && o.datosEjemplo) recalcularInventarioDemo();
+  if (o.datosEjemplo && !(estado as any).fotosEjemplo) completarProductosDeEjemplo();
   return estado.revision === 1 && !guardado;
+}
+
+/**
+ * Versión de prueba: todos los productos que se venden quedan con foto de ejemplo y
+ * precio, y lo vendido en los ejemplos (servicios) también aparece como producto.
+ */
+function completarProductosDeEjemplo() {
+  const ahora = ahoraIso();
+  const col = estado.colecciones;
+  for (const p of col.productos) {
+    if (!sirvePara(p, 'venta')) continue;
+    if (!p.foto) p.foto = fotoEjemplo(p.nombre);
+    if (!p.precioVenta && p.costoUltimo) p.precioVenta = Math.round((p.costoUltimo * 1.35) / 100) * 100;
+  }
+  const conocidos = new Set(col.productos.map((p: any) => normalizarNombre(p.nombre)));
+  for (const v of col.ventas) {
+    for (const i of itemsDeVenta(v)) {
+      const k = normalizarNombre(i.concepto);
+      if (!k || conocidos.has(k) || !(i.precioUnitario > 0)) continue;
+      conocidos.add(k);
+      const servicio = CATEGORIAS_SERVICIO.has(i.categoria);
+      col.productos.push({
+        id: 'prod-ej-' + col.productos.length,
+        nombre: i.concepto,
+        tipo: servicio ? 'servicio' : 'producto',
+        usos: servicio ? ['venta'] : ['venta', 'compra'],
+        categoriaVenta: i.categoria,
+        subcategoriaVenta: i.subcategoria,
+        precioVenta: i.precioUnitario,
+        unidad: servicio ? 'SERVICIO' : 'UND',
+        foto: fotoEjemplo(i.concepto),
+        activo: true,
+        creadoEn: ahora,
+        actualizadoEn: ahora,
+      });
+    }
+  }
+  (estado as any).fotosEjemplo = true;
 }
 
 export const servidorLocal = {

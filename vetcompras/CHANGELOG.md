@@ -3,6 +3,15 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.2.0 Móvil — Cuadros más pequeños, autosuma y datos del cliente
+- Inicio más compacto: Vender y Compras como barras de color y el resto en mosaicos de 4 columnas.
+- Caja en 4 columnas. El ticket queda siempre a la vista con su **autosuma**: cantidad × precio
+  por línea, **subtotal**, **descuento** (valor o porcentaje, repartido entre las líneas) y **total**.
+- Al cobrar o guardar: **datos del cliente** (nombre, cédula o NIT, celular/WhatsApp, correo,
+  referencia y observaciones), con autocompletado de clientes anteriores. Al terminar, el
+  **recibo con el membrete** de la empresa (PDF, WhatsApp o correo).
+- Versión de prueba: todos los productos de ejemplo con **foto de ejemplo** y precio.
+
 ## 2.1.0 Móvil — Nueva cara para el celular
 - **Inicio con mosaicos de colores**: Vender y Compras grandes; Productos, Inventario, Por pagar,
   Reportes, Ventas y clientes, Copias, Configuración y demás en mosaicos (según el perfil).

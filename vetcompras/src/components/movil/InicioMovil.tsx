@@ -103,13 +103,13 @@ export const InicioMovil: React.FC<{
     { id: 'cuentas_pagar', titulo: 'Por pagar', color: COLOR_PANTALLA.cuentas_pagar!, icono: <WalletCards />, modulo: 'cuentas_pagar', aviso: facturasPorPagar ? String(facturasPorPagar) : undefined },
     { id: 'reportes_ventas', titulo: 'Reportes', color: COLOR_PANTALLA.reportes_ventas!, icono: <BarChart3 />, modulo: 'reportes_ventas' },
     { id: 'ventas', titulo: 'Ventas y clientes', color: COLOR_PANTALLA.ventas!, icono: <Users />, modulo: 'ventas' },
-    { id: 'compras', titulo: 'Lista de compras', color: COLOR_PANTALLA.compras!, icono: <ListOrdered />, modulo: 'compras' },
-    { id: 'dashboard', titulo: 'Panel general', color: COLOR_PANTALLA.dashboard!, icono: <LayoutDashboard />, modulo: 'dashboard' },
+    { id: 'compras', titulo: 'Lista compras', color: COLOR_PANTALLA.compras!, icono: <ListOrdered />, modulo: 'compras' },
+    { id: 'dashboard', titulo: 'Panel', color: COLOR_PANTALLA.dashboard!, icono: <LayoutDashboard />, modulo: 'dashboard' },
     { id: 'reportes_compras', titulo: 'Reportes compras', color: '#1e40af', icono: <BarChart3 />, modulo: 'reportes_compras' },
     { id: 'precios', titulo: 'Precios', color: COLOR_PANTALLA.precios!, icono: <Calculator />, modulo: 'precios' },
     { id: 'catalogos', titulo: 'Catálogos', color: COLOR_PANTALLA.catalogos!, icono: <FolderTree />, modulo: 'catalogos' },
     { id: 'copias', titulo: 'Copias', color: COLOR_PANTALLA.copias!, icono: <DatabaseBackup />, modulo: 'copias', aviso: copiaPendiente ? '!' : undefined },
-    { id: 'configuracion', titulo: 'Configuración', color: COLOR_PANTALLA.configuracion!, icono: <Settings />, modulo: 'configuracion' },
+    { id: 'configuracion', titulo: 'Ajustes', color: COLOR_PANTALLA.configuracion!, icono: <Settings />, modulo: 'configuracion' },
     { id: 'seguridad', titulo: 'Perfiles', color: COLOR_PANTALLA.seguridad!, icono: <ShieldCheck />, modulo: 'seguridad' },
   ];
   const mosaicos = todos.filter((m) => alguno(m.modulo));
@@ -170,13 +170,13 @@ export const InicioMovil: React.FC<{
         </div>
       )}
 
-      {/* Mosaicos: los dos principales grandes, el resto en tres columnas */}
-      <div className="px-4 grid grid-cols-2 gap-3 mb-3">
+      {/* Accesos principales: barras de color; el resto, mosaicos pequeños en cuatro columnas */}
+      <div className="px-4 grid grid-cols-2 gap-2.5 mb-3">
         {mosaicos.slice(0, 2).map((m) => (
           <BotonMosaico key={m.id} m={m} grande onIr={onIr} />
         ))}
       </div>
-      <div className="px-4 grid grid-cols-3 gap-2.5" style={{ paddingBottom: 'calc(1.5rem + var(--sa-bottom, 0px))' }}>
+      <div className="px-4 grid grid-cols-4 gap-2" style={{ paddingBottom: 'calc(1.5rem + var(--sa-bottom, 0px))' }}>
         {mosaicos.slice(2).map((m) => (
           <BotonMosaico key={m.id} m={m} onIr={onIr} />
         ))}
@@ -185,20 +185,31 @@ export const InicioMovil: React.FC<{
   );
 };
 
-const BotonMosaico: React.FC<{ m: Mosaico; grande?: boolean; onIr: (p: PantallaMovil) => void }> = ({ m, grande, onIr }) => (
-  <button
-    id={`mosaico-${m.id}`}
-    onClick={() => onIr(m.id)}
-    className={`relative rounded-3xl text-white shadow-md active:scale-[0.96] transition-transform flex flex-col items-center justify-center gap-1.5 ${grande ? 'aspect-[1/0.82]' : 'aspect-square rounded-2xl'}`}
-    style={{ background: m.color }}
-  >
-    <span className={`${grande ? '[&>svg]:w-14 [&>svg]:h-14' : '[&>svg]:w-8 [&>svg]:h-8'} [&>svg]:stroke-[1.7]`}>{m.icono}</span>
-    <span className={`${grande ? 'text-xl font-black' : 'text-[12.5px] font-bold'} text-center px-1.5 leading-tight`}>{m.titulo}</span>
-    {m.aviso && (
-      <span className="absolute top-2 right-2 min-w-[1.4rem] h-[1.4rem] px-1 rounded-full bg-white text-rose-600 text-[11px] font-black flex items-center justify-center">{m.aviso}</span>
-    )}
-  </button>
-);
+const BotonMosaico: React.FC<{ m: Mosaico; grande?: boolean; onIr: (p: PantallaMovil) => void }> = ({ m, grande, onIr }) =>
+  grande ? (
+    <button
+      id={`mosaico-${m.id}`}
+      onClick={() => onIr(m.id)}
+      className="relative h-[68px] rounded-2xl text-white shadow-sm active:scale-[0.97] transition-transform flex items-center gap-2.5 px-3.5"
+      style={{ background: m.color }}
+    >
+      <span className="[&>svg]:w-7 [&>svg]:h-7 [&>svg]:stroke-[1.8]">{m.icono}</span>
+      <span className="text-[17px] font-black">{m.titulo}</span>
+    </button>
+  ) : (
+    <button
+      id={`mosaico-${m.id}`}
+      onClick={() => onIr(m.id)}
+      className="relative aspect-square rounded-2xl text-white shadow-sm active:scale-[0.95] transition-transform flex flex-col items-center justify-center gap-1"
+      style={{ background: m.color }}
+    >
+      <span className="[&>svg]:w-6 [&>svg]:h-6 [&>svg]:stroke-[1.8]">{m.icono}</span>
+      <span className="text-[10.5px] font-bold text-center px-1 leading-[1.1]">{m.titulo}</span>
+      {m.aviso && (
+        <span className="absolute top-1 right-1 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-white text-rose-600 text-[10px] font-black flex items-center justify-center">{m.aviso}</span>
+      )}
+    </button>
+  );
 
 /** Barra superior de color de cada módulo, con el botón para volver al inicio. */
 export const BarraMovil: React.FC<{ titulo: string; color: string; onVolver: () => void; derecha?: React.ReactNode }> = ({ titulo, color, onVolver, derecha }) => (
