@@ -3,6 +3,22 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.5.0 (PC y celular) — Nómina, ICA, control de licencias, manual y videos con voz
+- **Nómina y empleados** (Ley colombiana 2026): con el salario calcula el pago quincenal o
+  mensual: auxilio de transporte, salud y pensión 4 %, fondo de solidaridad pensional,
+  retención procedimiento 1 (art. 383 E.T.), horas extra y recargos (nocturno desde las 7 p. m.,
+  dominical 90 %, jornada de 42 h), aportes del empleador con exoneración del art. 114-1 y
+  provisiones. Prima, cesantías, intereses, vacaciones y **liquidación final** con indemnización
+  del art. 64 CST. Todo valor es editable. **Comprobante de pago** en PDF con membrete, neto en
+  letras, forma de pago, soporte de consignación y firma; envío por WhatsApp o correo.
+- **Industria y comercio (ICA)**: se escoge actividad y tarifa por mil; base desde las ventas
+  del periodo; avisos y tableros, sobretasa bomberil, retenciones y anticipos; historial y PDF.
+- Nómina e ICA solo para el perfil Administración (se pueden dar a otros en Perfiles).
+- **Generador de licencias**: tipo de equipo (PC o celular), estado (vigente, por vencer,
+  vencida, perpetua), filtros, búsqueda, renovar y exportación.
+- Manual de 88 páginas con capítulos de Nómina, ICA, Inventario y versión celular; 21 videos
+  con voz en español y subtítulos; kit de publicidad para redes.
+
 ## 2.4.0 (PC y celular) — Inventario: administra Administración, consultan Ventas y Compras
 - **Saldo = Compras − Ventas ± Ajustes**, escrito arriba de la tabla. Columnas: Compras (+),
   Ventas (−), Ajustes (±, incluye bajas) y Saldo, con totales.
