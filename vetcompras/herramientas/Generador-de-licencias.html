@@ -37,6 +37,13 @@
   table { width:100%; border-collapse:collapse; font-size:12.5px; }
   th, td { text-align:left; padding:7px 6px; border-bottom:1px solid var(--b); vertical-align:top; }
   th { color:var(--g); font-weight:600; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:8px; margin:6px 0 4px; }
+  .kpi { border:1px solid var(--b); border-radius:12px; padding:8px 10px; }
+  .kpi b { display:block; font-size:20px; } .kpi span { font-size:11px; color:var(--g); font-weight:600; text-transform:uppercase; }
+  .chips button { padding:5px 10px; font-size:12px; margin:0 4px 4px 0; } .chips button.on { background:var(--p); color:#fff; border-color:var(--p); }
+  .est { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; white-space:nowrap; }
+  .est.vig { background:#dcfce7; color:#166534; } .est.pro { background:#fef3c7; color:#92400e; } .est.ven { background:#ffe4e6; color:#9f1239; } .est.per { background:#e0e7ff; color:#3730a3; }
+  td button { padding:4px 8px; font-size:12px; }
   .mono { font-family: ui-monospace, Consolas, monospace; }
   .tabla { overflow-x:auto; }
 </style>
@@ -56,8 +63,12 @@
     <p class="estado" id="estado-clave">Sin clave cargada.</p>
 
     <h2 style="margin-top:18px"><span class="n">2</span> Datos de la licencia</h2>
-    <label for="equipo">Código de equipo: del PC o del celular (lo muestra el programa o la app del cliente)</label>
-    <input id="equipo" class="mono" placeholder="3F9A-21C0-7B44-E1D2" autocomplete="off">
+    <div class="fila">
+      <div><label for="tipo-equipo">Tipo de equipo</label>
+        <select id="tipo-equipo"><option value="pc">PC (Windows)</option><option value="celular">Celular Android</option></select></div>
+      <div><label for="equipo">Código de equipo (lo muestra el programa o la app)</label>
+        <input id="equipo" class="mono" placeholder="3F9A-21C0-7B44-E1D2" autocomplete="off"></div>
+    </div>
     <div class="fila">
       <div><label for="cliente">Cliente (razón social o nombre)</label><input id="cliente" placeholder="Ferretería La 14 S.A.S."></div>
       <div><label for="documento">NIT o cédula</label><input id="documento" placeholder="900123456-7"></div>
@@ -94,13 +105,18 @@
   </section>
 
   <section class="tarjeta ancho">
-    <h2>Registro de licencias emitidas (en este navegador)</h2>
+    <h2>Control de licencias (PC y celular)</h2>
+    <div class="kpis" id="kpis"></div>
+    <div class="acciones" style="margin-top:6px;margin-bottom:8px;align-items:center">
+      <span class="chips" id="filtros"></span>
+      <input id="buscar" placeholder="Buscar cliente, NIT, equipo o N.º" style="max-width:260px">
+    </div>
     <div class="acciones" style="margin-top:0;margin-bottom:10px">
       <button id="exportar">Exportar a Excel (CSV)</button>
       <button id="respaldo">Descargar respaldo (.json)</button>
       <button type="button" id="btn-importar">Importar respaldo</button><input type="file" id="importar" accept=".json" hidden>
     </div>
-    <div class="tabla"><table><thead><tr><th>N.º</th><th>Fecha</th><th>Cliente</th><th>Documento</th><th>Equipo</th><th>Edición</th><th>Vence</th><th>Contacto</th></tr></thead><tbody id="registro"></tbody></table></div>
+    <div class="tabla"><table><thead><tr><th>N.º</th><th>Fecha</th><th>Tipo</th><th>Cliente</th><th>Documento</th><th>Equipo</th><th>Edición</th><th>Vence</th><th>Estado</th><th>Contacto</th><th></th></tr></thead><tbody id="registro"></tbody></table></div>
     <p class="estado" style="color:var(--g);font-weight:500">El registro queda guardado en este navegador. Descargue el respaldo con frecuencia: si borra los datos del navegador, se pierde.</p>
   </section>
 </main>
@@ -125,19 +141,52 @@ function siguienteNumero() {
   const usados = leerRegistro().map((x) => x.numero).filter((n) => n && n.startsWith(`L-${anio}-`)).map((n) => Number(n.split("-")[2]) || 0);
   return `L-${anio}-${String((usados.length ? Math.max(...usados) : 0) + 1).padStart(4, "0")}`;
 }
+let filtro = "todas";
+const tipoDe = (r) => r.tipo || "pc";
+function estadoDe(r) {
+  if (!r.vence) return { id: "per", texto: "Perpetua" };
+  const dias = Math.round((new Date(r.vence + "T00:00:00") - new Date(hoyIso() + "T00:00:00")) / 86400000);
+  if (dias < 0) return { id: "ven", texto: `Vencida hace ${-dias} d` };
+  if (dias <= 30) return { id: "pro", texto: dias === 0 ? "Vence hoy" : `Vence en ${dias} d` };
+  return { id: "vig", texto: "Vigente" };
+}
 function pintarRegistro() {
-  const filas = leerRegistro().slice().reverse();
-  $("registro").innerHTML = filas.length ? "" : '<tr><td colspan="8" style="color:var(--g)">Aún no ha emitido licencias en este navegador.</td></tr>';
+  const todas = leerRegistro();
+  const cuenta = (f) => todas.filter(f).length;
+  const kpis = [
+    ["Licencias", todas.length], ["PC", cuenta((r) => tipoDe(r) === "pc")], ["Celular", cuenta((r) => tipoDe(r) === "celular")],
+    ["Vigentes", cuenta((r) => ["vig", "per"].includes(estadoDe(r).id))], ["Por vencer (30 d)", cuenta((r) => estadoDe(r).id === "pro")], ["Vencidas", cuenta((r) => estadoDe(r).id === "ven")],
+  ];
+  $("kpis").innerHTML = kpis.map(([t, v]) => `<div class="kpi"><span>${t}</span><b>${v}</b></div>`).join("");
+  const opciones = [["todas", "Todas"], ["pc", "PC"], ["celular", "Celular"], ["pro", "Por vencer"], ["ven", "Vencidas"]];
+  $("filtros").innerHTML = "";
+  for (const [id, t] of opciones) { const bt = document.createElement("button"); bt.type = "button"; bt.textContent = t; if (filtro === id) bt.className = "on"; bt.onclick = () => { filtro = id; pintarRegistro(); }; $("filtros").append(bt); }
+  const q = ($("buscar").value || "").toLowerCase();
+  const filas = todas.slice().reverse().filter((r) => (filtro === "todas" || tipoDe(r) === filtro || estadoDe(r).id === filtro) && (!q || [r.numero, r.cliente, r.documento, r.equipo].join(" ").toLowerCase().includes(q)));
+  $("registro").innerHTML = filas.length ? "" : '<tr><td colspan="11" style="color:var(--g)">No hay licencias con ese filtro.</td></tr>';
   for (const r of filas) {
     const tr = document.createElement("tr");
-    for (const v of [r.numero, r.fecha, r.cliente, r.documento, r.equipo, r.edicion, r.vence || "Perpetua", r.contacto]) {
-      const td = document.createElement("td"); td.textContent = v || ""; tr.append(td);
+    const est = estadoDe(r);
+    for (const v of [r.numero, r.fecha, tipoDe(r) === "celular" ? "Celular" : "PC", r.cliente, r.documento, r.equipo, r.edicion, r.vence || "Perpetua", null, r.contacto]) {
+      const td = document.createElement("td");
+      if (v === null) td.innerHTML = `<span class="est ${est.id}">${est.texto}</span>`; else td.textContent = v || "";
+      tr.append(td);
     }
-    tr.children[4].className = "mono";
+    tr.children[5].className = "mono";
+    const acc = document.createElement("td");
+    const copiarB = document.createElement("button"); copiarB.type = "button"; copiarB.textContent = "Copiar clave"; copiarB.onclick = () => copiar(r.clave, "estado-generar");
+    const renovar = document.createElement("button"); renovar.type = "button"; renovar.textContent = "Renovar"; renovar.title = "Llena el formulario para emitir la renovación por un año";
+    renovar.onclick = () => {
+      $("tipo-equipo").value = tipoDe(r); $("equipo").value = r.equipo; $("cliente").value = r.cliente; $("documento").value = r.documento || ""; $("edicion").value = r.edicion || "Estándar"; $("contacto").value = r.contacto || "";
+      const base = r.vence && r.vence > hoyIso() ? r.vence : hoyIso(); const d = new Date(base + "T00:00:00"); d.setFullYear(d.getFullYear() + 1);
+      $("vence").value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      $("numero").value = siguienteNumero(); window.scrollTo({ top: 0, behavior: "smooth" });
+      estado("estado-generar", `Renovación lista para ${r.cliente}. Revise y pulse "Generar licencia".`, "ok");
+    };
+    acc.append(copiarB, renovar); tr.append(acc);
     $("registro").append(tr);
   }
 }
-
 $("archivo-clave").addEventListener("change", async (e) => {
   const f = e.target.files[0]; if (!f) return;
   try {
@@ -174,7 +223,7 @@ $("generar").addEventListener("click", async () => {
   $("resultado").value = clave;
   for (const b of ["copiar", "descargar", "copiar-mensaje"]) $(b).disabled = false;
   const r = leerRegistro();
-  r.push({ numero, fecha: hoyIso(), cliente, documento: datos.d || "", equipo, edicion: datos.ed, vence: vence || "", contacto: $("contacto").value.trim(), clave });
+  r.push({ numero, fecha: hoyIso(), tipo: $("tipo-equipo").value, cliente, documento: datos.d || "", equipo, edicion: datos.ed, vence: vence || "", contacto: $("contacto").value.trim(), clave });
   guardarRegistro(r); pintarRegistro();
   $("numero").value = siguienteNumero();
   estado("estado-generar", `Licencia ${numero} generada para ${cliente} (equipo ${equipo}).`, "ok");
@@ -186,7 +235,7 @@ async function copiar(texto, id) {
 }
 $("copiar").addEventListener("click", () => ultima && copiar(ultima.clave, "estado-entrega"));
 $("copiar-mensaje").addEventListener("click", () => ultima && copiar(
-  `Licencia de Sistema de Control 2.0\nCliente: ${ultima.cliente}\nEquipo: ${ultima.equipo}\nN.º ${ultima.numero}\n\nPara activarla: abra el programa (o la app en el celular), pegue esta clave en "Activación de la licencia" y pulse Activar.\n\n${ultima.clave}`,
+  `Licencia de Sistema de Control 2.0 (${$("tipo-equipo").value === "celular" ? "app para celular" : "programa para PC"})\nCliente: ${ultima.cliente}\nEquipo: ${ultima.equipo}\nN.º ${ultima.numero}\n\nPara activarla: abra el programa (o la app en el celular), pegue esta clave en "Activación de la licencia" y pulse Activar.\n\n${ultima.clave}`,
   "estado-entrega"));
 $("descargar").addEventListener("click", () => {
   if (!ultima) return;
@@ -211,8 +260,9 @@ $("verificar").addEventListener("click", async () => {
 
 const descargar = (nombre, texto, tipo) => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([texto], { type: tipo })); a.download = nombre; a.click(); };
 $("exportar").addEventListener("click", () => {
-  const cols = ["numero", "fecha", "cliente", "documento", "equipo", "edicion", "vence", "contacto", "clave"];
-  const csv = "﻿" + [cols.join(";"), ...leerRegistro().map((r) => cols.map((c) => `"${String(r[c] || "").replace(/"/g, '""')}"`).join(";"))].join("\r\n");
+  const cols = ["numero", "fecha", "tipo", "cliente", "documento", "equipo", "edicion", "vence", "estado", "contacto", "clave"];
+  const valor = (r, c) => c === "tipo" ? (tipoDe(r) === "celular" ? "Celular" : "PC") : c === "estado" ? estadoDe(r).texto : r[c];
+  const csv = "﻿" + [cols.join(";"), ...leerRegistro().map((r) => cols.map((c) => `"${String(valor(r, c) || "").replace(/"/g, '""')}"`).join(";"))].join("\r\n");
   descargar(`registro-licencias-${hoyIso()}.csv`, csv, "text/csv");
 });
 $("respaldo").addEventListener("click", () => descargar(`registro-licencias-${hoyIso()}.json`, JSON.stringify(leerRegistro(), null, 2), "application/json"));
@@ -229,6 +279,7 @@ $("importar").addEventListener("change", async (e) => {
   e.target.value = "";
 });
 
+$("buscar").addEventListener("input", pintarRegistro);
 $("numero").value = siguienteNumero();
 pintarRegistro();
 </script>
