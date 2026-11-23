@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { tarifasIva } from '../../utils/valoresLey';
 import {
   AlertTriangle,
   Calculator,
@@ -297,9 +298,9 @@ const EditorFicha: React.FC<{
                 <label>
                   <span className={claseEtiqueta}>IVA que se cobra</span>
                   <select value={f.ivaPct} onChange={(e) => setF({ ...f, ivaPct: Number(e.target.value) })} className={claseInput}>
-                    <option value={0}>No se cobra IVA (0 % / no responsable)</option>
-                    <option value={5}>5 %</option>
-                    <option value={19}>19 %</option>
+                    {tarifasIva(undefined, f.ivaPct).map((t) => (
+                      <option key={t} value={t}>{t === 0 ? 'No se cobra IVA (0 % / no responsable)' : `${t} %`}</option>
+                    ))}
                   </select>
                 </label>
                 <label>

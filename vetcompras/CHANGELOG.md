@@ -3,6 +3,17 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.6.0 (PC y celular) — Valores de ley por año
+- **Configuración › 4. Valores de ley por año**: salario mínimo, auxilio de transporte, UVT,
+  jornada semanal, recargo dominical (con la fecha de cambio dentro del año) y tarifas de IVA.
+  Trae 2025 y 2026; el administrador corrige cualquier año o agrega el nuevo cuando el Gobierno
+  publique los valores. Se guardan en la base de datos y viajan en las copias de seguridad.
+- La nómina, la retención y las prestaciones usan los valores del año de la fecha de cada pago
+  (una quincena de diciembre de 2025 usa los de 2025). Si falta el año, usan el último registrado
+  y lo advierten.
+- Las listas de IVA de compras, ventas, catálogos y precios salen de las tarifas del año; una
+  tarifa ya guardada en un registro se conserva aunque se quite de la lista.
+
 ## 2.5.0 (PC y celular) — Nómina, ICA, control de licencias, manual y videos con voz
 - **Nómina y empleados** (Ley colombiana 2026): con el salario calcula el pago quincenal o
   mensual: auxilio de transporte, salud y pensión 4 %, fondo de solidaridad pensional,

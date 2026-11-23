@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { tarifasIva } from '../../utils/valoresLey';
 import { esMovil, nombreEquipo } from '../../utils/plataforma';
 import { subcategoriasActivas } from '../../utils/subcategorias';
 import {
@@ -985,9 +986,9 @@ export const RevisionFacturaModal: React.FC<RevisionFacturaModalProps> = ({
                             onChange={(e) => handleCambioLinea(linea.id, 'porcentajeIva', Number(e.target.value))}
                             className="w-full px-1.5 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium"
                           >
-                            <option value={0}>0%</option>
-                            <option value={5}>5%</option>
-                            <option value={19}>19%</option>
+                            {tarifasIva(undefined, linea.porcentajeIva).map((t) => (
+                              <option key={t} value={t}>{t}%</option>
+                            ))}
                           </select>
                         </div>
                         <div>

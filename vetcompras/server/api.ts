@@ -57,7 +57,7 @@ function coleccionDe(req: Request): Coleccion {
 }
 
 /** Catálogos que afectan la clasificación tributaria: solo administradores los modifican. */
-const COLECCIONES_ADMIN: Coleccion[] = ['categorias', 'centrosCosto'];
+const COLECCIONES_ADMIN: Coleccion[] = ['categorias', 'centrosCosto', 'valoresLey'];
 
 function exigirAdminSi(req: Request, condicion: boolean) {
   if (condicion && req.usuario?.rol !== 'administrador') {
@@ -92,6 +92,8 @@ function describir(coleccion: Coleccion, r: any): string {
       return `${r.numero || ''} · ${r.empleadoNombre || ''} · ${r.periodoDesde || ''} a ${r.periodoHasta || ''} · ${pesos(r.neto)}`;
     case 'liquidacionesIca':
       return `${r.desde || ''} a ${r.hasta || ''} · tarifa ${r.tarifa}‰ · ${pesos(r.saldoAPagar)}`;
+    case 'valoresLey':
+      return `Año ${r.anio} · mínimo ${pesos(r.smmlv)} · auxilio ${pesos(r.auxilioTransporte)} · UVT ${pesos(r.uvt)} · IVA ${(r.tarifasIva || []).join('/')} %`;
     default:
       return r.nombre || '';
   }
@@ -110,6 +112,7 @@ const NOMBRES_COLECCION: Record<Coleccion, string> = {
   empleados: 'empleado',
   nominas: 'pago de nómina',
   liquidacionesIca: 'liquidación de ICA',
+  valoresLey: 'valores de ley del año',
 };
 
 export interface OpcionesApi {

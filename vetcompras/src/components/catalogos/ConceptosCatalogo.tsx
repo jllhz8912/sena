@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { tarifasIva } from '../../utils/valoresLey';
 import { createPortal } from 'react-dom';
 import { Boxes, Download, Package, Pencil, Plus, Receipt, Search, Stethoscope, Trash2, X } from 'lucide-react';
 import { Categoria, CentroCosto, MovimientoInventario, Producto, UsoConcepto, Venta } from '../../types';
@@ -495,9 +496,9 @@ const ModalConcepto: React.FC<{
               <label className={etiqueta} htmlFor="concepto-iva">Tarifa IVA</label>
               <select id="concepto-iva" value={c.ivaPct ?? ''} onChange={(e) => setC({ ...c, ivaPct: e.target.value === '' ? undefined : Number(e.target.value) })} className={input}>
                 <option value="">Sin definir</option>
-                <option value={0}>0 % (excluido / exento)</option>
-                <option value={5}>5 %</option>
-                <option value={19}>19 %</option>
+                {tarifasIva(undefined, c.ivaPct).map((t) => (
+                  <option key={t} value={t}>{t === 0 ? '0 % (excluido / exento)' : `${t} %`}</option>
+                ))}
               </select>
             </div>
             <div>

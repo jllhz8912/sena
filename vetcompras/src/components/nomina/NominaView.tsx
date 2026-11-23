@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Briefcase, Calculator, ChevronDown, ChevronUp, FileText, Loader2, Pencil, Plus, Upload, UserMinus, UserPlus, Users, X } from 'lucide-react';
+import { ValoresLeyPanel } from '../configuracion/ValoresLeyPanel';
+import { valoresDelAnio, valoresLeyEnMemoria, type ValoresLey } from '../../utils/valoresLey';
 import { dataService } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
 import { formatCOP, formatFecha } from '../../utils/formatters';
 import {
-  MEDIOS_PAGO_NOMINA, MOTIVOS_RETIRO, NOMBRE_TIPO_PAGO, NOVEDADES_VACIAS, PARAMETROS_2026, TARIFAS_ARL,
+  MEDIOS_PAGO_NOMINA, MOTIVOS_RETIRO, NOMBRE_TIPO_PAGO, NOVEDADES_VACIAS, TARIFAS_ARL,
   basePrestaciones, dias360, inicioSemestre, liquidacionFinal, liquidarCesantias, liquidarIntereses, liquidarPago, liquidarPrima, liquidarVacaciones,
   parametrosParaFecha, periodoDe, type Concepto, type Empleado, type MotivoRetiro, type Novedades, type PagoNomina, type ParametrosNomina, type TipoPagoNomina,
 } from '../../utils/nomina';
@@ -24,14 +26,6 @@ const etiqueta = 'block text-[11px] font-semibold text-slate-600 dark:text-slate
 
 type Pestana = 'empleados' | 'liquidar' | 'prestaciones' | 'final' | 'comprobantes';
 
-const CLAVE_PARAMETROS = 'sc-nomina-parametros';
-function parametrosGuardados(): Partial<ParametrosNomina> {
-  try {
-    return JSON.parse(localStorage.getItem(CLAVE_PARAMETROS) || '{}');
-  } catch {
-    return {};
-  }
-}
 
 /** Lista editable de conceptos (devengados o deducciones): todo valor se puede corregir. */
 const EditorConceptos: React.FC<{ titulo: string; lista: Concepto[]; onCambiar: (l: Concepto[]) => void; color: string; idBase: string }> = ({ titulo, lista, onCambiar, color, idBase }) => {
@@ -275,30 +269,23 @@ export const NominaView: React.FC = () => {
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [pagos, setPagos] = useState<PagoNomina[]>([]);
   const [cargando, setCargando] = useState(true);
-  const [ajustes, setAjustes] = useState<Partial<ParametrosNomina>>(parametrosGuardados());
+  const [valores, setValores] = useState<ValoresLey[]>(valoresLeyEnMemoria());
   const [verParametros, setVerParametros] = useState(false);
   const [editando, setEditando] = useState<Empleado | 'nuevo' | null>(null);
   const [comprobante, setComprobante] = useState<PagoNomina | null>(null);
   const [guardando, setGuardando] = useState(false);
 
   const cargar = useCallback(() => {
-    Promise.all([dataService.obtenerEmpleados(), dataService.obtenerPagosNomina()])
-      .then(([e, p]) => (setEmpleados(e), setPagos(p)))
+    Promise.all([dataService.obtenerEmpleados(), dataService.obtenerPagosNomina(), dataService.obtenerValoresLey()])
+      .then(([e, p, v]) => (setEmpleados(e), setPagos(p), setValores(v)))
       .catch((err) => mostrarToast('error', 'Nómina', err?.message))
       .finally(() => setCargando(false));
   }, [mostrarToast]);
   useEffect(cargar, [cargar]);
 
-  const parametros = (fecha: string): ParametrosNomina => ({ ...parametrosParaFecha(fecha, PARAMETROS_2026), ...ajustes });
+  const parametros = (fecha: string): ParametrosNomina => parametrosParaFecha(fecha, valores);
   const pHoy = parametros(hoy());
-  const guardarAjustes = (a: Partial<ParametrosNomina>) => {
-    setAjustes(a);
-    try {
-      localStorage.setItem(CLAVE_PARAMETROS, JSON.stringify(a));
-    } catch {
-      /* se usa en esta sesión */
-    }
-  };
+  const anioSinValores = valoresDelAnio(hoy(), valores).prestado;
   const activos = empleados.filter((e) => e.activo);
   const empleadoDe = (id: string) => empleados.find((e) => e.id === id);
 
@@ -359,29 +346,14 @@ export const NominaView: React.FC = () => {
           {verParametros ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />} Valores de ley {pHoy.anio}: mínimo {formatCOP(pHoy.smmlv)} · auxilio {formatCOP(pHoy.auxilioTransporte)} · UVT{' '}
           {formatCOP(pHoy.uvt)} · jornada {pHoy.horasSemana} h · dominical {pHoy.recargoDominical} %
         </button>
+        {anioSinValores && (
+          <p className="text-xs font-semibold text-amber-700 bg-amber-50 dark:bg-amber-900/20 rounded-xl px-3 py-2">
+            No hay valores de ley registrados para {new Date().getFullYear()}: se están usando los de {pHoy.anio}. Agréguelos en “Valores de ley”.
+          </p>
+        )}
         {verParametros && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-            {(
-              [
-                ['smmlv', 'Salario mínimo'],
-                ['auxilioTransporte', 'Auxilio de transporte'],
-                ['uvt', 'UVT'],
-                ['horasSemana', 'Horas por semana'],
-                ['recargoDominical', 'Recargo dominical %'],
-              ] as const
-            ).map(([k, t]) => (
-              <div key={k}>
-                <label className={etiqueta}>{t}</label>
-                <input inputMode="numeric" value={(ajustes as any)[k] ?? pHoy[k]} onChange={(e) => guardarAjustes({ ...ajustes, [k]: n(e.target.value) })} className={claseInput + ' text-right'} />
-              </div>
-            ))}
-            <label className="flex items-center gap-2 text-xs col-span-2">
-              <input type="checkbox" checked={ajustes.exoneradoParafiscales ?? pHoy.exoneradoParafiscales} onChange={(e) => guardarAjustes({ ...ajustes, exoneradoParafiscales: e.target.checked })} />
-              Exonerado de salud 8,5 %, SENA e ICBF (art. 114-1 E.T.)
-            </label>
-            <button onClick={() => guardarAjustes({})} className="text-xs font-semibold text-blue-600 text-left">
-              Volver a los valores de ley
-            </button>
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+            <ValoresLeyPanel alGuardar={cargar} />
           </div>
         )}
         <div className="flex gap-1.5 overflow-x-auto no-scrollbar">

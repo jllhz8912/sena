@@ -168,6 +168,8 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
         dataService.obtenerCategorias(),
         dataService.obtenerCentrosCosto(),
         dataService.obtenerVentas(),
+        // Valores de ley por año (IVA, salario mínimo, UVT): quedan en memoria para las listas y cálculos
+        dataService.obtenerValoresLey().catch(() => []),
       ]);
       setDocumentos(docs);
       setProveedores(provs);

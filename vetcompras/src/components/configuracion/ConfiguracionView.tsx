@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { ValoresLeyPanel } from './ValoresLeyPanel';
 import {
   Building2,
   Image as ImageIcon,
@@ -13,6 +14,7 @@ import {
   Check,
   Sparkles,
   Receipt,
+  Scale,
   RotateCcw,
   ShieldCheck,
   Globe,
@@ -49,7 +51,7 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
 
   const [empresa, setEmpresa] = useState<EmpresaInfo>(() => dataService.obtenerDatosEmpresa());
   const [guardando, setGuardando] = useState(false);
-  const [seccionActiva, setSeccionActiva] = useState<'datos' | 'marca' | 'recibos'>('datos');
+  const [seccionActiva, setSeccionActiva] = useState<'datos' | 'marca' | 'recibos' | 'valores'>('datos');
 
   const handleChange = (campo: keyof EmpresaInfo, valor: any) => {
     setEmpresa((prev) => ({
@@ -211,7 +213,28 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
           <Receipt className="w-4 h-4" />
           <span>3. Documentos de Venta y Recibos</span>
         </button>
+
+        <button
+          type="button"
+          id="config-valores-ley"
+          onClick={() => setSeccionActiva('valores')}
+          className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all ${
+            seccionActiva === 'valores'
+              ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400 font-bold'
+              : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <Scale className="w-4 h-4" />
+          <span>4. Valores de Ley por Año (IVA, mínimo, UVT)</span>
+        </button>
       </div>
+
+      {/* Fuera del formulario: sus botones guardan cada año por separado */}
+      {seccionActiva === 'valores' && (
+        <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <ValoresLeyPanel />
+        </div>
+      )}
 
       <form onSubmit={handleGuardar} className="space-y-6">
         {/* ============================================================ */}

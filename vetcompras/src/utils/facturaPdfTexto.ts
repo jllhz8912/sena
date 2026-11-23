@@ -9,6 +9,7 @@
  * Lo del QR prevalece porque es el dato oficial; el texto completa lo demás.
  * Estas funciones solo trabajan con texto, así que se prueban sin navegador.
  */
+import { esTarifaIvaConocida } from './valoresLey';
 
 export interface DatosQrDian {
   numero?: string;
@@ -347,7 +348,7 @@ function leerFilaItem(fila: string): ItemLeido | null {
         cantidad: cant,
         valorUnitario: unit,
         total: Math.abs(bruto - total) <= Math.max(2, total * 0.005) ? total : bruto,
-        porcentajeIva: iva && [0, 5, 19].includes(iva) ? iva : undefined,
+        porcentajeIva: iva && esTarifaIvaConocida(iva) ? iva : undefined,
       };
     }
   }

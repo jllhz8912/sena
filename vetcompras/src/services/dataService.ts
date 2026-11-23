@@ -7,6 +7,7 @@ import { administraInventario, modulosDe, type PerfilAcceso } from '../utils/per
 import { fijarEtiquetaReferencia } from '../utils/etiquetas';
 import type { Empleado, PagoNomina } from '../utils/nomina';
 import type { RegistroIca } from '../utils/ica';
+import { fijarValoresLey, unirValores, type ValoresLey } from '../utils/valoresLey';
 
 const CLAVE_PERFIL = 'vetcompras_perfil';
 let perfilActivo: PerfilAcceso | null = null;
@@ -21,7 +22,7 @@ let perfilActivo: PerfilAcceso | null = null;
  * detectan consultando la revisión cada pocos segundos.
  */
 
-type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centrosCosto' | 'observaciones' | 'productos' | 'movimientosInventario' | 'fichasPrecio' | 'empleados' | 'nominas' | 'liquidacionesIca';
+type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centrosCosto' | 'observaciones' | 'productos' | 'movimientosInventario' | 'fichasPrecio' | 'empleados' | 'nominas' | 'liquidacionesIca' | 'valoresLey';
 
 const CLAVE_CACHE_EMPRESA = 'vetcompras_empresa';
 const INTERVALO_SONDEO_MS = 4000;
@@ -938,6 +939,26 @@ export const dataService = {
   },
   async eliminarLiquidacionIca(id: string): Promise<void> {
     await eliminar('liquidacionesIca', id);
+  },
+
+  // ================= VALORES DE LEY POR AÑO =================
+
+  /** Los años guardados unidos con los que trae el programa; actualiza la memoria para las listas de IVA. */
+  async obtenerValoresLey(): Promise<ValoresLey[]> {
+    const guardados = await listar<ValoresLey>('valoresLey').catch(() => [] as ValoresLey[]);
+    fijarValoresLey(guardados);
+    return unirValores(guardados);
+  },
+  /** Solo Administración. */
+  async guardarValoresLey(v: ValoresLey): Promise<void> {
+    const ahora = new Date().toISOString();
+    await guardar('valoresLey', { ...v, id: String(v.anio), creadoEn: v.creadoEn || ahora, actualizadoEn: ahora });
+    await this.obtenerValoresLey();
+  },
+  /** Borra el año guardado: vuelve a los valores que trae el programa (si los trae). */
+  async eliminarValoresLey(anio: number): Promise<void> {
+    await eliminar('valoresLey', String(anio));
+    await this.obtenerValoresLey();
   },
 
   // ================= PRECIOS DE VENTA =================

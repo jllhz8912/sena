@@ -4,6 +4,7 @@
  * líneas entran al inventario al guardar la compra.
  */
 import * as XLSX from 'xlsx';
+import { esTarifaIvaConocida } from '../utils/valoresLey';
 import { LineaFactura } from '../types';
 import { guardarExcel } from './descargaExcel';
 
@@ -93,7 +94,7 @@ export function filasAProductos(filas: Record<string, unknown>[]): { lineas: Lin
     const ivaTexto = valor('iva');
     let iva = ivaTexto === undefined || ivaTexto === '' ? 19 : leerNumero(ivaTexto);
     if (iva > 0 && iva < 1) iva = Math.round(iva * 100); // 0,19 → 19
-    if (![0, 5, 19].includes(iva)) errores.push(`Fila ${n} (${descripcion}): tarifa de IVA ${iva} % poco común; revísela.`);
+    if (!esTarifaIvaConocida(iva)) errores.push(`Fila ${n} (${descripcion}): tarifa de IVA ${iva} % poco común; revísela.`);
     const base = Math.round(cantidad * costo);
     const valorIva = Math.round((base * iva) / 100);
     const venta = leerNumero(valor('venta'));

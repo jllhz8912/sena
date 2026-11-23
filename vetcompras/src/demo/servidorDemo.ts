@@ -28,8 +28,8 @@ import { sirvePara } from '../utils/conceptos';
 import { CATEGORIAS_SERVICIO } from '../utils/formatters';
 import { movimientosAlEliminar, movimientosDeCompra, movimientosDeVenta } from '../utils/inventario';
 
-type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centrosCosto' | 'productos' | 'movimientosInventario' | 'fichasPrecio' | 'empleados' | 'nominas' | 'liquidacionesIca';
-const COLECCIONES: Coleccion[] = ['documentos', 'ventas', 'proveedores', 'categorias', 'centrosCosto', 'productos', 'movimientosInventario', 'fichasPrecio', 'empleados', 'nominas', 'liquidacionesIca'];
+type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centrosCosto' | 'productos' | 'movimientosInventario' | 'fichasPrecio' | 'empleados' | 'nominas' | 'liquidacionesIca' | 'valoresLey';
+const COLECCIONES: Coleccion[] = ['documentos', 'ventas', 'proveedores', 'categorias', 'centrosCosto', 'productos', 'movimientosInventario', 'fichasPrecio', 'empleados', 'nominas', 'liquidacionesIca', 'valoresLey'];
 const NOMBRES: Record<Coleccion, string> = {
   productos: 'producto de inventario',
   movimientosInventario: 'movimiento de inventario',
@@ -37,6 +37,7 @@ const NOMBRES: Record<Coleccion, string> = {
   empleados: 'empleado',
   nominas: 'pago de nómina',
   liquidacionesIca: 'liquidación de ICA',
+  valoresLey: 'valores de ley del año',
   documentos: 'compra/gasto',
   ventas: 'venta',
   proveedores: 'proveedor',
@@ -133,6 +134,7 @@ function datosIniciales(): Datos {
       empleados: [],
       nominas: [],
       liquidacionesIca: [],
+      valoresLey: [],
     },
     // Empresa ficticia de ejemplo: cada cliente configura su propia marca
     empresa: { ...clonar(EMPRESA_DEFECTO), razonSocial: 'EMPRESA DEMO S.A.S.', nombreComercial: 'Empresa Demo', slogan: 'Datos de ejemplo · Sistema de Control 2.0', nit: '', dv: '', etiquetaReferencia: 'Referencia' },

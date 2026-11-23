@@ -12,6 +12,8 @@
  * de salud, SENA e ICBF del empleador).
  */
 
+import { parametrosNominaDe, valoresLeyEnMemoria, type ValoresLey } from './valoresLey';
+
 export interface ParametrosNomina {
   anio: number;
   smmlv: number;
@@ -36,11 +38,12 @@ export const PARAMETROS_2026: ParametrosNomina = {
   exoneradoParafiscales: true,
 };
 
-/** Jornada y recargo dominical según la fecha del periodo (cronograma de las leyes 2101 y 2466). */
-export function parametrosParaFecha(fecha: string, base: ParametrosNomina = PARAMETROS_2026): ParametrosNomina {
-  const horasSemana = fecha >= '2026-07-15' ? 42 : fecha >= '2025-07-15' ? 44 : 46;
-  const recargoDominical = fecha >= '2027-07-01' ? 100 : fecha >= '2026-07-01' ? 90 : 80;
-  return { ...base, horasSemana, recargoDominical };
+/**
+ * Valores de ley que rigen en la fecha del periodo: salario mínimo, auxilio, UVT,
+ * jornada y recargo dominical del año correspondiente (Configuración › Valores de ley).
+ */
+export function parametrosParaFecha(fecha: string, lista: ValoresLey[] = valoresLeyEnMemoria()): ParametrosNomina {
+  return parametrosNominaDe(fecha, lista);
 }
 
 export const TARIFAS_ARL: { clase: number; texto: string; tarifa: number }[] = [

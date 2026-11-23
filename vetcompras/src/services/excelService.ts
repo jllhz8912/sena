@@ -5,6 +5,7 @@
  */
 
 import { nombreSubcategoria } from '../utils/subcategorias';
+import { esTarifaIvaConocida } from '../utils/valoresLey';
 import { etiquetaFormaPago } from '../utils/pagosCompra';
 import * as XLSX from 'xlsx';
 import { guardarExcel } from './descargaExcel';
@@ -1010,7 +1011,7 @@ export async function procesarExcelFacturas(file: File): Promise<{
         descripcion: productoStr,
         cantidad,
         costoUnitario: Math.round(costoUnitario),
-        ivaPct: [0, 5, 19].includes(ivaPct) ? ivaPct : 0,
+        ivaPct: esTarifaIvaConocida(ivaPct) ? ivaPct : 0,
         precioVenta: precioVenta ? Math.round(precioVenta) : undefined,
       };
       if (!costoUnitario) errores.push(`Falta el costo unitario de "${productoStr}".`);

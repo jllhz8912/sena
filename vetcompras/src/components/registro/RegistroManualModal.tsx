@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { tarifasIva } from '../../utils/valoresLey';
 import {
   X,
   FilePenLine,
@@ -724,9 +725,9 @@ export const RegistroManualModal: React.FC<RegistroManualModalProps> = ({
                           <div>
                             <label className="text-slate-500 block mb-0.5">IVA</label>
                             <select value={l.porcentajeIva} onChange={(e) => cambiarLinea(l.id, { porcentajeIva: Number(e.target.value) })} className={input}>
-                              <option value={0}>0 %</option>
-                              <option value={5}>5 %</option>
-                              <option value={19}>19 %</option>
+                              {tarifasIva(undefined, l.porcentajeIva).map((t) => (
+                                <option key={t} value={t}>{t} %</option>
+                              ))}
                             </select>
                           </div>
                           {modo === 'detallada' && esMercancia && afecta && (
