@@ -137,16 +137,17 @@ export const AlertaCopiaSemanal: React.FC = () => {
           </div>
 
           <p id="alerta-copia-texto" className="text-base sm:text-lg font-medium text-red-50">
-            Si el computador se daña, se pierde o se lo roban, la información de la empresa solo se recupera con una copia guardada fuera de
-            {nombreEquipo()}. La última copia de seguridad <strong className="text-white underline">{haceDias(estado.diasSinCopia)}</strong>.
+            Si {esMovil() ? 'el celular' : 'el computador'} se daña, se pierde o se lo roban, la información de la empresa solo se recupera con
+            una copia guardada fuera de {nombreEquipo()}. La última copia de seguridad <strong className="text-white underline">{haceDias(estado.diasSinCopia)}</strong>.
           </p>
 
           <ol className="space-y-2.5 text-sm sm:text-base">
             <li className="flex gap-3 p-3 rounded-2xl bg-red-700/60">
               <HardDriveDownload className="w-6 h-6 shrink-0" />
               <span>
-                <strong>1. Haga la copia:</strong> menú <strong>Copias de Seguridad</strong> → botón <strong>“Copiar y descargar”</strong>. Se descarga un
-                archivo <code className="px-1 rounded bg-red-800">.db</code>.
+                <strong>1. Haga la copia:</strong> menú <strong>Copias de Seguridad</strong> → botón{' '}
+                <strong>{esMovil() ? '“Copiar y compartir”' : '“Copiar y descargar”'}</strong>.{' '}
+                {esMovil() ? 'Escoja Drive, WhatsApp o correo para guardarla.' : <>Se descarga un archivo <code className="px-1 rounded bg-red-800">.db</code>.</>}
               </span>
             </li>
             <li className="flex gap-3 p-3 rounded-2xl bg-red-700/60">

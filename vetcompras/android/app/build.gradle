@@ -7,8 +7,8 @@ android {
         applicationId "com.sistemacontrol.movil"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 5
-        versionName "2.4.0"
+        versionCode 6
+        versionName "2.5.0"
         // ./gradlew assembleRelease -Pprueba  → app aparte "SC Prueba" (no reemplaza la definitiva)
         if (project.hasProperty('prueba')) {
             applicationIdSuffix ".prueba"

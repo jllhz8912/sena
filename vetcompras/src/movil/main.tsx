@@ -24,7 +24,7 @@ import { codigoEquipo, leerClave, verificarLicencia, type EstadoLicencia } from 
 
 /** Versión de prueba: sin licencia, con datos de ejemplo y tope de 60 ventas y 60 compras. */
 const PRUEBA = (import.meta as any).env?.VITE_PRUEBA === '1';
-export const VERSION_MOVIL = PRUEBA ? '2.0.0-movil-prueba' : '2.0.0-movil';
+export const VERSION_MOVIL = PRUEBA ? '2.5.0-movil-prueba' : '2.5.0-movil';
 (window as any).__SISTEMA_CONTROL_MOVIL__ = true;
 
 const nativo = Capacitor.isNativePlatform();

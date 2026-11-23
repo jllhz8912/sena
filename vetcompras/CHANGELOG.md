@@ -18,6 +18,8 @@ hace una copia de seguridad y adapta la base de datos al abrir.
   vencida, perpetua), filtros, búsqueda, renovar y exportación.
 - Manual de 88 páginas con capítulos de Nómina, ICA, Inventario y versión celular; 21 videos
   con voz en español y subtítulos; kit de publicidad para redes.
+- La alerta semanal de copia habla del celular o del PC según dónde corra, con el botón correcto
+  ("Copiar y compartir" en el celular), y la app del celular muestra la versión 2.5.0.
 
 ## 2.4.0 (PC y celular) — Inventario: administra Administración, consultan Ventas y Compras
 - **Saldo = Compras − Ventas ± Ajustes**, escrito arriba de la tabla. Columnas: Compras (+),
