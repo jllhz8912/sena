@@ -21,8 +21,11 @@ import '../index.css';
 import './movil.css';
 import * as almacen from './almacenMovil';
 import { codigoEquipo, leerClave, verificarLicencia, type EstadoLicencia } from './licenciaMovil';
+import { AvisoPrueba } from './AvisoPrueba';
 
-export const VERSION_MOVIL = '2.0.0-movil';
+/** Versión de prueba: sin licencia, con datos de ejemplo y tope de 60 ventas y 60 compras. */
+const PRUEBA = (import.meta as any).env?.VITE_PRUEBA === '1';
+export const VERSION_MOVIL = PRUEBA ? '2.0.0-movil-prueba' : '2.0.0-movil';
 (window as any).__SISTEMA_CONTROL_MOVIL__ = true;
 
 const nativo = Capacitor.isNativePlatform();
@@ -50,12 +53,14 @@ async function iniciar() {
   const id = (await Device.getId()).identifier;
   const equipo = await codigoEquipo('android:' + id);
   let claveGuardada = await almacen.leerLicencia();
-  let licencia: EstadoLicencia = await verificarLicencia(claveGuardada, equipo);
+  let licencia: EstadoLicencia = PRUEBA
+    ? { activa: true, equipo, cliente: 'Versión de prueba (sin licencia)' }
+    : await verificarLicencia(claveGuardada, equipo);
   let diaVerificado = new Date().toISOString().slice(0, 10);
 
   const estadoLicencia = async () => {
     const hoy = new Date().toISOString().slice(0, 10);
-    if (hoy !== diaVerificado) {
+    if (!PRUEBA && hoy !== diaVerificado) {
       licencia = await verificarLicencia(claveGuardada, equipo);
       diaVerificado = hoy;
     }
@@ -73,11 +78,13 @@ async function iniciar() {
     {
       modo: 'movil',
       version: VERSION_MOVIL,
+      ...(PRUEBA ? { limite: 60, datosEjemplo: true } : {}),
       persistir: almacen.guardarEstado,
       guardarRespaldo: almacen.guardarRespaldo,
       async antes(metodo, ruta, cuerpo) {
         // ---- licencia del celular
-        if (ruta === '/licencia' && metodo === 'GET') return { respuesta: { ...(await estadoLicencia()), exigida: true } };
+        if (ruta === '/licencia' && metodo === 'GET') return { respuesta: { ...(await estadoLicencia()), exigida: !PRUEBA, demo: PRUEBA } };
+        if (PRUEBA && ruta === '/licencia') throw new ErrorHttp(400, 'La versión de prueba no usa licencia. Instale la app definitiva para activarla.');
         if (ruta === '/licencia' && metodo === 'POST') {
           const clave = String(cuerpo?.clave || '').replace(/\s+/g, '');
           if (!clave) throw new ErrorHttp(400, 'Pegue la clave de licencia o cargue el archivo .lic.');
@@ -102,7 +109,7 @@ async function iniciar() {
           administrador();
           return {
             respuesta: {
-              carpeta: 'Memoria del celular · cada copia también queda en Documentos/SistemaControl',
+              carpeta: `Memoria del celular · cada copia también queda en Documentos/${almacen.CARPETA_VISIBLE}`,
               carpetaExterna: '',
               ultimoRespaldoExterno: null,
               respaldos: await almacen.listarRespaldos(),
@@ -115,7 +122,7 @@ async function iniciar() {
           const nombre = servidorLocal.crearRespaldo('manual');
           servidorLocal.ultimaCopia('copia manual');
           servidorLocal.auditar(u.usuario, 'Respaldo manual creado', nombre);
-          return { respuesta: { ok: true, ruta: `Documentos/SistemaControl/${nombre}`, externo: null } };
+          return { respuesta: { ok: true, ruta: `Documentos/${almacen.CARPETA_VISIBLE}/${nombre}`, externo: null } };
         }
         const m = ruta.match(/^\/respaldos\/([^/]+)\/restaurar$/);
         if (m && metodo === 'POST') {
@@ -138,7 +145,7 @@ async function iniciar() {
           throw new ErrorHttp(400, 'En el celular se cargan copias .json. Si la copia viene del PC, allá use "Datos y Respaldo → Exportar respaldo completo" y cargue ese archivo .json aquí.');
         }
         if (ruta === '/respaldos/abrir-carpeta') {
-          return { respuesta: { abierta: false, carpeta: 'Las copias quedan en Documentos › SistemaControl. Ábrala con la app "Archivos" o "Mis archivos" del celular.' } };
+          return { respuesta: { abierta: false, carpeta: `Las copias quedan en Documentos › ${almacen.CARPETA_VISIBLE}. Ábrala con la app "Archivos" o "Mis archivos" del celular.` } };
         }
         if (ruta === '/respaldos/externo') {
           throw new ErrorHttp(400, 'En el celular use "Compartir copia" para enviarla a Drive, WhatsApp o correo.');
@@ -195,6 +202,7 @@ async function iniciar() {
     <>
       <App />
       <AlertaCopiaSemanal />
+      {PRUEBA && <AvisoPrueba />}
     </>
   );
 }

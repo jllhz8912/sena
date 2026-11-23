@@ -90,6 +90,10 @@ export interface OpcionesServidorLocal {
   persistir?: (json: string) => Promise<void>;
   guardarRespaldo?: (nombre: string, contenido: string) => Promise<void>;
   antes?: (metodo: string, ruta: string, cuerpo: any, query: URLSearchParams) => Promise<{ respuesta: unknown } | null>;
+  /** Tope de ventas y de compras (versión de prueba). Sin valor: sin tope en 'movil'. */
+  limite?: number;
+  /** Instalación nueva con compras y ventas de ejemplo (versión de prueba). */
+  datosEjemplo?: boolean;
 }
 let opciones: OpcionesServidorLocal = { modo: 'demo', version: '2.0.0-demo' };
 /** Escrituras a disco en curso: cada respuesta espera a que terminen (lo guardado queda guardado). */
@@ -278,11 +282,15 @@ function crearRespaldo(motivo: string) {
 /** Tope de la demostración: es para conocer el programa, no para operar un negocio. */
 export const LIMITE_DEMO = 60;
 function limiteDemo(c: Coleccion, nuevos: number) {
-  if (opciones.modo === 'movil') return;
-  if ((c === 'ventas' || c === 'documentos') && nuevos > 0 && estado.colecciones[c].length + nuevos > LIMITE_DEMO) {
+  const tope = opciones.limite ?? (opciones.modo === 'demo' ? LIMITE_DEMO : 0);
+  if (!tope) return;
+  if ((c === 'ventas' || c === 'documentos') && nuevos > 0 && estado.colecciones[c].length + nuevos > tope) {
+    const que = c === 'ventas' ? 'ventas' : 'compras y gastos';
     throw new ErrorHttp(
       402,
-      `La demostración permite hasta ${LIMITE_DEMO} ${c === 'ventas' ? 'ventas' : 'compras y gastos'}. Para uso real instale Sistema de Control 2.0 con su licencia.`
+      opciones.modo === 'movil'
+        ? `La versión de prueba permite hasta ${tope} ${que}. Para uso real instale la app con licencia.`
+        : `La demostración permite hasta ${tope} ${que}. Para uso real instale Sistema de Control 2.0 con su licencia.`
     );
   }
 }
@@ -778,8 +786,15 @@ export function iniciarServidorLocal(o: OpcionesServidorLocal, guardado: string 
     };
     e.colecciones.proveedores = [];
     e.auditoria = [{ fecha: ahoraIso(), usuario: '(sistema)', accion: 'Instalación nueva en el celular' }];
+    if (o.datosEjemplo) {
+      // Versión de prueba: compras y ventas de ejemplo para recorrer todos los módulos
+      const d = datosIniciales();
+      e.colecciones = d.colecciones;
+      e.empresa = { ...d.empresa, razonSocial: 'EMPRESA DE PRUEBA S.A.S.', nombreComercial: 'Empresa de Prueba', slogan: 'Versión de prueba · datos de ejemplo' };
+    }
   }
   estado = e;
+  if (!guardado && o.datosEjemplo) recalcularInventarioDemo();
   return estado.revision === 1 && !guardado;
 }
 

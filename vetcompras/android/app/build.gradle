@@ -9,6 +9,14 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "2.0.0"
+        // ./gradlew assembleRelease -Pprueba  → app aparte "SC Prueba" (no reemplaza la definitiva)
+        if (project.hasProperty('prueba')) {
+            applicationIdSuffix ".prueba"
+            versionNameSuffix "-prueba"
+            manifestPlaceholders = [nombreApp: "SC Prueba"]
+        } else {
+            manifestPlaceholders = [nombreApp: "@string/app_name"]
+        }
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

@@ -14,7 +14,8 @@ import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
 
 const CARPETA = 'sistemacontrol';
 const RESPALDOS = `${CARPETA}/respaldos`;
-export const CARPETA_VISIBLE = 'SistemaControl';
+/** La versión de prueba usa su propia carpeta para no mezclar copias con la app definitiva. */
+export const CARPETA_VISIBLE = (import.meta as any).env?.VITE_PRUEBA === '1' ? 'SistemaControl-Prueba' : 'SistemaControl';
 const MAX_RESPALDOS = 40;
 
 const privado = { directory: Directory.Data };

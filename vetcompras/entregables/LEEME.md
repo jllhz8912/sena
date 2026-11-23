@@ -11,6 +11,7 @@
 | `Videos-Usuario-Sistema-de-Control-2.0.zip` | 15 videos: instalación, activación y cada módulo, con LEAME. |
 | `Plantilla_Compras_SistemaControl.xlsx` | Plantilla Excel para Cargar Compras. |
 | `SistemaControl-Movil-2.0.apk` | **App para celulares Android** (7 o superior). Mismas pantallas y módulos del PC; guarda todo en el celular, sin internet; copias diarias y manuales en *Documentos › SistemaControl*; "Copiar y compartir" a Drive/WhatsApp. Licencia por celular. |
+| `SistemaControl-Movil-PRUEBA.apk` | **Versión de prueba del celular** (app aparte "SC Prueba"): no pide licencia, trae datos de ejemplo y permite hasta 60 ventas y 60 compras. Para revisarla o mostrarla; no reemplaza la definitiva. |
 | `Guia-Sistema-de-Control-Movil-2.0.pdf` | Guía del celular (8 páginas con pantallazos): instalar el APK, activar, primer uso, copias, pasar datos PC ↔ celular, cambio de celular y problemas frecuentes. |
 | `Video-Instalacion-celular-Sistema-de-Control-Movil.mp4` | Video vertical de 5½ min con voz en español latino: instalar en Android, activar, empresa, primera venta y copia de seguridad. |
 | `Sistema-de-Control-2.0-DEMO.html` | Demostración para prospectos, sin licencia (máx. 60 ventas y 60 compras). |
@@ -43,3 +44,4 @@ SHA-256:
 - SistemaControl-Movil-2.0.apk: `2821948131898cc2c97021c9652e07f6d211f38be0a245e3ee07a80052632fdb`
 - Guia-Sistema-de-Control-Movil-2.0.pdf: `229de600435afafe4f6f2f70c564451e1e2084898974ad7636184180d289b428`
 - Video-Instalacion-celular-Sistema-de-Control-Movil.mp4: `d7616fe5ff5115d3cb983392bb54ec7b4eb8e390f0b8d5d045f14ba1ad6da5fc`
+- SistemaControl-Movil-PRUEBA.apk: `b2639ed80700d28daec247984f0c92f3743604529c105e75da68d67fee1dd83b`
