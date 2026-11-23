@@ -3,6 +3,17 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.3.0 Móvil — Inventario del celular con submódulo de ajustes
+- **Existencias**: cada producto con foto, saldo y estado (agotado, bajo, negativo), y de dónde
+  salió el saldo (+ compras, − ventas, − bajas, ± ajustes). Las compras suman y las ventas
+  restan solas.
+- **Ajustes** (tocando un producto): *Conteo físico* (escribe cuántas hay y el sistema calcula la
+  diferencia), *Sumar*, *Restar* o *Dar de baja* (vencido, dañado, pérdida, consumo interno…),
+  con vista previa de cómo queda el saldo.
+- Pestaña **Ajustes**: historial de correcciones; cualquiera se puede **deshacer**.
+- Pestaña **Movimientos**: kárdex con compras (+), ventas (−) y ajustes.
+- Los avisos emergentes salen arriba en el celular para no tapar los formularios.
+
 ## 2.2.0 Móvil — Cuadros más pequeños, autosuma y datos del cliente
 - Inicio más compacto: Vender y Compras como barras de color y el resto en mosaicos de 4 columnas.
 - Caja en 4 columnas. El ticket queda siempre a la vista con su **autosuma**: cantidad × precio

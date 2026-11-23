@@ -41,6 +41,7 @@ import { esMovil } from './utils/plataforma';
 import { InicioMovil, BarraMovil, COLOR_PANTALLA, type PantallaMovil } from './components/movil/InicioMovil';
 import { CajaMovil } from './components/movil/CajaMovil';
 import { ComprasMovil } from './components/movil/ComprasMovil';
+import { InventarioMovil } from './components/movil/InventarioMovil';
 import { logoDe } from './data/marca';
 
 /** Perfiles a los que ya se les mostraron los avisos de copias y vencimientos en esta sesión */
@@ -487,6 +488,7 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
     const empresa = dataService.obtenerDatosEmpresa();
     const titulosMovil: Partial<Record<PantallaMovil, string>> = {
       caja: 'Vender',
+      inventario: 'Inventario',
       productos: 'Productos y fotos',
       compras_movil: 'Compras',
       ventas: 'Ventas y clientes',
@@ -498,7 +500,7 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
       seguridad: 'Perfiles y bitácora',
     };
     const ir = (p: PantallaMovil) => {
-      if (!['caja', 'productos', 'compras_movil', 'inicio'].includes(p)) setCurrentTab(p as NavItem);
+      if (!['caja', 'productos', 'compras_movil', 'inicio', 'inventario'].includes(p)) setCurrentTab(p as NavItem);
       setPantallaMovil(p);
     };
     return (
@@ -523,6 +525,10 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
             {pantallaMovil === 'caja' || pantallaMovil === 'productos' ? (
               <div className="flex-1 min-h-0">
                 <CajaMovil key={pantallaMovil} modo={pantallaMovil === 'caja' ? 'vender' : 'editar'} ventas={ventas} onVentaGuardada={recargarDatos} />
+              </div>
+            ) : pantallaMovil === 'inventario' ? (
+              <div className="flex-1 min-h-0">
+                <InventarioMovil />
               </div>
             ) : pantallaMovil === 'compras_movil' ? (
               <div className="flex-1 overflow-y-auto">
