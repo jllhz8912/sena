@@ -3,6 +3,19 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.1.0 Móvil — Nueva cara para el celular
+- **Inicio con mosaicos de colores**: Vender y Compras grandes; Productos, Inventario, Por pagar,
+  Reportes, Ventas y clientes, Copias, Configuración y demás en mosaicos (según el perfil).
+  Resumen del día: vendido hoy y saldo por pagar.
+- **Caja con fotos**: pestañas por categoría y "Más vendidos", cuadrícula de productos con foto,
+  búsqueda, ticket con cantidades, **Cobrar** (medio de pago, valores sugeridos y cambio) y
+  **Guardar** (a crédito con nombre del cliente). Recibo PDF / WhatsApp al terminar.
+- **Fotos de productos** con la cámara o la galería (miniatura de unos 15 KB dentro del producto,
+  viaja con las copias y se ve también en el PC).
+- **Compras por foto**: "Tomar foto a la factura" (QR DIAN, texto y OCR en el celular),
+  "Subir factura electrónica" (XML, ZIP o PDF) y "Registrar a mano"; últimas compras abajo.
+- Botón "atrás" de Android: cierra la ventana abierta, vuelve al inicio o minimiza la app.
+
 ## 2.0.0 Móvil — App para celulares Android
 Las mismas pantallas y módulos del PC, instalados dentro del celular (APK):
 - **Datos en el celular, sin internet**: cada operación se guarda al instante en la memoria

@@ -37,6 +37,11 @@ import { PanelCompras } from './components/dashboard/PanelCompras';
 import { ReportesVentasPerfil } from './components/reportes/ReportesVentasPerfil';
 import { ReportesComprasPerfil } from './components/reportes/ReportesComprasPerfil';
 import { PerfilAcceso, modulosDe, moduloInicial } from './utils/perfiles';
+import { esMovil } from './utils/plataforma';
+import { InicioMovil, BarraMovil, COLOR_PANTALLA, type PantallaMovil } from './components/movil/InicioMovil';
+import { CajaMovil } from './components/movil/CajaMovil';
+import { ComprasMovil } from './components/movil/ComprasMovil';
+import { logoDe } from './data/marca';
 
 /** Perfiles a los que ya se les mostraron los avisos de copias y vencimientos en esta sesión */
 const avisosMostrados = new Set<string>();
@@ -114,6 +119,17 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
     return () => window.removeEventListener(EVENTO_IR_A_COPIAS, irACopias);
   }, []);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Celular: inicio con mosaicos y pantallas a pantalla completa
+  const movil = esMovil();
+  const [pantallaMovil, setPantallaMovil] = useState<PantallaMovil>('inicio');
+  const [archivosFactura, setArchivosFactura] = useState<File[] | undefined>(undefined);
+  useEffect(() => {
+    if (!movil) return;
+    (window as any).__scEnInicio = pantallaMovil === 'inicio';
+    const atras = () => setPantallaMovil('inicio');
+    window.addEventListener('sc-atras', atras);
+    return () => window.removeEventListener('sc-atras', atras);
+  }, [movil, pantallaMovil]);
   const [mobileMenuAbierto, setMobileMenuAbierto] = useState(false);
 
   // Datos en estado local (provenientes del servidor local SQLite)
@@ -248,6 +264,300 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
     copias: 'Copias de Seguridad',
   };
 
+  const vistaModulo = (
+    <div className="max-w-7xl mx-auto space-y-6">
+      {currentTab === 'reportes_ventas' && (
+        <ReportesVentasPerfil
+          ventas={ventas}
+          onEditarVenta={
+            puede('ventas') || puede('reportes_ventas')
+              ? (v) => {
+                  setVentaParaEditar(v);
+                  setModalVentaAbierto(true);
+                }
+              : undefined
+          }
+        />
+      )}
+
+      {currentTab === 'reportes_compras' && (
+        <ReportesComprasPerfil documentos={documentos} categorias={categorias} onEditarDocumento={handleEditarDocumento} />
+      )}
+
+      {currentTab === 'panel_ventas' && (
+        <PanelVentas
+          ventas={ventas}
+          onNuevaVenta={puede('ventas') ? () => setModalVentaAbierto(true) : undefined}
+          onIrAVentas={puede('ventas') ? () => setCurrentTab('ventas') : undefined}
+        />
+      )}
+
+      {currentTab === 'panel_compras' && (
+        <PanelCompras
+          documentos={documentos}
+          categorias={categorias}
+          onNuevaCompra={
+            puede('compras')
+              ? () => {
+                  setDocumentoParaEditar(undefined);
+                  setModalManualAbierto(true);
+                }
+              : undefined
+          }
+          onIrACompras={puede('compras') ? () => setCurrentTab('compras') : undefined}
+          onIrACuentasPorPagar={puede('cuentas_pagar') ? () => setCurrentTab('cuentas_pagar') : undefined}
+        />
+      )}
+
+      {currentTab === 'dashboard' && (
+        <DashboardView
+          documentos={documentos}
+          categorias={categorias}
+          centrosCosto={centrosCosto}
+          ventas={ventas}
+          onIrACompras={() => setCurrentTab('compras')}
+          onIrACuentasPorPagar={() => setCurrentTab('cuentas_pagar')}
+          onIrAVentas={() => setCurrentTab('ventas')}
+          onIrACargarFactura={() => setModalCargaAbierto(true)}
+          onIrACargarExcel={() => setModalExcelAbierto(true)}
+          onIrAReportes={() => setCurrentTab('reportes')}
+        />
+      )}
+
+      {currentTab === 'ventas' && (
+        <VentasView
+          ventas={ventas}
+          onDatosActualizados={recargarDatos}
+        />
+      )}
+
+      {currentTab === 'compras' && (
+        <ListadoDocumentos
+          documentos={documentos}
+          categorias={categorias}
+          centrosCosto={centrosCosto}
+          proveedores={proveedores}
+          onDatosActualizados={recargarDatos}
+          onEditarDocumento={handleEditarDocumento}
+          onAbrirCargaFactura={() => setModalCargaAbierto(true)}
+          onAbrirCargaExcel={() => setModalExcelAbierto(true)}
+          onAbrirRegistroManual={() => {
+            setDocumentoParaEditar(undefined);
+            setModalManualAbierto(true);
+          }}
+        />
+      )}
+
+      {currentTab === 'copias' && (
+        <CopiasSeguridadView onSesionTerminada={onSalir} onDatosActualizados={recargarDatos} />
+      )}
+
+      {currentTab === 'precios' && (
+        <PreciosView
+          onFacturar={(items) => {
+            setItemsVentaIniciales(items);
+            setModalVentaAbierto(true);
+          }}
+        />
+      )}
+
+      {currentTab === 'inventario' && (
+        <InventarioView onIrACompras={() => setCurrentTab('compras')} />
+      )}
+
+      {currentTab === 'cuentas_pagar' && (
+        <CuentasPorPagarView documentos={documentos} onDatosActualizados={recargarDatos} />
+      )}
+
+      {currentTab === 'reportes' && (
+        <ReportesView
+          documentos={documentos}
+          categorias={categorias}
+          centrosCosto={centrosCosto}
+          proveedores={proveedores}
+          ventas={ventas}
+        />
+      )}
+
+      {currentTab === 'catalogos' && (
+        <CatalogosView
+          proveedores={proveedores}
+          categorias={categorias}
+          centrosCosto={centrosCosto}
+          ventas={ventas}
+          onDatosActualizados={recargarDatos}
+        />
+      )}
+
+      {currentTab === 'seguridad' && dataService.esAdministrador() && <SeguridadView onSesionTerminada={onSalir} />}
+
+      {currentTab === 'configuracion' && (
+        <ConfiguracionView
+          onDatosActualizados={recargarDatos}
+        />
+      )}
+    </div>
+  );
+
+  const modales = (
+    <>
+      {/* Modal Carga Factura Electrónica (XML / PDF / ZIP) */}
+      {modalCargaAbierto && (
+        <CargaFacturaModal
+          archivosIniciales={archivosFactura}
+          categorias={categorias}
+          centrosCosto={centrosCosto}
+          proveedores={proveedores}
+          onFacturaGuardada={() => {
+            recargarDatos();
+            setCurrentTab('compras');
+          }}
+          onAbrirCargaExcel={() => setModalExcelAbierto(true)}
+          onCerrar={() => {
+            setModalCargaAbierto(false);
+            setArchivosFactura(undefined);
+          }}
+        />
+      )}
+
+      {/* Modal Importar Facturas desde Excel */}
+      {modalExcelAbierto && (
+        <CargaExcelModal
+          categorias={categorias}
+          centrosCosto={centrosCosto}
+          proveedores={proveedores}
+          onFacturasImportadas={() => {
+            recargarDatos();
+            setCurrentTab('compras');
+          }}
+          onCerrar={() => setModalExcelAbierto(false)}
+        />
+      )}
+
+      {/* Modal Registro Manual (o edición de compras/gastos) */}
+      {modalManualAbierto && (
+        <RegistroManualModal
+          categorias={categorias}
+          centrosCosto={centrosCosto}
+          proveedores={proveedores}
+          documentoParaEditar={documentoParaEditar}
+          detallado={manualDetallado}
+          onGuardado={() => {
+            // Al corregir desde un reporte o un panel se queda en esa pantalla
+            if (!documentoParaEditar) setCurrentTab(manualDetallado ? 'inventario' : 'compras');
+            setManualDetallado(false);
+            setModalManualAbierto(false);
+            setDocumentoParaEditar(undefined);
+            recargarDatos();
+          }}
+          onCerrar={() => {
+            setManualDetallado(false);
+            setModalManualAbierto(false);
+            setDocumentoParaEditar(undefined);
+          }}
+          onProveedorCreado={recargarDatos}
+        />
+      )}
+
+      {/* Modal Registro Rápido de Venta */}
+      {modalVentaAbierto && (
+        <ModalRegistroVenta
+          itemsIniciales={itemsVentaIniciales}
+          ventaParaEditar={ventaParaEditar}
+          onGuardado={() => {
+            const editando = !!ventaParaEditar;
+            setItemsVentaIniciales(undefined);
+            setVentaParaEditar(undefined);
+            setModalVentaAbierto(false);
+            recargarDatos();
+            // Al corregir desde un reporte se queda en el reporte
+            if (!editando) setCurrentTab('ventas');
+          }}
+          onCerrar={() => {
+            setItemsVentaIniciales(undefined);
+            setVentaParaEditar(undefined);
+            setModalVentaAbierto(false);
+          }}
+        />
+      )}
+    </>
+  );
+
+  if (movil) {
+    const empresa = dataService.obtenerDatosEmpresa();
+    const titulosMovil: Partial<Record<PantallaMovil, string>> = {
+      caja: 'Vender',
+      productos: 'Productos y fotos',
+      compras_movil: 'Compras',
+      ventas: 'Ventas y clientes',
+      compras: 'Lista de compras',
+      reportes_ventas: 'Reportes de ventas',
+      reportes_compras: 'Reportes de compras',
+      cuentas_pagar: 'Por pagar',
+      dashboard: 'Panel general',
+      seguridad: 'Perfiles y bitácora',
+    };
+    const ir = (p: PantallaMovil) => {
+      if (!['caja', 'productos', 'compras_movil', 'inicio'].includes(p)) setCurrentTab(p as NavItem);
+      setPantallaMovil(p);
+    };
+    return (
+      <div className="fixed left-0 right-0 bottom-0 flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans" style={{ top: 'var(--sa-top, 0px)' }}>
+        {pantallaMovil === 'inicio' ? (
+          <div className="flex-1 overflow-y-auto">
+            <InicioMovil
+              empresa={{ nombre: empresa.nombreComercial || empresa.razonSocial || MARCA.nombre, logo: logoDe(empresa) }}
+              perfil={perfil.nombre}
+              puede={puede}
+              ventas={ventas}
+              documentos={documentos}
+              copiaPendiente={estadoRecordatorio(estadoCopias).vencido}
+              onIr={ir}
+              onCambiarPerfil={onCambiarPerfil}
+              onSalir={onSalir}
+            />
+          </div>
+        ) : (
+          <>
+            <BarraMovil titulo={titulosMovil[pantallaMovil] || titulos[pantallaMovil as NavItem] || ''} color={COLOR_PANTALLA[pantallaMovil] || '#334155'} onVolver={() => setPantallaMovil('inicio')} />
+            {pantallaMovil === 'caja' || pantallaMovil === 'productos' ? (
+              <div className="flex-1 min-h-0">
+                <CajaMovil key={pantallaMovil} modo={pantallaMovil === 'caja' ? 'vender' : 'editar'} ventas={ventas} onVentaGuardada={recargarDatos} />
+              </div>
+            ) : pantallaMovil === 'compras_movil' ? (
+              <div className="flex-1 overflow-y-auto">
+                <ComprasMovil
+                  documentos={documentos}
+                  onArchivos={(archivos) => {
+                    setArchivosFactura(archivos);
+                    setModalCargaAbierto(true);
+                  }}
+                  onManual={() => {
+                    setDocumentoParaEditar(undefined);
+                    setModalManualAbierto(true);
+                  }}
+                  onEditar={handleEditarDocumento}
+                  onVerTodas={() => ir('compras')}
+                />
+              </div>
+            ) : (
+              <main className="flex-1 overflow-y-auto p-3" style={{ paddingBottom: 'calc(2rem + var(--sa-bottom, 0px))' }}>
+                {cargando ? (
+                  <div className="h-64 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+                  </div>
+                ) : (
+                  vistaModulo
+                )}
+              </main>
+            )}
+          </>
+        )}
+        {modales}
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
       {/* Barra Lateral (Sidebar) */}
@@ -322,138 +632,7 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
               </button>
             </div>
           ) : (
-            <div className="max-w-7xl mx-auto space-y-6">
-              {currentTab === 'reportes_ventas' && (
-                <ReportesVentasPerfil
-                  ventas={ventas}
-                  onEditarVenta={
-                    puede('ventas') || puede('reportes_ventas')
-                      ? (v) => {
-                          setVentaParaEditar(v);
-                          setModalVentaAbierto(true);
-                        }
-                      : undefined
-                  }
-                />
-              )}
-
-              {currentTab === 'reportes_compras' && (
-                <ReportesComprasPerfil documentos={documentos} categorias={categorias} onEditarDocumento={handleEditarDocumento} />
-              )}
-
-              {currentTab === 'panel_ventas' && (
-                <PanelVentas
-                  ventas={ventas}
-                  onNuevaVenta={puede('ventas') ? () => setModalVentaAbierto(true) : undefined}
-                  onIrAVentas={puede('ventas') ? () => setCurrentTab('ventas') : undefined}
-                />
-              )}
-
-              {currentTab === 'panel_compras' && (
-                <PanelCompras
-                  documentos={documentos}
-                  categorias={categorias}
-                  onNuevaCompra={
-                    puede('compras')
-                      ? () => {
-                          setDocumentoParaEditar(undefined);
-                          setModalManualAbierto(true);
-                        }
-                      : undefined
-                  }
-                  onIrACompras={puede('compras') ? () => setCurrentTab('compras') : undefined}
-                  onIrACuentasPorPagar={puede('cuentas_pagar') ? () => setCurrentTab('cuentas_pagar') : undefined}
-                />
-              )}
-
-              {currentTab === 'dashboard' && (
-                <DashboardView
-                  documentos={documentos}
-                  categorias={categorias}
-                  centrosCosto={centrosCosto}
-                  ventas={ventas}
-                  onIrACompras={() => setCurrentTab('compras')}
-                  onIrACuentasPorPagar={() => setCurrentTab('cuentas_pagar')}
-                  onIrAVentas={() => setCurrentTab('ventas')}
-                  onIrACargarFactura={() => setModalCargaAbierto(true)}
-                  onIrACargarExcel={() => setModalExcelAbierto(true)}
-                  onIrAReportes={() => setCurrentTab('reportes')}
-                />
-              )}
-
-              {currentTab === 'ventas' && (
-                <VentasView
-                  ventas={ventas}
-                  onDatosActualizados={recargarDatos}
-                />
-              )}
-
-              {currentTab === 'compras' && (
-                <ListadoDocumentos
-                  documentos={documentos}
-                  categorias={categorias}
-                  centrosCosto={centrosCosto}
-                  proveedores={proveedores}
-                  onDatosActualizados={recargarDatos}
-                  onEditarDocumento={handleEditarDocumento}
-                  onAbrirCargaFactura={() => setModalCargaAbierto(true)}
-                  onAbrirCargaExcel={() => setModalExcelAbierto(true)}
-                  onAbrirRegistroManual={() => {
-                    setDocumentoParaEditar(undefined);
-                    setModalManualAbierto(true);
-                  }}
-                />
-              )}
-
-              {currentTab === 'copias' && (
-                <CopiasSeguridadView onSesionTerminada={onSalir} onDatosActualizados={recargarDatos} />
-              )}
-
-              {currentTab === 'precios' && (
-                <PreciosView
-                  onFacturar={(items) => {
-                    setItemsVentaIniciales(items);
-                    setModalVentaAbierto(true);
-                  }}
-                />
-              )}
-
-              {currentTab === 'inventario' && (
-                <InventarioView onIrACompras={() => setCurrentTab('compras')} />
-              )}
-
-              {currentTab === 'cuentas_pagar' && (
-                <CuentasPorPagarView documentos={documentos} onDatosActualizados={recargarDatos} />
-              )}
-
-              {currentTab === 'reportes' && (
-                <ReportesView
-                  documentos={documentos}
-                  categorias={categorias}
-                  centrosCosto={centrosCosto}
-                  proveedores={proveedores}
-                  ventas={ventas}
-                />
-              )}
-
-              {currentTab === 'catalogos' && (
-                <CatalogosView
-                  proveedores={proveedores}
-                  categorias={categorias}
-                  centrosCosto={centrosCosto}
-                  ventas={ventas}
-                  onDatosActualizados={recargarDatos}
-                />
-              )}
-
-              {currentTab === 'seguridad' && dataService.esAdministrador() && <SeguridadView onSesionTerminada={onSalir} />}
-
-              {currentTab === 'configuracion' && (
-                <ConfiguracionView
-                  onDatosActualizados={recargarDatos}
-                />
-              )}
-            </div>
+            vistaModulo
           )}
         </main>
       </div>
@@ -475,81 +654,7 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
         />
       )}
 
-      {/* Modal Carga Factura Electrónica (XML / PDF / ZIP) */}
-      {modalCargaAbierto && (
-        <CargaFacturaModal
-          categorias={categorias}
-          centrosCosto={centrosCosto}
-          proveedores={proveedores}
-          onFacturaGuardada={() => {
-            recargarDatos();
-            setCurrentTab('compras');
-          }}
-          onAbrirCargaExcel={() => setModalExcelAbierto(true)}
-          onCerrar={() => setModalCargaAbierto(false)}
-        />
-      )}
-
-      {/* Modal Importar Facturas desde Excel */}
-      {modalExcelAbierto && (
-        <CargaExcelModal
-          categorias={categorias}
-          centrosCosto={centrosCosto}
-          proveedores={proveedores}
-          onFacturasImportadas={() => {
-            recargarDatos();
-            setCurrentTab('compras');
-          }}
-          onCerrar={() => setModalExcelAbierto(false)}
-        />
-      )}
-
-      {/* Modal Registro Manual (o edición de compras/gastos) */}
-      {modalManualAbierto && (
-        <RegistroManualModal
-          categorias={categorias}
-          centrosCosto={centrosCosto}
-          proveedores={proveedores}
-          documentoParaEditar={documentoParaEditar}
-          detallado={manualDetallado}
-          onGuardado={() => {
-            // Al corregir desde un reporte o un panel se queda en esa pantalla
-            if (!documentoParaEditar) setCurrentTab(manualDetallado ? 'inventario' : 'compras');
-            setManualDetallado(false);
-            setModalManualAbierto(false);
-            setDocumentoParaEditar(undefined);
-            recargarDatos();
-          }}
-          onCerrar={() => {
-            setManualDetallado(false);
-            setModalManualAbierto(false);
-            setDocumentoParaEditar(undefined);
-          }}
-          onProveedorCreado={recargarDatos}
-        />
-      )}
-
-      {/* Modal Registro Rápido de Venta */}
-      {modalVentaAbierto && (
-        <ModalRegistroVenta
-          itemsIniciales={itemsVentaIniciales}
-          ventaParaEditar={ventaParaEditar}
-          onGuardado={() => {
-            const editando = !!ventaParaEditar;
-            setItemsVentaIniciales(undefined);
-            setVentaParaEditar(undefined);
-            setModalVentaAbierto(false);
-            recargarDatos();
-            // Al corregir desde un reporte se queda en el reporte
-            if (!editando) setCurrentTab('ventas');
-          }}
-          onCerrar={() => {
-            setItemsVentaIniciales(undefined);
-            setVentaParaEditar(undefined);
-            setModalVentaAbierto(false);
-          }}
-        />
-      )}
+      {modales}
     </div>
   );
 }

@@ -21,7 +21,6 @@ import '../index.css';
 import './movil.css';
 import * as almacen from './almacenMovil';
 import { codigoEquipo, leerClave, verificarLicencia, type EstadoLicencia } from './licenciaMovil';
-import { AvisoPrueba } from './AvisoPrueba';
 
 /** Versión de prueba: sin licencia, con datos de ejemplo y tope de 60 ventas y 60 compras. */
 const PRUEBA = (import.meta as any).env?.VITE_PRUEBA === '1';
@@ -179,6 +178,14 @@ async function iniciar() {
   await copiaDiaria().catch(() => undefined);
   AppCapacitor.addListener('resume', () => void copiaDiaria().catch(() => undefined)).catch(() => undefined);
 
+  // Botón "atrás" de Android: cierra la ventana abierta, vuelve al inicio o minimiza la app
+  AppCapacitor.addListener('backButton', () => {
+    const cerrar = document.querySelector<HTMLElement>('[role="dialog"] button[title="Cerrar"], .fixed.inset-0 button[title="Cerrar"]');
+    if (cerrar) return cerrar.click();
+    if ((window as any).__scEnInicio === false) return window.dispatchEvent(new CustomEvent('sc-atras'));
+    AppCapacitor.minimizeApp().catch(() => undefined);
+  }).catch(() => undefined);
+
   // PDF, Excel y copias: se guardan en Documentos y se ofrecen para compartir
   configurarGuardadoArchivos(async (blob, nombre) => {
     await entregarArchivo(nombre, await almacen.blobABase64(blob), false);
@@ -207,7 +214,6 @@ async function iniciar() {
     <>
       <App />
       <AlertaCopiaSemanal />
-      {PRUEBA && <AvisoPrueba />}
     </>
   );
 }

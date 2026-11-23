@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { esMovil, nombreEquipo } from '../../utils/plataforma';
 import {
   UploadCloud,
@@ -46,6 +46,8 @@ interface CargaFacturaModalProps {
   onFacturaGuardada: () => void;
   onAbrirCargaExcel?: () => void;
   onCerrar: () => void;
+  /** Archivos ya elegidos (foto tomada con el celular o factura compartida): se procesan al abrir */
+  archivosIniciales?: File[];
 }
 
 export const CargaFacturaModal: React.FC<CargaFacturaModalProps> = ({
@@ -55,9 +57,11 @@ export const CargaFacturaModal: React.FC<CargaFacturaModalProps> = ({
   onFacturaGuardada,
   onAbrirCargaExcel,
   onCerrar,
+  archivosIniciales,
 }) => {
   const { mostrarToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inicialesProcesados = useRef(false);
 
   const [arrastrando, setArrastrando] = useState(false);
   const [itemsLote, setItemsLote] = useState<ItemLote[]>([]);
@@ -88,6 +92,13 @@ export const CargaFacturaModal: React.FC<CargaFacturaModalProps> = ({
       e.target.value = '';
     }
   };
+
+  useEffect(() => {
+    if (inicialesProcesados.current || !archivosIniciales?.length) return;
+    inicialesProcesados.current = true;
+    procesarArchivos(archivosIniciales);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [archivosIniciales]);
 
   const procesarArchivos = async (archivos: File[]) => {
     setProcesandoGlobal(true);

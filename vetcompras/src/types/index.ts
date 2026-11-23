@@ -410,6 +410,8 @@ export interface Producto {
   stockMinimo?: number;
   /** Otros nombres con que llega en facturas de proveedores o se vende */
   alias?: string[];
+  /** Foto para la caja (miniatura JPEG en data URL, unos 15 KB) */
+  foto?: string;
   activo: boolean;
   creadoEn: string;
   actualizadoEn: string;
