@@ -21,6 +21,8 @@ import {
   DatabaseBackup,
   Gauge,
   FileBarChart,
+  Users,
+  Landmark,
 } from 'lucide-react';
 import { dataService } from '../../services/dataService';
 import { EmpresaInfo } from '../../types';
@@ -44,7 +46,9 @@ export type NavItem =
   | 'catalogos'
   | 'configuracion'
   | 'seguridad'
-  | 'copias';
+  | 'copias'
+  | 'nomina'
+  | 'ica';
 
 interface SidebarProps {
   currentTab: NavItem;
@@ -169,6 +173,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: BarChart3,
       badge: 'Form 300/350',
       badgeColor: 'bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300',
+    },
+    {
+      id: 'nomina' as NavItem,
+      label: 'Nómina y Empleados',
+      icon: Users,
+      badge: null,
+    },
+    {
+      id: 'ica' as NavItem,
+      label: 'Industria y Comercio',
+      icon: Landmark,
+      badge: 'ICA',
+      badgeColor: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300',
     },
     {
       id: 'catalogos' as NavItem,

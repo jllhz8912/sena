@@ -15,12 +15,12 @@ export type FormatoRecibo = 'carta' | 'tirilla';
 const AVISO_LEGAL_DEFECTO =
   'Documento interno de venta. No reemplaza la factura electrónica de venta cuando esta sea obligatoria (art. 616-1 E.T.).';
 
-function hexARgb(hex: string | undefined, defecto: [number, number, number]): [number, number, number] {
+export function hexARgb(hex: string | undefined, defecto: [number, number, number]): [number, number, number] {
   const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || '');
   return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : defecto;
 }
 
-function formatoImagen(dataUrl: string): 'PNG' | 'JPEG' | null {
+export function formatoImagen(dataUrl: string): 'PNG' | 'JPEG' | null {
   if (dataUrl.startsWith('data:image/png')) return 'PNG';
   if (dataUrl.startsWith('data:image/jpeg') || dataUrl.startsWith('data:image/jpg')) return 'JPEG';
   return null;
@@ -31,7 +31,7 @@ export function nombreArchivoRecibo(venta: Venta): string {
   return `Recibo_${venta.consecutivo}_${cliente}.pdf`;
 }
 
-const nitCompleto = (e: EmpresaInfo) => (e.nit ? `NIT ${e.nit}${e.dv ? '-' + e.dv : ''}` : '');
+export const nitCompleto = (e: EmpresaInfo) => (e.nit ? `NIT ${e.nit}${e.dv ? '-' + e.dv : ''}` : '');
 
 export function generarReciboPdf(venta: Venta, empresa: EmpresaInfo, formato: FormatoRecibo = 'carta'): Blob {
   return formato === 'tirilla' ? reciboTirilla(venta, empresa) : reciboCarta(venta, empresa);

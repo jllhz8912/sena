@@ -6,6 +6,8 @@ import {
   Calculator,
   Camera,
   CircleUser,
+  Briefcase,
+  Landmark,
   FlaskConical,
   DatabaseBackup,
   FolderTree,
@@ -40,7 +42,9 @@ export type PantallaMovil =
   | 'catalogos'
   | 'copias'
   | 'configuracion'
-  | 'seguridad';
+  | 'seguridad'
+  | 'nomina'
+  | 'ica';
 
 interface Mosaico {
   id: PantallaMovil;
@@ -69,6 +73,8 @@ export const COLOR_PANTALLA: Partial<Record<PantallaMovil, string>> = {
   copias: '#0891b2',
   configuracion: '#475569',
   seguridad: '#334155',
+  nomina: '#0369a1',
+  ica: '#c2410c',
 };
 
 const hoy = () => {
@@ -104,6 +110,8 @@ export const InicioMovil: React.FC<{
     { id: 'reportes_ventas', titulo: 'Reportes', color: COLOR_PANTALLA.reportes_ventas!, icono: <BarChart3 />, modulo: 'reportes_ventas' },
     { id: 'ventas', titulo: 'Ventas y clientes', color: COLOR_PANTALLA.ventas!, icono: <Users />, modulo: 'ventas' },
     { id: 'compras', titulo: 'Lista compras', color: COLOR_PANTALLA.compras!, icono: <ListOrdered />, modulo: 'compras' },
+    { id: 'nomina', titulo: 'Nómina', color: COLOR_PANTALLA.nomina!, icono: <Briefcase />, modulo: 'nomina' },
+    { id: 'ica', titulo: 'ICA', color: COLOR_PANTALLA.ica!, icono: <Landmark />, modulo: 'ica' },
     { id: 'dashboard', titulo: 'Panel', color: COLOR_PANTALLA.dashboard!, icono: <LayoutDashboard />, modulo: 'dashboard' },
     { id: 'reportes_compras', titulo: 'Reportes compras', color: '#1e40af', icono: <BarChart3 />, modulo: 'reportes_compras' },
     { id: 'precios', titulo: 'Precios', color: COLOR_PANTALLA.precios!, icono: <Calculator />, modulo: 'precios' },

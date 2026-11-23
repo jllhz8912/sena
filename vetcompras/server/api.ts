@@ -86,6 +86,12 @@ function describir(coleccion: Coleccion, r: any): string {
       return `${r.tipo || ''} · ${r.cantidad ?? ''} und · ${r.referencia || r.motivo || ''}`;
     case 'observaciones':
       return `${r.tipo || ''} · ${r.modulo || ''} · ${String(r.descripcion || '').slice(0, 80)}`;
+    case 'empleados':
+      return `${r.nombre || ''} · CC ${r.documento || ''} · ${pesos(r.salario)}`;
+    case 'nominas':
+      return `${r.numero || ''} · ${r.empleadoNombre || ''} · ${r.periodoDesde || ''} a ${r.periodoHasta || ''} · ${pesos(r.neto)}`;
+    case 'liquidacionesIca':
+      return `${r.desde || ''} a ${r.hasta || ''} · tarifa ${r.tarifa}‰ · ${pesos(r.saldoAPagar)}`;
     default:
       return r.nombre || '';
   }
@@ -101,6 +107,9 @@ const NOMBRES_COLECCION: Record<Coleccion, string> = {
   productos: 'producto de inventario',
   movimientosInventario: 'movimiento de inventario',
   fichasPrecio: 'ficha de precio',
+  empleados: 'empleado',
+  nominas: 'pago de nómina',
+  liquidacionesIca: 'liquidación de ICA',
 };
 
 export interface OpcionesApi {
@@ -621,7 +630,7 @@ export function crearApi(bd: BaseDatosLocal, opciones: OpcionesApi = {}) {
         return res.status(400).json({ error: 'Para borrar todo escriba la palabra BORRAR.' });
       }
       const respaldo = bd.crearRespaldo('antes-de-borrar-todo');
-      for (const c of ['documentos', 'ventas', 'proveedores', 'categorias', 'centrosCosto', 'observaciones', 'productos', 'movimientosInventario', 'fichasPrecio'] as const) {
+      for (const c of ['documentos', 'ventas', 'proveedores', 'categorias', 'centrosCosto', 'observaciones', 'productos', 'movimientosInventario', 'fichasPrecio', 'empleados', 'nominas', 'liquidacionesIca'] as const) {
         bd.vaciar(c);
       }
       bd.lote('categorias', CATEGORIAS_DEFECTO);

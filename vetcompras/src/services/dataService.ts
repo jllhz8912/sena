@@ -5,6 +5,8 @@ import { aplicarCategoriasVenta, fechaLocal } from '../utils/formatters';
 import type { EstadoAlertaCopia } from '../utils/alertaCopia';
 import { administraInventario, modulosDe, type PerfilAcceso } from '../utils/perfiles';
 import { fijarEtiquetaReferencia } from '../utils/etiquetas';
+import type { Empleado, PagoNomina } from '../utils/nomina';
+import type { RegistroIca } from '../utils/ica';
 
 const CLAVE_PERFIL = 'vetcompras_perfil';
 let perfilActivo: PerfilAcceso | null = null;
@@ -19,7 +21,7 @@ let perfilActivo: PerfilAcceso | null = null;
  * detectan consultando la revisión cada pocos segundos.
  */
 
-type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centrosCosto' | 'observaciones' | 'productos' | 'movimientosInventario' | 'fichasPrecio';
+type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centrosCosto' | 'observaciones' | 'productos' | 'movimientosInventario' | 'fichasPrecio' | 'empleados' | 'nominas' | 'liquidacionesIca';
 
 const CLAVE_CACHE_EMPRESA = 'vetcompras_empresa';
 const INTERVALO_SONDEO_MS = 4000;
@@ -899,6 +901,44 @@ export const dataService = {
   },
 
   nuevoId,
+
+  // ================= NÓMINA =================
+
+  async obtenerEmpleados(): Promise<Empleado[]> {
+    return (await listar<Empleado>('empleados')).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  },
+  async guardarEmpleado(e: Empleado): Promise<void> {
+    await guardar('empleados', { ...e, actualizadoEn: new Date().toISOString() });
+  },
+  async eliminarEmpleado(id: string): Promise<void> {
+    await eliminar('empleados', id);
+  },
+  async obtenerPagosNomina(): Promise<PagoNomina[]> {
+    return (await listar<PagoNomina>('nominas')).sort((a, b) => b.fechaPago.localeCompare(a.fechaPago) || b.numero.localeCompare(a.numero));
+  },
+  async guardarPagoNomina(pago: PagoNomina): Promise<void> {
+    await guardar('nominas', { ...pago, actualizadoEn: new Date().toISOString() });
+  },
+  async eliminarPagoNomina(id: string): Promise<void> {
+    await eliminar('nominas', id);
+  },
+  /** Siguiente número de comprobante de nómina: NOM-0001, NOM-0002… */
+  async siguienteNumeroNomina(): Promise<string> {
+    const max = (await listar<PagoNomina>('nominas')).reduce((m, p) => Math.max(m, Number(p.numero?.match(/\d+/)?.[0]) || 0), 0);
+    return `NOM-${String(max + 1).padStart(4, '0')}`;
+  },
+
+  // ================= INDUSTRIA Y COMERCIO =================
+
+  async obtenerLiquidacionesIca(): Promise<RegistroIca[]> {
+    return (await listar<RegistroIca>('liquidacionesIca')).sort((a, b) => b.hasta.localeCompare(a.hasta));
+  },
+  async guardarLiquidacionIca(r: RegistroIca): Promise<void> {
+    await guardar('liquidacionesIca', { ...r, actualizadoEn: new Date().toISOString() });
+  },
+  async eliminarLiquidacionIca(id: string): Promise<void> {
+    await eliminar('liquidacionesIca', id);
+  },
 
   // ================= PRECIOS DE VENTA =================
 

@@ -28,12 +28,15 @@ import { sirvePara } from '../utils/conceptos';
 import { CATEGORIAS_SERVICIO } from '../utils/formatters';
 import { movimientosAlEliminar, movimientosDeCompra, movimientosDeVenta } from '../utils/inventario';
 
-type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centrosCosto' | 'productos' | 'movimientosInventario' | 'fichasPrecio';
-const COLECCIONES: Coleccion[] = ['documentos', 'ventas', 'proveedores', 'categorias', 'centrosCosto', 'productos', 'movimientosInventario', 'fichasPrecio'];
+type Coleccion = 'documentos' | 'ventas' | 'proveedores' | 'categorias' | 'centrosCosto' | 'productos' | 'movimientosInventario' | 'fichasPrecio' | 'empleados' | 'nominas' | 'liquidacionesIca';
+const COLECCIONES: Coleccion[] = ['documentos', 'ventas', 'proveedores', 'categorias', 'centrosCosto', 'productos', 'movimientosInventario', 'fichasPrecio', 'empleados', 'nominas', 'liquidacionesIca'];
 const NOMBRES: Record<Coleccion, string> = {
   productos: 'producto de inventario',
   movimientosInventario: 'movimiento de inventario',
   fichasPrecio: 'ficha de precio',
+  empleados: 'empleado',
+  nominas: 'pago de nómina',
+  liquidacionesIca: 'liquidación de ICA',
   documentos: 'compra/gasto',
   ventas: 'venta',
   proveedores: 'proveedor',
@@ -127,6 +130,9 @@ function datosIniciales(): Datos {
       productos: [],
       movimientosInventario: [],
       fichasPrecio: [],
+      empleados: [],
+      nominas: [],
+      liquidacionesIca: [],
     },
     // Empresa ficticia de ejemplo: cada cliente configura su propia marca
     empresa: { ...clonar(EMPRESA_DEFECTO), razonSocial: 'EMPRESA DEMO S.A.S.', nombreComercial: 'Empresa Demo', slogan: 'Datos de ejemplo · Sistema de Control 2.0', nit: '', dv: '', etiquetaReferencia: 'Referencia' },

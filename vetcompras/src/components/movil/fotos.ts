@@ -40,3 +40,27 @@ export function iniciales(nombre: string): string {
   const p = nombre.trim().split(/\s+/).filter(Boolean);
   return ((p[0]?.[0] || '') + (p[1]?.[0] || p[0]?.[1] || '')).toUpperCase();
 }
+
+/** Reduce una foto (soporte de pago, consignación) sin recortarla: lado mayor de 1200 px, JPEG. */
+export async function reducirImagen(archivo: Blob, ladoMayor = 1200, calidad = 0.7): Promise<string> {
+  const url = URL.createObjectURL(archivo);
+  try {
+    const img = await new Promise<HTMLImageElement>((ok, mal) => {
+      const i = new Image();
+      i.onload = () => ok(i);
+      i.onerror = () => mal(new Error('No se pudo leer la imagen.'));
+      i.src = url;
+    });
+    const escala = Math.min(1, ladoMayor / Math.max(img.naturalWidth, img.naturalHeight));
+    const lienzo = document.createElement('canvas');
+    lienzo.width = Math.round(img.naturalWidth * escala);
+    lienzo.height = Math.round(img.naturalHeight * escala);
+    const ctx = lienzo.getContext('2d')!;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, lienzo.width, lienzo.height);
+    ctx.drawImage(img, 0, 0, lienzo.width, lienzo.height);
+    return lienzo.toDataURL('image/jpeg', calidad);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}

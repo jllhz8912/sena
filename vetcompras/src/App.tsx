@@ -42,6 +42,8 @@ import { InicioMovil, BarraMovil, COLOR_PANTALLA, type PantallaMovil } from './c
 import { CajaMovil } from './components/movil/CajaMovil';
 import { ComprasMovil } from './components/movil/ComprasMovil';
 import { InventarioMovil } from './components/movil/InventarioMovil';
+import { NominaView } from './components/nomina/NominaView';
+import { IcaView } from './components/ica/IcaView';
 import { logoDe } from './data/marca';
 
 /** Perfiles a los que ya se les mostraron los avisos de copias y vencimientos en esta sesión */
@@ -263,6 +265,8 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
     configuracion: 'Configuración de la Empresa y Marca',
     seguridad: dataService.modoAcceso() === 'libre' ? 'Perfiles, Ingreso y Bitácora' : 'Perfiles, Usuarios y Bitácora',
     copias: 'Copias de Seguridad',
+    nomina: 'Nómina y Empleados',
+    ica: 'Impuesto de Industria y Comercio',
   };
 
   const vistaModulo = (
@@ -392,7 +396,11 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
 
       {currentTab === 'seguridad' && dataService.esAdministrador() && <SeguridadView onSesionTerminada={onSalir} />}
 
-      {currentTab === 'configuracion' && (
+      {currentTab === 'nomina' && <NominaView />}
+
+    {currentTab === 'ica' && <IcaView ventas={ventas} />}
+
+    {currentTab === 'configuracion' && (
         <ConfiguracionView
           onDatosActualizados={recargarDatos}
         />
@@ -498,6 +506,8 @@ function VetComprasApp({ onSalir, perfil, onCambiarPerfil }: { onSalir: () => vo
       cuentas_pagar: 'Por pagar',
       dashboard: 'Panel general',
       seguridad: 'Perfiles y bitácora',
+      nomina: 'Nómina',
+      ica: 'Industria y comercio (ICA)',
     };
     const ir = (p: PantallaMovil) => {
       if (!['caja', 'productos', 'compras_movil', 'inicio', 'inventario'].includes(p)) setCurrentTab(p as NavItem);

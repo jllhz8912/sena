@@ -17,6 +17,8 @@ export const MODULOS_SISTEMA: { id: string; label: string; grupo: 'Ventas' | 'Co
   { id: 'cargar_factura', label: 'Cargar Compras (XML / PDF / Excel)', grupo: 'Compras' },
   { id: 'inventario', label: 'Inventario', grupo: 'Compras' },
   { id: 'reportes_compras', label: 'Reportes de Compras y Gastos', grupo: 'Compras' },
+  { id: 'nomina', label: 'Nómina y Empleados', grupo: 'Gestión' },
+  { id: 'ica', label: 'Impuesto de Industria y Comercio (ICA)', grupo: 'Gestión' },
   { id: 'catalogos', label: 'Catálogos', grupo: 'Gestión' },
   { id: 'reportes', label: 'Reportes y DIAN', grupo: 'Gestión' },
   { id: 'configuracion', label: 'Configuración (logo y colores)', grupo: 'Sistema' },
