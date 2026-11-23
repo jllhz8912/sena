@@ -10,6 +10,9 @@
 | `Manual-de-Usuario-Sistema-de-Control-2.0.pdf` | Manual detallado (74 páginas, 67 pantallazos): instalación, licencia, marca y cada módulo. |
 | `Videos-Usuario-Sistema-de-Control-2.0.zip` | 15 videos: instalación, activación y cada módulo, con LEAME. |
 | `Plantilla_Compras_SistemaControl.xlsx` | Plantilla Excel para Cargar Compras. |
+| `SistemaControl-Movil-2.0.apk` | **App para celulares Android** (7 o superior). Mismas pantallas y módulos del PC; guarda todo en el celular, sin internet; copias diarias y manuales en *Documentos › SistemaControl*; "Copiar y compartir" a Drive/WhatsApp. Licencia por celular. |
+| `Guia-Sistema-de-Control-Movil-2.0.pdf` | Guía del celular (8 páginas con pantallazos): instalar el APK, activar, primer uso, copias, pasar datos PC ↔ celular, cambio de celular y problemas frecuentes. |
+| `Video-Instalacion-celular-Sistema-de-Control-Movil.mp4` | Video vertical de 5½ min con voz en español latino: instalar en Android, activar, empresa, primera venta y copia de seguridad. |
 | `Sistema-de-Control-2.0-DEMO.html` | Demostración para prospectos, sin licencia (máx. 60 ventas y 60 compras). |
 
 ## Para el dueño del software (uso interno)
@@ -22,7 +25,9 @@
 
 Herramienta: `../herramientas/Generador-de-licencias.html` (requiere `CLAVE-PRIVADA-Sistema-de-Control.json`, que **no** está en el repositorio).
 
-Instalación: extraer el zip → doble clic en "Instalar en este PC.cmd" → "Sistema de Control" en el escritorio → activar la licencia.
+Celular: abrir `SistemaControl-Movil-2.0.apk` en el teléfono → permitir esta fuente → Instalar → activar la licencia del celular (mismo Generador).
+
+Instalación en PC: extraer el zip → doble clic en "Instalar en este PC.cmd" → "Sistema de Control" en el escritorio → activar la licencia.
 
 SHA-256:
 - SistemaControl-2.0.0-portable-windows.zip: `57e005368c1251e31046e54d580231cccceaa022839a49ce01dd892f58811dd0`
@@ -35,3 +40,6 @@ SHA-256:
 - Guia-del-vendedor-Licencias-Sistema-de-Control-2.0.pdf: `351a18b52083db1c5908ac24e5c03681409681d633551c6c12c9c505eb622e85`
 - Guia-facil-claves-y-permisos-Sistema-de-Control-2.0.pdf: `7b4b971e81b1e926d00b6f7caabfcf1aa65b1ec133f08a20f2601b4f575456af`
 - Videos-Duenio-Sistema-de-Control-2.0.zip: `84cf0febd765e9001f97688e6e9f26459216a6a4b9bce814068971b2b419ec93`
+- SistemaControl-Movil-2.0.apk: `2821948131898cc2c97021c9652e07f6d211f38be0a245e3ee07a80052632fdb`
+- Guia-Sistema-de-Control-Movil-2.0.pdf: `229de600435afafe4f6f2f70c564451e1e2084898974ad7636184180d289b428`
+- Video-Instalacion-celular-Sistema-de-Control-Movil.mp4: `d7616fe5ff5115d3cb983392bb54ec7b4eb8e390f0b8d5d045f14ba1ad6da5fc`
