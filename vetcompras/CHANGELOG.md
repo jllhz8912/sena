@@ -3,6 +3,14 @@
 Cada versión nueva se instala encima de la anterior sin perder datos: el sistema
 hace una copia de seguridad y adapta la base de datos al abrir.
 
+## 2.4.0 (PC y celular) — Inventario: administra Administración, consultan Ventas y Compras
+- **Saldo = Compras − Ventas ± Ajustes**, escrito arriba de la tabla. Columnas: Compras (+),
+  Ventas (−), Ajustes (±, incluye bajas) y Saldo, con totales.
+- **Solo el perfil Administración** registra ajustes, bajas, importa saldo inicial, recalcula,
+  edita o borra. **Ventas** y **Compras y Gastos** lo ven en modo **solo consulta** (en el
+  celular, al tocar un producto se ven sus movimientos).
+- El perfil Ventas recibe el módulo Inventario de consulta (perfiles guardados se actualizan solos).
+
 ## 2.3.0 Móvil — Inventario del celular con submódulo de ajustes
 - **Existencias**: cada producto con foto, saldo y estado (agotado, bajo, negativo), y de dónde
   salió el saldo (+ compras, − ventas, − bajas, ± ajustes). Las compras suman y las ventas

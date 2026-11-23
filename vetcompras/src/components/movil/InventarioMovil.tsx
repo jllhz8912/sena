@@ -19,7 +19,7 @@ const ESTADO: Record<SaldoProducto['estado'], { texto: string; clase: string }> 
   negativo: { texto: 'Negativo', clase: 'bg-rose-600 text-white' },
   agotado: { texto: 'Agotado', clase: 'bg-rose-100 text-rose-800' },
   bajo: { texto: 'Bajo', clase: 'bg-amber-100 text-amber-900' },
-  ok: { texto: '', clase: 'bg-green-100 text-green-800' },
+  ok: { texto: '', clase: 'bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300' },
 };
 
 const MOTIVOS_BAJA = ['Producto vencido', 'Producto dañado', 'Pérdida o robo', 'Consumo interno', 'Muestra o regalo'];
@@ -47,6 +47,8 @@ export const InventarioMovil: React.FC = () => {
   const [filtro, setFiltro] = useState<'todos' | 'alerta'>('todos');
   const [ajustando, setAjustando] = useState<SaldoProducto | null>(null);
   const [deshacer, setDeshacer] = useState<MovimientoInventario | null>(null);
+  // Solo Administración ajusta; Ventas y Compras consultan
+  const soloConsulta = !dataService.puedeAjustarInventario();
 
   const cargar = useCallback(() => {
     Promise.all([dataService.obtenerProductos(), dataService.obtenerMovimientos()])
@@ -86,7 +88,7 @@ export const InventarioMovil: React.FC = () => {
   const Miniatura: React.FC<{ id: string; nombre: string }> = ({ id, nombre }) => {
     const foto = fotoDe(id);
     return (
-      <span className="w-11 h-11 rounded-lg overflow-hidden shrink-0 flex items-center justify-center text-white text-xs font-black" style={{ background: foto ? '#fff' : colorDe(nombre) }}>
+      <span className="w-8 h-8 rounded-md overflow-hidden shrink-0 flex items-center justify-center text-white text-xs font-black" style={{ background: foto ? '#fff' : colorDe(nombre) }}>
         {foto ? <img src={foto} alt="" className="w-full h-full object-cover" /> : iniciales(nombre)}
       </span>
     );
@@ -134,44 +136,70 @@ export const InventarioMovil: React.FC = () => {
       <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1.5" style={{ paddingBottom: 'calc(1.5rem + var(--sa-bottom, 0px))' }}>
         {pestana === 'existencias' && (
           <>
-            {listaExistencias.map((x) => (
-              <button key={x.producto.id} onClick={() => setAjustando(x)} className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-left">
-                <Miniatura id={x.producto.id} nombre={x.producto.nombre} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold truncate">{x.producto.nombre}</p>
-                  <p className="text-[11px] text-slate-500 tabular-nums">
-                    +{num(x.entradas)} compras · −{num(x.salidas)} ventas{x.bajas ? ` · −${num(x.bajas)} bajas` : ''}
-                    {x.ajustes ? ` · ${x.ajustes > 0 ? '+' : ''}${num(x.ajustes)} ajustes` : ''}
-                  </p>
+            <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 px-3 py-2 text-[12px] font-bold text-red-900 dark:text-red-200 text-center">
+              Saldo = Compras − Ventas ± Ajustes
+            </div>
+            <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800" id="inv-tabla">
+              <div className="grid grid-cols-[1fr_2.6rem_2.6rem_2.6rem_3rem] gap-1 px-2 py-1.5 bg-slate-100 dark:bg-slate-900 text-[10px] font-bold uppercase text-slate-500 sticky top-0">
+                <span>Producto</span>
+                <span className="text-right">Compr.</span>
+                <span className="text-right">Vent.</span>
+                <span className="text-right">Ajust.</span>
+                <span className="text-right">Saldo</span>
+              </div>
+              {listaExistencias.map((x) => {
+                const ajustes = x.ajustes - x.bajas;
+                return (
+                  <button
+                    key={x.producto.id}
+                    onClick={() => (soloConsulta ? (setTexto(x.producto.nombre), setPestana('movimientos')) : setAjustando(x))}
+                    className="w-full grid grid-cols-[1fr_2.6rem_2.6rem_2.6rem_3rem] gap-1 items-center px-2 py-1.5 border-t border-slate-100 dark:border-slate-700 text-left"
+                  >
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <Miniatura id={x.producto.id} nombre={x.producto.nombre} />
+                      <span className="text-[11.5px] font-semibold leading-tight line-clamp-2">{x.producto.nombre}</span>
+                    </span>
+                    <span className="text-right text-[12px] tabular-nums text-green-700 dark:text-green-400">{num(x.entradas)}</span>
+                    <span className="text-right text-[12px] tabular-nums text-rose-600">{num(x.salidas)}</span>
+                    <span className="text-right text-[12px] tabular-nums text-slate-600 dark:text-slate-300">{ajustes ? (ajustes > 0 ? '+' : '') + num(ajustes) : '—'}</span>
+                    <span className="text-right">
+                      <span className={`inline-block min-w-[2.4rem] px-1 py-0.5 rounded-md text-[13px] font-black tabular-nums text-center ${ESTADO[x.estado].clase}`}>{num(x.saldo)}</span>
+                    </span>
+                  </button>
+                );
+              })}
+              {listaExistencias.length > 0 && (
+                <div className="grid grid-cols-[1fr_2.6rem_2.6rem_2.6rem_3rem] gap-1 px-2 py-2 border-t-2 border-slate-300 dark:border-slate-600 text-[12px] font-black tabular-nums">
+                  <span>Total</span>
+                  <span className="text-right text-green-700 dark:text-green-400">{num(listaExistencias.reduce((t, x) => t + x.entradas, 0))}</span>
+                  <span className="text-right text-rose-600">{num(listaExistencias.reduce((t, x) => t + x.salidas, 0))}</span>
+                  <span className="text-right">{num(listaExistencias.reduce((t, x) => t + x.ajustes - x.bajas, 0))}</span>
+                  <span className="text-right">{num(listaExistencias.reduce((t, x) => t + x.saldo, 0))}</span>
                 </div>
-                <div className="text-right">
-                  <p className="text-lg font-black tabular-nums leading-none">{num(x.saldo)}</p>
-                  {ESTADO[x.estado].texto ? (
-                    <span className={`inline-block mt-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold ${ESTADO[x.estado].clase}`}>{ESTADO[x.estado].texto}</span>
-                  ) : (
-                    <span className="text-[10px] text-slate-500">{x.producto.unidad || 'und'}</span>
-                  )}
-                </div>
-              </button>
-            ))}
+              )}
+            </div>
             {!listaExistencias.length && (
               <p className="text-center text-sm text-slate-500 mt-6 px-4">
                 {filtro === 'alerta' ? 'No hay productos agotados, negativos o bajos.' : 'Aún no hay productos con inventario. Se crean solos al registrar compras de mercancía con detalle.'}
               </p>
             )}
-            <p className="text-center text-[11px] text-slate-500 pt-2">Toque un producto para ajustar su inventario.</p>
+            <p className="text-center text-[11px] text-slate-500 pt-1">
+              {soloConsulta ? 'Solo consulta. Toque un producto para ver sus movimientos. Los ajustes los hace el perfil Administración.' : 'Toque un producto para ajustar su inventario.'}
+            </p>
           </>
         )}
 
         {pestana === 'ajustes' && (
           <>
             <p className="text-[12px] text-slate-500 pb-1">
-              Correcciones hechas a mano: conteos físicos, sumas, restas y bajas. Si alguno quedó mal, tóquelo para deshacerlo. Para un ajuste nuevo, vaya a Existencias y toque el producto.
+              {soloConsulta
+                ? 'Correcciones hechas por el administrador: conteos físicos, sumas, restas y bajas.'
+                : 'Correcciones hechas a mano: conteos físicos, sumas, restas y bajas. Si alguno quedó mal, tóquelo para deshacerlo. Para un ajuste nuevo, vaya a Existencias y toque el producto.'}
             </p>
             {ajustesManuales.filter((m) => filtrar(nombreDe(m.productoId))).map((m) => {
               const e = efecto(m);
               return (
-                <button key={m.id} onClick={() => setDeshacer(m)} className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-left">
+                <button key={m.id} onClick={() => !soloConsulta && setDeshacer(m)} className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-left">
                   <Miniatura id={m.productoId} nombre={nombreDe(m.productoId)} />
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-semibold truncate">{nombreDe(m.productoId)}</p>

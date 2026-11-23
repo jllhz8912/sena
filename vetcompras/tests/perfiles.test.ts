@@ -12,7 +12,7 @@ import { ID_ADMINISTRACION, MODULOS_SISTEMA, PERFILES_DEFECTO, migrarPerfiles, m
 describe('reglas de perfiles', () => {
   it('los perfiles de fábrica separan ventas, compras y administración', () => {
     const [ventas, compras, admin] = PERFILES_DEFECTO;
-    expect([...modulosDe(ventas)]).toEqual(['panel_ventas', 'ventas', 'precios', 'reportes_ventas', 'catalogos']);
+    expect([...modulosDe(ventas)]).toEqual(['panel_ventas', 'ventas', 'precios', 'inventario', 'reportes_ventas', 'catalogos']);
     expect(modulosDe(ventas).has('compras')).toBe(false);
     expect(modulosDe(compras).has('compras') && modulosDe(compras).has('inventario') && !modulosDe(compras).has('ventas')).toBe(true);
     expect(modulosDe(admin).size).toBe(MODULOS_SISTEMA.length);
@@ -35,13 +35,15 @@ describe('reglas de perfiles', () => {
       { id: 'caja', modulos: ['catalogos'] },
     ];
     expect(migrarPerfiles(viejos).map((p) => p.modulos)).toEqual([
-      ['panel_ventas', 'ventas', 'precios', 'reportes_ventas'],
+      ['panel_ventas', 'ventas', 'precios', 'reportes_ventas', 'inventario'],
       ['panel_compras', 'compras', 'inventario', 'reportes_compras'],
       ['catalogos'],
     ]);
     // Guardados en la 2.12 (versión 2): solo reciben los reportes
-    expect(migrarPerfiles([{ modulos: ['panel_ventas', 'ventas'] }], 2)[0].modulos).toEqual(['panel_ventas', 'ventas', 'reportes_ventas']);
-    expect(migrarPerfiles(viejos, 3)).toBe(viejos);
+    expect(migrarPerfiles([{ modulos: ['panel_ventas', 'ventas'] }], 2)[0].modulos).toEqual(['panel_ventas', 'ventas', 'reportes_ventas', 'inventario']);
+    // Guardados en la 2.x anterior (versión 3): quien vende recibe el inventario de consulta
+    expect(migrarPerfiles([{ modulos: ['ventas', 'reportes_ventas'] }], 3)[0].modulos).toEqual(['ventas', 'reportes_ventas', 'inventario']);
+    expect(migrarPerfiles(viejos, 4)).toBe(viejos);
   });
 
   it('crea el identificador desde el nombre y descarta módulos desconocidos', () => {
@@ -119,7 +121,7 @@ describe('perfiles en el servidor local', () => {
   it('un perfil guardado antes de los paneles (2.11) los recibe al leerlo', async () => {
     bd.guardarConfig('perfilesAcceso', { perfiles: [{ id: 'ventas', nombre: 'Ventas', descripcion: '', modulos: ['ventas'] }, { ...PERFILES_DEFECTO[2] }] });
     await llamar('/sesion/ingresar-libre', 'POST', {});
-    expect((await llamar('/perfiles')).cuerpo[0].modulos).toEqual(['panel_ventas', 'ventas', 'reportes_ventas']);
+    expect((await llamar('/perfiles')).cuerpo[0].modulos).toEqual(['panel_ventas', 'ventas', 'reportes_ventas', 'inventario']);
   });
 
   it('rechaza PIN no numérico y quitar Administración', async () => {
@@ -127,5 +129,16 @@ describe('perfiles en el servidor local', () => {
     const perfiles = (await llamar('/perfiles')).cuerpo;
     expect((await llamar('/perfiles', 'PUT', { perfiles: perfiles.map((p: any, i: number) => (i === 0 ? { ...p, pin: '12ab' } : p)) })).status).toBe(400);
     expect((await llamar('/perfiles', 'PUT', { perfiles: perfiles.slice(0, 2) })).status).toBe(400);
+  });
+});
+
+describe('inventario: administra Administración, consultan Ventas y Compras', () => {
+  it('solo el perfil Administración ajusta el inventario', async () => {
+    const { administraInventario } = await import('../src/utils/perfiles');
+    const [ventas, compras, admin] = PERFILES_DEFECTO;
+    expect(administraInventario(admin)).toBe(true);
+    expect(administraInventario(ventas)).toBe(false);
+    expect(administraInventario(compras)).toBe(false);
+    expect(modulosDe(ventas).has('inventario') && modulosDe(compras).has('inventario')).toBe(true);
   });
 });

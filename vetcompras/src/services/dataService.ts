@@ -3,7 +3,7 @@ import { CompraDocumento, Proveedor, Categoria, CentroCosto, RegistroPago, Empre
 import { EMPRESA_DEFECTO } from '../data/defaults';
 import { aplicarCategoriasVenta, fechaLocal } from '../utils/formatters';
 import type { EstadoAlertaCopia } from '../utils/alertaCopia';
-import { modulosDe, type PerfilAcceso } from '../utils/perfiles';
+import { administraInventario, modulosDe, type PerfilAcceso } from '../utils/perfiles';
 import { fijarEtiquetaReferencia } from '../utils/etiquetas';
 
 const CLAVE_PERFIL = 'vetcompras_perfil';
@@ -734,6 +734,11 @@ export const dataService = {
 
   perfilActivo(): PerfilAcceso | null {
     return perfilActivo;
+  },
+
+  /** Ajustar inventario es solo del perfil Administración; Ventas y Compras lo consultan. */
+  puedeAjustarInventario(): boolean {
+    return administraInventario(perfilActivo);
   },
 
   /** Perfil elegido antes en esta pestaña (al recargar no se vuelve a preguntar, salvo si pide PIN). */

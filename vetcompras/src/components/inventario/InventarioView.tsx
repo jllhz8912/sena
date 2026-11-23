@@ -377,6 +377,8 @@ export const InventarioView: React.FC<InventarioViewProps> = ({ onIrACompras }) 
   const [movimientos, setMovimientos] = useState<MovimientoInventario[]>([]);
   const [cargando, setCargando] = useState(true);
   const [pestana, setPestana] = useState<'existencias' | 'movimientos'>('existencias');
+  // Ventas y Compras solo consultan; ajustar, dar de baja, importar o borrar es de Administración
+  const soloConsulta = !dataService.puedeAjustarInventario();
   const [texto, setTexto] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'negativo' | 'agotado' | 'bajo' | 'con_saldo'>('todos');
   const [filtroProducto, setFiltroProducto] = useState('');
@@ -560,11 +562,14 @@ export const InventarioView: React.FC<InventarioViewProps> = ({ onIrACompras }) 
               <Boxes className="w-5 h-5 text-emerald-600" /> Inventario de productos
             </h2>
             <p className="text-xs text-slate-500 max-w-2xl">
-              Aquí se <strong>consulta, valida y corrige</strong> el inventario. Las entradas salen de las compras de mercancía registradas en{' '}
-              <strong>Compras y Gastos</strong> (cuando se responde que afectan inventario) y las salidas de las <strong>ventas</strong>. En este módulo solo se
-              registran bajas, ajustes por conteo y correcciones. El saldo puede quedar en negativo y nunca impide vender.
+              <strong>Saldo = Compras − Ventas ± Ajustes.</strong> Las compras de mercancía registradas en <strong>Compras y Gastos</strong> suman y las{' '}
+              <strong>ventas</strong> restan solas. {soloConsulta ? 'Este perfil solo consulta: los ajustes los hace el perfil Administración.' : 'Aquí el administrador registra los ajustes por conteo, bajas y correcciones.'} El saldo puede
+              quedar en negativo y nunca impide vender.
             </p>
           </div>
+          {soloConsulta ? (
+            <span className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300">Solo consulta</span>
+          ) : (
           <div className="flex flex-wrap gap-2">
             <button onClick={() => setModalMov({ tipo: 'ajuste' })} className={`${boton} border-slate-300 dark:border-slate-700`} title="Corrige el saldo de un producto (suma o resta unidades)">
               <PackagePlus className="w-4 h-4 text-amber-600" /> Registrar ajuste
@@ -576,6 +581,7 @@ export const InventarioView: React.FC<InventarioViewProps> = ({ onIrACompras }) 
               <Plus className="w-4 h-4" /> Nuevo producto
             </button>
           </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -618,19 +624,25 @@ export const InventarioView: React.FC<InventarioViewProps> = ({ onIrACompras }) 
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Buscar producto, código, grupo, referencia…" className={claseInput + ' pl-9'} />
         </div>
-        <button onClick={() => archivoRef.current?.click()} className={`${boton} border-slate-300 dark:border-slate-700`} title="Saldo inicial o conteo físico desde Excel (no es para compras)">
-          <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Importar saldo inicial
-        </button>
+        {!soloConsulta && (
+          <button onClick={() => archivoRef.current?.click()} className={`${boton} border-slate-300 dark:border-slate-700`} title="Saldo inicial o conteo físico desde Excel (no es para compras)">
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Importar saldo inicial
+          </button>
+        )}
         <input ref={archivoRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={elegirArchivo} />
-        <button onClick={descargarPlantilla} className={`${boton} border-slate-300 dark:border-slate-700`}>
-          <ArrowDownToLine className="w-4 h-4" /> Plantilla
-        </button>
+        {!soloConsulta && (
+          <button onClick={descargarPlantilla} className={`${boton} border-slate-300 dark:border-slate-700`}>
+            <ArrowDownToLine className="w-4 h-4" /> Plantilla
+          </button>
+        )}
         <button onClick={exportar} className={`${boton} border-slate-300 dark:border-slate-700`}>
           <Download className="w-4 h-4" /> Exportar
         </button>
-        <button onClick={recalcular} disabled={trabajando} className={`${boton} border-slate-300 dark:border-slate-700`} title="Rehace las entradas y salidas automáticas desde todas las compras y ventas registradas">
-          {trabajando ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Recalcular
-        </button>
+        {!soloConsulta && (
+          <button onClick={recalcular} disabled={trabajando} className={`${boton} border-slate-300 dark:border-slate-700`} title="Rehace las entradas y salidas automáticas desde todas las compras y ventas registradas">
+            {trabajando ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Recalcular
+          </button>
+        )}
       </div>
 
       {pestana === 'existencias' ? (
@@ -664,15 +676,14 @@ export const InventarioView: React.FC<InventarioViewProps> = ({ onIrACompras }) 
               <thead className="text-[11px] uppercase tracking-wide text-slate-500 bg-slate-50 dark:bg-slate-800/50">
                 <tr>
                   <th className="text-left py-2.5 px-3">Producto</th>
-                  <th className="text-right px-2 whitespace-nowrap">Entradas</th>
-                  <th className="text-right px-2 whitespace-nowrap">Salidas</th>
-                  <th className="text-right px-2 whitespace-nowrap">Bajas</th>
-                  <th className="text-right px-2 whitespace-nowrap">Ajustes</th>
-                  <th className="text-right px-2 whitespace-nowrap">Saldo</th>
+                  <th className="text-right px-2 whitespace-nowrap">Compras (+)</th>
+                  <th className="text-right px-2 whitespace-nowrap">Ventas (−)</th>
+                  <th className="text-right px-2 whitespace-nowrap" title="Ajustes por conteo, correcciones y bajas">Ajustes (±)</th>
+                  <th className="text-right px-2 whitespace-nowrap">= Saldo</th>
                   <th className="text-right px-2 whitespace-nowrap">Costo prom.</th>
                   <th className="text-right px-2 whitespace-nowrap">Valor</th>
                   <th className="text-right px-2 whitespace-nowrap">P. venta</th>
-                  <th className="text-right px-3">Acciones</th>
+                  {!soloConsulta && <th className="text-right px-3">Acciones</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -687,10 +698,9 @@ export const InventarioView: React.FC<InventarioViewProps> = ({ onIrACompras }) 
                         {s.ultimoMovimiento ? ` · últ. mov. ${formatFecha(s.ultimoMovimiento)}` : ''}
                       </p>
                     </td>
-                    <td className="text-right px-2 whitespace-nowrap">{unidades(s.entradas)}</td>
-                    <td className="text-right px-2 whitespace-nowrap">{unidades(s.salidas)}</td>
-                    <td className="text-right px-2 whitespace-nowrap">{unidades(s.bajas)}</td>
-                    <td className="text-right px-2 whitespace-nowrap">{s.ajustes ? (s.ajustes > 0 ? '+' : '') + unidades(s.ajustes) : '—'}</td>
+                    <td className="text-right px-2 whitespace-nowrap text-emerald-700 dark:text-emerald-400">{unidades(s.entradas)}</td>
+                    <td className="text-right px-2 whitespace-nowrap text-rose-600">{unidades(s.salidas)}</td>
+                    <td className="text-right px-2 whitespace-nowrap">{s.ajustes - s.bajas ? (s.ajustes - s.bajas > 0 ? '+' : '') + unidades(s.ajustes - s.bajas) : '—'}</td>
                     <td className={`text-right px-2 font-black ${colorSaldo(s)}`}>
                       {unidades(s.saldo)}
                       {s.estado === 'negativo' && <AlertTriangle className="w-3.5 h-3.5 inline ml-1" aria-label="Saldo negativo" />}
@@ -698,6 +708,7 @@ export const InventarioView: React.FC<InventarioViewProps> = ({ onIrACompras }) 
                     <td className="text-right px-2 whitespace-nowrap">{s.costoPromedio ? formatCOP(s.costoPromedio) : '—'}</td>
                     <td className="text-right px-2 whitespace-nowrap">{s.valor ? formatCOP(s.valor) : '—'}</td>
                     <td className="text-right px-2 whitespace-nowrap">{s.producto.precioVenta ? formatCOP(s.producto.precioVenta) : '—'}</td>
+                    {!soloConsulta && (
                     <td className="px-3">
                       <div className="flex justify-end gap-1">
                         <button onClick={() => setModalMov({ tipo: 'entrada', productoId: s.producto.id, costoUnitario: s.producto.costoUltimo })} className="p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-700" title="Entrada">
@@ -717,6 +728,7 @@ export const InventarioView: React.FC<InventarioViewProps> = ({ onIrACompras }) 
                         </button>
                       </div>
                     </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -759,7 +771,7 @@ export const InventarioView: React.FC<InventarioViewProps> = ({ onIrACompras }) 
                   <th className="text-right px-2 whitespace-nowrap">Unidades</th>
                   <th className="text-right px-2 whitespace-nowrap">Costo unit.</th>
                   <th className="text-left px-2">Origen / referencia</th>
-                  <th className="text-right px-3">Acciones</th>
+                  {!soloConsulta && <th className="text-right px-3">Acciones</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -784,6 +796,7 @@ export const InventarioView: React.FC<InventarioViewProps> = ({ onIrACompras }) 
                         {m.motivo ? ` · ${m.motivo}` : ''}
                         {m.observaciones ? ` · ${m.observaciones}` : ''}
                       </td>
+                      {!soloConsulta && (
                       <td className="px-3">
                         <div className="flex justify-end gap-1">
                           <button onClick={() => setModalMov(m)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500" title="Editar movimiento">
@@ -798,6 +811,7 @@ export const InventarioView: React.FC<InventarioViewProps> = ({ onIrACompras }) 
                           </button>
                         </div>
                       </td>
+                      )}
                     </tr>
                   );
                 })}

@@ -40,12 +40,13 @@ export const PERFILES_DEFECTO: PerfilAcceso[] = [
     id: 'ventas',
     nombre: 'Ventas',
     descripcion: 'Registrar ventas, consultar precios y el catálogo de productos y servicios.',
-    modulos: ['panel_ventas', 'ventas', 'precios', 'reportes_ventas', 'catalogos'],
+    // Inventario: solo de consulta (lo administra el perfil Administración)
+    modulos: ['panel_ventas', 'ventas', 'precios', 'inventario', 'reportes_ventas', 'catalogos'],
   },
   {
     id: 'compras',
     nombre: 'Compras y Gastos',
-    descripcion: 'Registrar compras y gastos, cuentas por pagar, cargar facturas e inventario.',
+    descripcion: 'Registrar compras y gastos, cuentas por pagar, cargar facturas y consultar el inventario.',
     modulos: ['panel_compras', 'compras', 'cuentas_pagar', 'cargar_factura', 'inventario', 'reportes_compras', 'catalogos'],
   },
   {
@@ -57,7 +58,7 @@ export const PERFILES_DEFECTO: PerfilAcceso[] = [
 ];
 
 /** Versión del formato de perfiles guardado. 2: paneles por perfil. 3: reportes por perfil. */
-export const VERSION_PERFILES = 3;
+export const VERSION_PERFILES = 4;
 
 /**
  * Pone al día perfiles guardados con una versión anterior: cada perfil con Ventas recibe
@@ -68,10 +69,18 @@ export function migrarPerfiles<T extends { modulos: string[] }>(perfiles: T[], v
   return perfiles.map((p) => {
     const tiene = (m: string) => p.modulos.includes(m);
     const antes = version < 2 ? [...(tiene('ventas') ? ['panel_ventas'] : []), ...(tiene('compras') ? ['panel_compras'] : [])] : [];
-    const despues = [...(tiene('ventas') ? ['reportes_ventas'] : []), ...(tiene('compras') ? ['reportes_compras'] : [])];
+    const despues = [
+      ...(tiene('ventas') ? ['reportes_ventas'] : []),
+      ...(tiene('compras') ? ['reportes_compras'] : []),
+      // v4: quien vende también consulta el inventario (sin poder ajustarlo)
+      ...(version < 4 && tiene('ventas') ? ['inventario'] : []),
+    ];
     return { ...p, modulos: [...new Set([...antes, ...p.modulos, ...despues])] };
   });
 }
+
+/** Solo el perfil Administración ajusta el inventario; los demás lo consultan. */
+export const administraInventario = (perfil: Pick<PerfilAcceso, 'id'> | null | undefined) => perfil?.id === ID_ADMINISTRACION;
 
 /** Administración siempre conserva todos los módulos (alguien debe poder administrar). */
 export function modulosDe(perfil: Pick<PerfilAcceso, 'id' | 'modulos'> | null | undefined): Set<string> {
