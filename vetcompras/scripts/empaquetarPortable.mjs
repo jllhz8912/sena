@@ -164,6 +164,32 @@ timeout /t 3 >nul
 `
 );
 
+// Para el vendedor: si usó esta carpeta en modo USB, borra lo que quedó dentro antes de entregarla.
+escribir(
+  'Dejar limpio para entregar.cmd',
+  `@echo off
+chcp 65001 >nul
+echo ============================================================
+echo   DEJAR LIMPIO PARA ENTREGAR
+echo ============================================================
+echo Borra los datos guardados DENTRO de esta carpeta (modo USB),
+echo la licencia de este equipo y el registro, para entregar el
+echo programa nuevo, sin datos ni historial.
+echo.
+echo NO toca los datos del PC en %USERPROFILE%\\SistemaControl.
+echo.
+choice /C SN /M "¿Desea continuar? S = si, N = no"
+if errorlevel 2 exit /b
+taskkill /fi "WINDOWTITLE eq Sistema de Control - servidor*" /t /f >nul 2>nul
+if exist "%~dp0datos" rmdir /s /q "%~dp0datos"
+if exist "%~dp0datos-prueba" rmdir /s /q "%~dp0datos-prueba"
+if exist "%~dp0registro.log" del /q "%~dp0registro.log"
+echo.
+echo Listo: la carpeta quedo limpia para entregar.
+pause
+`
+);
+
 escribir(
   'Recuperar acceso.cmd',
   `@echo off
@@ -207,6 +233,10 @@ OPCION B - USAR DESDE LA USB
   La licencia sigue ligada al computador: en otro PC el programa pedirá otra licencia.
   IMPORTANTE: si la USB se pierde o se daña, se pierden los datos. Configure en
   "Copias de Seguridad" una copia en otra carpeta (disco del PC u OneDrive).
+
+PARA EL VENDEDOR
+  Entregue siempre el zip original. Si usó esta carpeta en modo USB, antes de copiarla
+  a otra persona haga doble clic en "Dejar limpio para entregar.cmd".
 
 PRIMEROS PASOS
   - Ingreso: botón grande "Ingresar" (sin contraseña). Para pedir usuario y contraseña:
